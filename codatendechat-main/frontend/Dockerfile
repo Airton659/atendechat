@@ -30,12 +30,12 @@ ENV REACT_APP_COLOR=$REACT_APP_COLOR
 ARG REACT_APP_TAB_NAME
 ENV REACT_APP_TAB_NAME=$REACT_APP_TAB_NAME
 
-# Run brand assets script if exists
-RUN if [ -f copy_brand_assets.sh ]; then chmod +x copy_brand_assets.sh && ./copy_brand_assets.sh; else echo "No brands script"; fi
+# Run brand assets script if exists (usando sh ao invés de bash)
+RUN if [ -f copy_brand_assets.sh ]; then chmod +x copy_brand_assets.sh && sh copy_brand_assets.sh; else echo "No brands script"; fi
 
-# Executa scripts de customização se existirem
-RUN if [ -f update_tab_name.sh ]; then chmod +x update_tab_name.sh && ./update_tab_name.sh; else echo "No tab name script"; fi
-RUN if [ -f update_app_color.sh ]; then chmod +x update_app_color.sh && ./update_app_color.sh; else echo "No color script"; fi
+# Executa scripts de customização se existirem (usando sh ao invés de bash)
+RUN if [ -f update_tab_name.sh ]; then chmod +x update_tab_name.sh && sh update_tab_name.sh; else echo "No tab name script"; fi
+RUN if [ -f update_app_color.sh ]; then chmod +x update_app_color.sh && sh update_app_color.sh; else echo "No color script"; fi
 
 # Build the application
 RUN yarn build
