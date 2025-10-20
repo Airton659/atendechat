@@ -14,7 +14,10 @@ RUN rm -f package-lock.json
 
 COPY backend/package*.json ./
 COPY backend/yarn.lock ./
-COPY backend/node_modules ./node_modules
+
+# Install dependencies
+RUN yarn install --frozen-lockfile
+
 COPY backend/ .
 
 # Configure git to use HTTPS instead of SSH

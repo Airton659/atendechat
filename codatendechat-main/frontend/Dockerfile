@@ -7,7 +7,10 @@ RUN npm install -g serve
 
 COPY frontend/package*.json ./
 COPY frontend/yarn.lock ./
-COPY frontend/node_modules ./node_modules
+
+# Install dependencies
+RUN yarn install --frozen-lockfile
+
 COPY frontend/ .
 
 RUN rm -f .env 
