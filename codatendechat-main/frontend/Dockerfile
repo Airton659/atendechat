@@ -30,12 +30,13 @@ ENV REACT_APP_COLOR=$REACT_APP_COLOR
 ARG REACT_APP_TAB_NAME
 ENV REACT_APP_TAB_NAME=$REACT_APP_TAB_NAME
 
+# Create brands directory
 RUN mkdir -p ./brands
-COPY brands ./brands
 
+# Copy brand assets script
 COPY frontend/copy_brand_assets.sh ./
 RUN chmod +x copy_brand_assets.sh
-RUN ./copy_brand_assets.sh
+RUN ./copy_brand_assets.sh || echo "No brands to copy"
 
 RUN rm -rf ./brands
 

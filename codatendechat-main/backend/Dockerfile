@@ -25,15 +25,18 @@ RUN git config --global url."https://".insteadOf ssh://
 
 RUN yarn add fluent-ffmpeg @ffmpeg-installer/ffmpeg
 
-COPY certificates ./certs-temp
+# Create certs-temp directory
+RUN mkdir -p ./certs-temp
 
+# Copy certificates if exists (won't fail if doesn't exist due to context)
 COPY backend/copy_cert_assets.sh ./
 RUN chmod +x copy_cert_assets.sh
 
 ARG STACK_NAME
 ENV STACK_NAME=$STACK_NAME
 
-RUN ./copy_cert_assets.sh
+# Run script (will skip if no certs)
+RUN ./copy_cert_assets.sh || echo "No certificates to copy"
 
 RUN rm -rf ./certs-temp
 
