@@ -199,3 +199,90 @@ export const train = async (req: Request, res: Response): Promise<Response> => {
     );
   }
 };
+
+// Upload knowledge file
+export const uploadKnowledge = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { companyId } = req.user;
+  const { crewId } = req.params;
+
+  const crew = await Crew.findOne({
+    where: { id: crewId, companyId }
+  });
+
+  if (!crew) {
+    throw new AppError("ERR_NO_CREW_FOUND", 404);
+  }
+
+  if (!req.file) {
+    throw new AppError("ERR_NO_FILE_PROVIDED", 400);
+  }
+
+  try {
+    const crewaiUrl = process.env.CREWAI_API_URL || "http://localhost:8000";
+
+    const formData = new FormData();
+    formData.append("file", req.file.buffer, req.file.originalname);
+    formData.append("tenantId", `company_${companyId}`);
+    formData.append("teamId", crew.firestoreId);
+
+    const response = await axios.post(
+      `${crewaiUrl}/api/v2/knowledge/upload`,
+      formData,
+      {
+        headers: {
+          ...formData.getHeaders(),
+        },
+      }
+    );
+
+    return res.status(200).json(response.data);
+  } catch (error: any) {
+    console.error("Erro ao fazer upload de conhecimento:", error);
+    throw new AppError(
+      error.response?.data?.message || "ERR_UPLOADING_KNOWLEDGE",
+      error.response?.status || 500
+    );
+  }
+};
+
+// Delete knowledge file
+export const deleteKnowledge = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { companyId } = req.user;
+  const { crewId, fileId } = req.params;
+
+  const crew = await Crew.findOne({
+    where: { id: crewId, companyId }
+  });
+
+  if (!crew) {
+    throw new AppError("ERR_NO_CREW_FOUND", 404);
+  }
+
+  try {
+    const crewaiUrl = process.env.CREWAI_API_URL || "http://localhost:8000";
+
+    await axios.delete(
+      `${crewaiUrl}/api/v2/knowledge/${fileId}`,
+      {
+        params: {
+          tenantId: `company_${companyId}`,
+          teamId: crew.firestoreId
+        }
+      }
+    );
+
+    return res.status(200).json({ message: "Knowledge file deleted" });
+  } catch (error: any) {
+    console.error("Erro ao deletar conhecimento:", error);
+    throw new AppError(
+      error.response?.data?.message || "ERR_DELETING_KNOWLEDGE",
+      error.response?.status || 500
+    );
+  }
+};
