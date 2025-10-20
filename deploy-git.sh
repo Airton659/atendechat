@@ -230,6 +230,9 @@ MAIL_PORT=465
 
 CAMPAIGN_RATE_LIMIT=10000
 CAMPAIGN_BATCH_SIZE=50
+
+# CrewAI Service
+CREWAI_API_URL=http://localhost:8000
 EOF
 
 ###############################################################################
@@ -265,9 +268,89 @@ sleep 30
 docker-compose ps
 
 ###############################################################################
-# 7. CONFIGURAR NGINX
+# 7. CONFIGURAR CREWAI SERVICE (STANDALONE - NÃO DOCKER)
 ###############################################################################
-echo -e "\n${YELLOW}[7/8] Configurando Nginx...${NC}"
+echo -e "\n${YELLOW}[7/9] Configurando CrewAI Service (Standalone)...${NC}"
+
+# Instalar Python 3.11+ e pip
+if ! command -v python3 &> /dev/null; then
+    echo "Instalando Python 3..."
+    sudo apt-get install -y python3 python3-pip python3-venv
+else
+    echo "Python já instalado"
+fi
+
+# Navegar para o diretório do CrewAI service
+cd $PROJECT_DIR/crewai-service
+
+# Criar ambiente virtual
+echo "Criando ambiente virtual Python..."
+python3 -m venv venv
+
+# Ativar ambiente virtual e instalar dependências
+echo "Instalando dependências Python..."
+source venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+deactivate
+
+# Criar .env para CrewAI service
+echo "Criando .env para CrewAI service..."
+cat > .env << 'EOF'
+GOOGLE_CLOUD_PROJECT=seu-projeto-gcp
+GOOGLE_CLOUD_LOCATION=us-central1
+GOOGLE_APPLICATION_CREDENTIALS=/opt/crewai/google-credentials.json
+VERTEX_MODEL=gemini-2.0-flash-exp
+PORT=8000
+EOF
+
+echo -e "${YELLOW}ATENÇÃO: Configure as credenciais do Google Cloud!${NC}"
+echo "1. Coloque o arquivo google-credentials.json em /opt/crewai/"
+echo "2. Atualize GOOGLE_CLOUD_PROJECT no arquivo .env"
+echo "3. Certifique-se de ter ativado Vertex AI e Firestore no projeto"
+
+# Criar diretório para credenciais (se não existir)
+sudo mkdir -p /opt/crewai
+echo -e "${YELLOW}Copie seu google-credentials.json para /opt/crewai/${NC}"
+
+# Criar systemd service para CrewAI
+echo "Criando systemd service para CrewAI..."
+sudo tee /etc/systemd/system/crewai-service.service > /dev/null << EOF
+[Unit]
+Description=CrewAI API Service
+After=network.target
+
+[Service]
+Type=simple
+User=$USER
+WorkingDirectory=$PROJECT_DIR/crewai-service
+Environment="PATH=$PROJECT_DIR/crewai-service/venv/bin"
+ExecStart=$PROJECT_DIR/crewai-service/venv/bin/python3 -m uvicorn api.src.main:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Recarregar systemd e iniciar serviço
+echo "Iniciando CrewAI service..."
+sudo systemctl daemon-reload
+sudo systemctl enable crewai-service
+sudo systemctl start crewai-service
+
+# Verificar status
+echo "Verificando status do CrewAI service..."
+sudo systemctl status crewai-service --no-pager || true
+
+echo -e "${GREEN}CrewAI service configurado!${NC}"
+echo "Use 'sudo systemctl status crewai-service' para verificar o status"
+echo "Use 'sudo journalctl -u crewai-service -f' para ver os logs"
+
+###############################################################################
+# 8. CONFIGURAR NGINX
+###############################################################################
+echo -e "\n${YELLOW}[8/9] Configurando Nginx...${NC}"
 
 # Remover configuração padrão
 sudo rm -f /etc/nginx/sites-enabled/default
@@ -330,9 +413,9 @@ sudo systemctl restart nginx
 sudo systemctl enable nginx
 
 ###############################################################################
-# 8. CONFIGURAR SSL
+# 9. CONFIGURAR SSL
 ###############################################################################
-echo -e "\n${YELLOW}[8/8] Configurando SSL (Certbot)...${NC}"
+echo -e "\n${YELLOW}[9/9] Configurando SSL (Certbot)...${NC}"
 
 # Obter certificados SSL
 sudo certbot --nginx -d api.atendeaibr.com -d www.atendeaibr.com -d atendeaibr.com --non-interactive --agree-tos --email contato@atendeaibr.com --redirect --expand
