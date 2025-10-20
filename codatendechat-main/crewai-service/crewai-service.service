@@ -1,0 +1,17 @@
+[Unit]
+Description=CrewAI Service - Atendechat
+After=network.target
+
+[Service]
+Type=simple
+User=airton
+WorkingDirectory=/home/airton/atendechat/codatendechat-main/crewai-service/api/src
+Environment="PATH=/usr/bin:/usr/local/bin"
+Environment="PYTHONPATH=/home/airton/atendechat/codatendechat-main/crewai-service/api/src"
+EnvironmentFile=/home/airton/atendechat/codatendechat-main/crewai-service/.env
+ExecStart=/usr/bin/python3 -m uvicorn main:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
