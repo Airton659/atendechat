@@ -305,6 +305,7 @@ sudo mkdir -p /opt/crewai
 # Verificar se foi copiado do script local
 if [ -f "$HOME/google-credentials.json" ]; then
     sudo cp "$HOME/google-credentials.json" /opt/crewai/
+    sudo chown $USER:$USER /opt/crewai/google-credentials.json
     sudo chmod 600 /opt/crewai/google-credentials.json
     echo -e "${GREEN}Credenciais copiadas com sucesso!${NC}"
 
@@ -316,6 +317,7 @@ if [ -f "$HOME/google-credentials.json" ]; then
     rm -f "$HOME/google-credentials.json"
 elif [ -f "$APP_DIR/atendechat/atendelimpo/backend/google-credentials.json" ]; then
     sudo cp "$APP_DIR/atendechat/atendelimpo/backend/google-credentials.json" /opt/crewai/
+    sudo chown $USER:$USER /opt/crewai/google-credentials.json
     sudo chmod 600 /opt/crewai/google-credentials.json
     echo -e "${GREEN}Credenciais copiadas do repositório!${NC}"
 
