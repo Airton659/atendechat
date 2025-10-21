@@ -1,169 +1,152 @@
 import { Request, Response } from "express";
 import axios from "axios";
 import FormData from "form-data";
-
-import ListCrewsService from "../services/CrewService/ListCrewsService";
-import CreateCrewService from "../services/CrewService/CreateCrewService";
-import Crew from "../models/Crew";
 import AppError from "../errors/AppError";
 
 const crewaiUrl = process.env.CREWAI_API_URL || "http://localhost:8000";
 
+// Listar todas as crews
 export const index = async (req: Request, res: Response): Promise<Response> => {
   const { companyId } = req.user;
+  const tenantId = `company_${companyId}`;
 
-  const crews = await ListCrewsService({ companyId });
+  try {
+    const { data } = await axios.get(`${crewaiUrl}/api/v2/crews`, {
+      params: { tenantId }
+    });
 
-  return res.status(200).json(crews);
+    return res.status(200).json(data);
+  } catch (error: any) {
+    console.error("Erro ao listar crews:", error);
+    throw new AppError(
+      error.response?.data?.message || "ERR_LISTING_CREWS",
+      error.response?.status || 500
+    );
+  }
 };
 
+// Criar nova crew (manual)
 export const store = async (req: Request, res: Response): Promise<Response> => {
   const { companyId, id: userId } = req.user;
   const { name, description, industry, objective, tone } = req.body;
+  const tenantId = `company_${companyId}`;
 
-  const crew = await CreateCrewService({
-    name,
-    description,
-    companyId,
-    userId: +userId,
-    industry,
-    objective,
-    tone
-  });
+  try {
+    const { data } = await axios.post(`${crewaiUrl}/api/v2/crews`, {
+      name,
+      description,
+      industry,
+      objective,
+      tone,
+      tenantId,
+      createdBy: userId
+    });
 
-  return res.status(201).json(crew);
+    return res.status(201).json(data);
+  } catch (error: any) {
+    console.error("Erro ao criar crew:", error);
+    throw new AppError(
+      error.response?.data?.message || "ERR_CREATING_CREW",
+      error.response?.status || 500
+    );
+  }
 };
 
+// Buscar crew por ID
 export const show = async (req: Request, res: Response): Promise<Response> => {
   const { companyId } = req.user;
   const { crewId } = req.params;
+  const tenantId = `company_${companyId}`;
 
-  const crew = await Crew.findOne({
-    where: { id: crewId, companyId }
-  });
-
-  if (!crew) {
-    throw new AppError("ERR_CREW_NOT_FOUND", 404);
-  }
-
-  // Buscar detalhes completos no CrewAI Service
   try {
-    const response = await axios.get(
-      `${crewaiUrl}/api/v2/crews/${crew.firestoreId}`
-    );
-
-    return res.status(200).json({
-      ...crew.toJSON(),
-      blueprint: response.data
+    const { data } = await axios.get(`${crewaiUrl}/api/v2/crews/${crewId}`, {
+      params: { tenantId }
     });
-  } catch (error) {
-    console.error("Erro ao buscar blueprint:", error);
-    return res.status(200).json(crew);
+
+    return res.status(200).json(data);
+  } catch (error: any) {
+    console.error("Erro ao buscar crew:", error);
+    throw new AppError(
+      error.response?.data?.message || "ERR_CREW_NOT_FOUND",
+      error.response?.status || 404
+    );
   }
 };
 
+// Atualizar crew
 export const update = async (req: Request, res: Response): Promise<Response> => {
   const { companyId } = req.user;
   const { crewId } = req.params;
-  const { name, description, status, blueprint } = req.body;
+  const tenantId = `company_${companyId}`;
 
-  const crew = await Crew.findOne({
-    where: { id: crewId, companyId }
-  });
+  try {
+    const { data } = await axios.put(
+      `${crewaiUrl}/api/v2/crews/${crewId}`,
+      {
+        ...req.body,
+        tenantId
+      }
+    );
 
-  if (!crew) {
-    throw new AppError("ERR_CREW_NOT_FOUND", 404);
+    return res.status(200).json(data);
+  } catch (error: any) {
+    console.error("Erro ao atualizar crew:", error);
+    throw new AppError(
+      error.response?.data?.message || "ERR_UPDATING_CREW",
+      error.response?.status || 500
+    );
   }
-
-  // Atualizar no banco local
-  await crew.update({
-    name: name || crew.name,
-    description: description || crew.description,
-    status: status || crew.status
-  });
-
-  // Se forneceu blueprint, atualizar no CrewAI Service
-  if (blueprint) {
-    try {
-      await axios.put(
-        `${crewaiUrl}/api/v2/crews/${crew.firestoreId}`,
-        blueprint
-      );
-    } catch (error) {
-      console.error("Erro ao atualizar blueprint:", error);
-      throw new AppError("ERR_UPDATING_CREW_BLUEPRINT", 500);
-    }
-  }
-
-  return res.status(200).json(crew);
 };
 
+// Deletar crew
 export const remove = async (req: Request, res: Response): Promise<Response> => {
   const { companyId } = req.user;
   const { crewId } = req.params;
+  const tenantId = `company_${companyId}`;
 
-  const crew = await Crew.findOne({
-    where: { id: crewId, companyId }
-  });
-
-  if (!crew) {
-    throw new AppError("ERR_CREW_NOT_FOUND", 404);
-  }
-
-  // Deletar do CrewAI Service
   try {
-    await axios.delete(`${crewaiUrl}/api/v2/crews/${crew.firestoreId}`);
-  } catch (error) {
-    console.error("Erro ao deletar do CrewAI Service:", error);
+    await axios.delete(`${crewaiUrl}/api/v2/crews/${crewId}`, {
+      params: { tenantId }
+    });
+
+    return res.status(200).json({ message: "Crew deleted successfully" });
+  } catch (error: any) {
+    console.error("Erro ao deletar crew:", error);
+    throw new AppError(
+      error.response?.data?.message || "ERR_DELETING_CREW",
+      error.response?.status || 500
+    );
   }
-
-  await crew.destroy();
-
-  return res.status(200).json({ message: "Crew deleted" });
 };
 
 // Gerar equipe usando o Arquiteto IA
 export const generateTeam = async (req: Request, res: Response): Promise<Response> => {
-  const { companyId, id: userId } = req.user;
+  const { companyId } = req.user;
   const { businessDescription, industry, teamName } = req.body;
+  const tenantId = `company_${companyId}`;
 
   try {
-    const response = await axios.post(
+    const { data } = await axios.post(
       `${crewaiUrl}/api/v2/architect/generate-team`,
       {
         businessDescription,
         industry,
-        tenantId: `company_${companyId}`,
+        tenantId,
         teamName
       }
     );
 
-    // Salvar no banco local
-    const crew = await CreateCrewService({
-      name: teamName || response.data.blueprint.name,
-      description: businessDescription,
-      companyId,
-      userId: +userId,
-      firestoreId: response.data.blueprint.id || `crew_${Date.now()}`,
-      status: "draft",
-      industry: industry || response.data.analysis?.industry,
-      objective: businessDescription,
-      tone: response.data.blueprint.config?.tone || "professional"
-    });
-
     // Transformar agents de objeto para array
     const blueprint = {
-      ...response.data.blueprint,
-      agents: response.data.blueprint.agents
-        ? Object.values(response.data.blueprint.agents)
+      ...data.blueprint,
+      agents: data.blueprint.agents
+        ? Object.values(data.blueprint.agents)
         : []
     };
 
     return res.status(201).json({
-      crew,
-      blueprint,
-      analysis: response.data.analysis,
-      suggestions: response.data.suggestions
+      ...data,
+      blueprint
     });
   } catch (error: any) {
     console.error("Erro ao gerar equipe:", error);
@@ -179,29 +162,22 @@ export const train = async (req: Request, res: Response): Promise<Response> => {
   const { companyId } = req.user;
   const { crewId } = req.params;
   const { message, conversationHistory } = req.body;
-
-  const crew = await Crew.findOne({
-    where: { id: crewId, companyId }
-  });
-
-  if (!crew) {
-    throw new AppError("ERR_CREW_NOT_FOUND", 404);
-  }
+  const tenantId = `company_${companyId}`;
 
   try {
-    const response = await axios.post(
+    const { data } = await axios.post(
       `${crewaiUrl}/api/v2/training/generate-response`,
       {
-        tenantId: `company_${companyId}`,
-        teamId: crew.firestoreId,
+        tenantId,
+        teamId: crewId,
         message,
         conversationHistory: conversationHistory || []
       }
     );
 
-    return res.status(200).json(response.data);
+    return res.status(200).json(data);
   } catch (error: any) {
-    console.error("Erro ao treinar equipe:", error);
+    console.error("Erro ao treinar crew:", error);
     throw new AppError(
       error.response?.data?.message || "ERR_TRAINING_CREW",
       error.response?.status || 500
@@ -209,80 +185,60 @@ export const train = async (req: Request, res: Response): Promise<Response> => {
   }
 };
 
-// Upload knowledge file
+// Upload de arquivo de conhecimento
 export const uploadKnowledge = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
   const { companyId } = req.user;
   const { crewId } = req.params;
-
-  const crew = await Crew.findOne({
-    where: { id: crewId, companyId }
-  });
-
-  if (!crew) {
-    throw new AppError("ERR_NO_CREW_FOUND", 404);
-  }
+  const tenantId = `company_${companyId}`;
 
   if (!req.file) {
-    throw new AppError("ERR_NO_FILE_PROVIDED", 400);
+    throw new AppError("ERR_NO_FILE_UPLOADED", 400);
   }
 
   try {
-    const crewaiUrl = process.env.CREWAI_API_URL || "http://localhost:8000";
-
     const formData = new FormData();
-    formData.append("file", req.file.buffer, req.file.originalname);
-    formData.append("tenantId", `company_${companyId}`);
-    formData.append("teamId", crew.firestoreId);
+    formData.append("file", req.file.buffer, {
+      filename: req.file.originalname,
+      contentType: req.file.mimetype,
+    });
+    formData.append("tenantId", tenantId);
+    formData.append("teamId", crewId);
 
-    const response = await axios.post(
+    const { data } = await axios.post(
       `${crewaiUrl}/api/v2/knowledge/upload`,
       formData,
       {
-        headers: {
-          ...formData.getHeaders(),
-        },
+        headers: formData.getHeaders(),
       }
     );
 
-    return res.status(200).json(response.data);
+    return res.status(200).json(data);
   } catch (error: any) {
-    console.error("Erro ao fazer upload de conhecimento:", error);
+    console.error("Erro ao fazer upload:", error);
     throw new AppError(
-      error.response?.data?.message || "ERR_UPLOADING_KNOWLEDGE",
+      error.response?.data?.message || "ERR_UPLOADING_FILE",
       error.response?.status || 500
     );
   }
 };
 
-// Delete knowledge file
+// Deletar arquivo de conhecimento
 export const deleteKnowledge = async (
   req: Request,
   res: Response
 ): Promise<Response> => {
   const { companyId } = req.user;
   const { crewId, fileId } = req.params;
-
-  const crew = await Crew.findOne({
-    where: { id: crewId, companyId }
-  });
-
-  if (!crew) {
-    throw new AppError("ERR_NO_CREW_FOUND", 404);
-  }
+  const tenantId = `company_${companyId}`;
 
   try {
-    const crewaiUrl = process.env.CREWAI_API_URL || "http://localhost:8000";
-
     await axios.delete(
       `${crewaiUrl}/api/v2/knowledge/${fileId}`,
       {
-        params: {
-          tenantId: `company_${companyId}`,
-          teamId: crew.firestoreId
-        }
+        params: { tenantId, teamId: crewId }
       }
     );
 
