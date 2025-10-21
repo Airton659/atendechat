@@ -181,7 +181,7 @@ const useAuth = () => {
             } `
           );
         }
-        history.push("/tickets");
+        history.push("/");
         setLoading(false);
       } else {
         toastError(`Opss! Sua assinatura venceu ${vencimento}.

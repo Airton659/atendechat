@@ -142,7 +142,8 @@ const Crews = () => {
   }, [searchParam]);
 
   useEffect(() => {
-    const socket = socketManager.GetSocket();
+    const companyId = localStorage.getItem("companyId");
+    const socket = socketManager.getSocket(companyId);
 
     socket.on("crew", (data) => {
       if (data.action === "update" || data.action === "create") {

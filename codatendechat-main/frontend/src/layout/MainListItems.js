@@ -439,13 +439,6 @@ const MainListItems = (props) => {
                 icon={<AnnouncementIcon />}
               />
             )}
-            {showOpenAi && (
-              <ListItemLink
-                to="/prompts"
-                primary={i18n.t("mainDrawer.listItems.prompts")}
-                icon={<AllInclusive />}
-              />
-            )}
 
             {showIntegrations && (
               <ListItemLink
