@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import axios from "axios";
+import FormData from "form-data";
 
 import ListCrewsService from "../services/CrewService/ListCrewsService";
 import CreateCrewService from "../services/CrewService/CreateCrewService";
@@ -24,7 +25,7 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
     name,
     description,
     companyId,
-    userId,
+    userId: +userId,
     industry,
     objective,
     tone
@@ -142,7 +143,7 @@ export const generateTeam = async (req: Request, res: Response): Promise<Respons
       name: teamName || response.data.blueprint.name,
       description: businessDescription,
       companyId,
-      userId,
+      userId: +userId,
       firestoreId: response.data.blueprint.id || `crew_${Date.now()}`,
       status: "draft",
       industry: industry || response.data.analysis?.industry,

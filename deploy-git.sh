@@ -267,6 +267,10 @@ sleep 30
 # Verificar status
 docker-compose ps
 
+# Rodar migrations do banco
+echo "Rodando migrations do banco de dados..."
+docker-compose exec -T backend npx sequelize-cli db:migrate || echo "Erro ao rodar migrations - verifique depois manualmente"
+
 ###############################################################################
 # 7. CONFIGURAR CREWAI SERVICE (STANDALONE - NÃO DOCKER)
 ###############################################################################
