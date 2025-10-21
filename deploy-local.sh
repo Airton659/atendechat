@@ -113,6 +113,22 @@ pip install -r requirements.txt
 deactivate
 echo "✓ Dependências instaladas!"
 
+# Parar o service e matar processos antigos na porta 8000
+echo "Parando CrewAI service..."
+echo "$SUDO_PASSWORD" | sudo -S systemctl stop crewai.service
+
+# Matar qualquer processo Python antigo na porta 8000
+echo "Limpando processos antigos na porta 8000..."
+OLD_PIDS=\$(echo "$SUDO_PASSWORD" | sudo -S lsof -ti :8000 2>/dev/null || true)
+if [ ! -z "\$OLD_PIDS" ]; then
+    echo "Matando processos: \$OLD_PIDS"
+    echo "$SUDO_PASSWORD" | sudo -S kill -9 \$OLD_PIDS 2>/dev/null || true
+    sleep 2
+    echo "✓ Processos antigos finalizados!"
+else
+    echo "✓ Nenhum processo antigo encontrado!"
+fi
+
 # Copiar arquivo de service atualizado
 echo "$SUDO_PASSWORD" | sudo -S cp /home/airton/atendechat/codatendechat-main/crewai-service/crewai-service.service /etc/systemd/system/crewai.service
 
@@ -120,7 +136,8 @@ echo "$SUDO_PASSWORD" | sudo -S cp /home/airton/atendechat/codatendechat-main/cr
 echo "$SUDO_PASSWORD" | sudo -S systemctl daemon-reload
 
 # Restart CrewAI service
-echo "$SUDO_PASSWORD" | sudo -S systemctl restart crewai.service
+echo "Iniciando CrewAI service..."
+echo "$SUDO_PASSWORD" | sudo -S systemctl start crewai.service
 
 # Aguardar 3 segundos para o service iniciar
 sleep 3
