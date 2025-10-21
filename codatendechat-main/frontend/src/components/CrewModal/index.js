@@ -18,8 +18,16 @@ import {
   Divider,
   Checkbox,
   FormControlLabel,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  Chip,
 } from "@material-ui/core";
-import { Add as AddIcon, Delete as DeleteIcon } from "@material-ui/icons";
+import {
+  Add as AddIcon,
+  Delete as DeleteIcon,
+  ExpandMore as ExpandMoreIcon,
+} from "@material-ui/icons";
 
 import { i18n } from "../../translate/i18n";
 import api from "../../services/api";
@@ -57,6 +65,22 @@ const useStyles = makeStyles((theme) => ({
     top: 8,
     right: 8,
   },
+  sectionTitle: {
+    fontWeight: 600,
+    fontSize: "0.875rem",
+    marginBottom: theme.spacing(1),
+    marginTop: theme.spacing(2),
+  },
+  accordion: {
+    marginBottom: theme.spacing(1),
+    "&:before": {
+      display: "none",
+    },
+  },
+  accordionSummary: {
+    backgroundColor: theme.palette.grey[50],
+    borderRadius: 4,
+  },
 }));
 
 const AgentSchema = Yup.object().shape({
@@ -65,6 +89,11 @@ const AgentSchema = Yup.object().shape({
   goal: Yup.string().required("Objetivo é obrigatório"),
   backstory: Yup.string().required("História é obrigatória"),
   useKnowledge: Yup.boolean(),
+  keywords: Yup.string(),
+  customInstructions: Yup.string(),
+  persona: Yup.string(),
+  guardrailsDo: Yup.string(),
+  guardrailsDont: Yup.string(),
 });
 
 const CrewSchema = Yup.object().shape({
@@ -92,6 +121,11 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
         goal: "",
         backstory: "",
         useKnowledge: false,
+        keywords: "",
+        customInstructions: "",
+        persona: "",
+        guardrailsDo: "",
+        guardrailsDont: "",
       },
     ],
   });
@@ -109,6 +143,11 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
               goal: "",
               backstory: "",
               useKnowledge: false,
+              keywords: "",
+              customInstructions: "",
+              persona: "",
+              guardrailsDo: "",
+              guardrailsDont: "",
             },
           ],
         });
@@ -127,6 +166,11 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
               goal: agent.goal || "",
               backstory: agent.backstory || "",
               useKnowledge: agent.knowledgeDocuments?.length > 0 || false,
+              keywords: (agent.keywords || []).join("\n"),
+              customInstructions: agent.personality?.customInstructions || "",
+              persona: agent.training?.persona || "",
+              guardrailsDo: (agent.training?.guardrails?.do || []).join("\n"),
+              guardrailsDont: (agent.training?.guardrails?.dont || []).join("\n"),
             }))
           : [{
               name: "",
@@ -134,6 +178,11 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
               goal: "",
               backstory: "",
               useKnowledge: false,
+              keywords: "",
+              customInstructions: "",
+              persona: "",
+              guardrailsDo: "",
+              guardrailsDont: "",
             }];
 
         setInitialValues({
@@ -170,21 +219,27 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
           backstory: agent.backstory,
           order: idx + 1,
           isActive: true,
-          keywords: [],
+          keywords: agent.keywords
+            ? agent.keywords.split("\n").map(k => k.trim()).filter(k => k)
+            : [],
           personality: {
             tone: "professional",
             traits: [],
-            customInstructions: "",
+            customInstructions: agent.customInstructions || "",
           },
           tools: [],
           toolConfigs: {},
           knowledgeDocuments: agent.useKnowledge ? [] : [],
           training: {
             guardrails: {
-              do: [],
-              dont: [],
+              do: agent.guardrailsDo
+                ? agent.guardrailsDo.split("\n").map(l => l.trim()).filter(l => l)
+                : [],
+              dont: agent.guardrailsDont
+                ? agent.guardrailsDont.split("\n").map(l => l.trim()).filter(l => l)
+                : [],
             },
-            persona: agent.backstory,
+            persona: agent.persona || agent.backstory,
             examples: [],
           },
         };
@@ -285,113 +340,209 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
                   {({ push, remove }) => (
                     <>
                       {values.agents.map((agent, index) => (
-                        <Box key={index} className={classes.agentCard}>
-                          {values.agents.length > 1 && (
-                            <IconButton
-                              size="small"
-                              className={classes.deleteButton}
-                              onClick={() => remove(index)}
-                              color="secondary"
-                            >
-                              <DeleteIcon />
-                            </IconButton>
-                          )}
+                        <Accordion key={index} className={classes.accordion}>
+                          <AccordionSummary
+                            expandIcon={<ExpandMoreIcon />}
+                            className={classes.accordionSummary}
+                          >
+                            <Box display="flex" alignItems="center" justifyContent="space-between" width="100%">
+                              <Typography variant="subtitle1">
+                                {agent.name || `Agente ${index + 1}`}
+                              </Typography>
+                              {values.agents.length > 1 && (
+                                <IconButton
+                                  size="small"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    remove(index);
+                                  }}
+                                  color="secondary"
+                                >
+                                  <DeleteIcon />
+                                </IconButton>
+                              )}
+                            </Box>
+                          </AccordionSummary>
+                          <AccordionDetails>
+                            <Box width="100%">
+                              {/* Informações Básicas */}
+                              <Typography className={classes.sectionTitle}>
+                                📋 Informações Básicas
+                              </Typography>
 
-                          <Typography variant="subtitle2" gutterBottom>
-                            Agente {index + 1}
-                          </Typography>
-
-                          <Field
-                            as={TextField}
-                            label="Nome do Agente"
-                            name={`agents.${index}.name`}
-                            error={
-                              touched.agents?.[index]?.name &&
-                              Boolean(errors.agents?.[index]?.name)
-                            }
-                            helperText={
-                              touched.agents?.[index]?.name &&
-                              errors.agents?.[index]?.name
-                            }
-                            variant="outlined"
-                            margin="dense"
-                            fullWidth
-                            size="small"
-                          />
-
-                          <Field
-                            as={TextField}
-                            label="Função"
-                            name={`agents.${index}.role`}
-                            error={
-                              touched.agents?.[index]?.role &&
-                              Boolean(errors.agents?.[index]?.role)
-                            }
-                            helperText={
-                              touched.agents?.[index]?.role &&
-                              errors.agents?.[index]?.role
-                            }
-                            variant="outlined"
-                            margin="dense"
-                            fullWidth
-                            size="small"
-                          />
-
-                          <Field
-                            as={TextField}
-                            label="Objetivo"
-                            name={`agents.${index}.goal`}
-                            error={
-                              touched.agents?.[index]?.goal &&
-                              Boolean(errors.agents?.[index]?.goal)
-                            }
-                            helperText={
-                              touched.agents?.[index]?.goal &&
-                              errors.agents?.[index]?.goal
-                            }
-                            variant="outlined"
-                            margin="dense"
-                            fullWidth
-                            multiline
-                            rows={2}
-                            size="small"
-                          />
-
-                          <Field
-                            as={TextField}
-                            label="História"
-                            name={`agents.${index}.backstory`}
-                            error={
-                              touched.agents?.[index]?.backstory &&
-                              Boolean(errors.agents?.[index]?.backstory)
-                            }
-                            helperText={
-                              touched.agents?.[index]?.backstory &&
-                              errors.agents?.[index]?.backstory
-                            }
-                            variant="outlined"
-                            margin="dense"
-                            fullWidth
-                            multiline
-                            rows={2}
-                            size="small"
-                          />
-
-                          <Field name={`agents.${index}.useKnowledge`}>
-                            {({ field }) => (
-                              <FormControlLabel
-                                control={
-                                  <Checkbox
-                                    {...field}
-                                    checked={field.value}
-                                    color="primary"
-                                  />
+                              <Field
+                                as={TextField}
+                                label="Nome do Agente"
+                                name={`agents.${index}.name`}
+                                error={
+                                  touched.agents?.[index]?.name &&
+                                  Boolean(errors.agents?.[index]?.name)
                                 }
-                                label="Usar base de conhecimento"
+                                helperText={
+                                  touched.agents?.[index]?.name &&
+                                  errors.agents?.[index]?.name
+                                }
+                                variant="outlined"
+                                margin="dense"
+                                fullWidth
+                                size="small"
                               />
-                            )}
-                          </Field>
-                        </Box>
+
+                              <Field
+                                as={TextField}
+                                label="Função (Role)"
+                                name={`agents.${index}.role`}
+                                error={
+                                  touched.agents?.[index]?.role &&
+                                  Boolean(errors.agents?.[index]?.role)
+                                }
+                                helperText={
+                                  touched.agents?.[index]?.role &&
+                                  errors.agents?.[index]?.role
+                                }
+                                variant="outlined"
+                                margin="dense"
+                                fullWidth
+                                size="small"
+                              />
+
+                              <Field
+                                as={TextField}
+                                label="Objetivo (Goal)"
+                                name={`agents.${index}.goal`}
+                                error={
+                                  touched.agents?.[index]?.goal &&
+                                  Boolean(errors.agents?.[index]?.goal)
+                                }
+                                helperText={
+                                  touched.agents?.[index]?.goal &&
+                                  errors.agents?.[index]?.goal
+                                }
+                                variant="outlined"
+                                margin="dense"
+                                fullWidth
+                                multiline
+                                rows={2}
+                                size="small"
+                              />
+
+                              <Field
+                                as={TextField}
+                                label="História (Backstory)"
+                                name={`agents.${index}.backstory`}
+                                error={
+                                  touched.agents?.[index]?.backstory &&
+                                  Boolean(errors.agents?.[index]?.backstory)
+                                }
+                                helperText={
+                                  touched.agents?.[index]?.backstory &&
+                                  errors.agents?.[index]?.backstory
+                                }
+                                variant="outlined"
+                                margin="dense"
+                                fullWidth
+                                multiline
+                                rows={3}
+                                size="small"
+                              />
+
+                              <Field
+                                as={TextField}
+                                label="Keywords (uma por linha)"
+                                name={`agents.${index}.keywords`}
+                                variant="outlined"
+                                margin="dense"
+                                fullWidth
+                                multiline
+                                rows={3}
+                                size="small"
+                                placeholder="palavra1&#10;palavra2&#10;palavra3"
+                                helperText="Palavras-chave que ajudam a identificar quando usar este agente"
+                              />
+
+                              <Field
+                                as={TextField}
+                                label="Instruções Personalizadas"
+                                name={`agents.${index}.customInstructions`}
+                                variant="outlined"
+                                margin="dense"
+                                fullWidth
+                                multiline
+                                rows={3}
+                                size="small"
+                                placeholder="Ex: Sempre finalize com uma pergunta. Nunca use termos técnicos..."
+                                helperText="Instruções específicas de como o agente deve se comportar"
+                              />
+
+                              {/* Treinamento de Comportamento */}
+                              <Typography className={classes.sectionTitle}>
+                                🎭 Treinamento de Comportamento (Guardrails)
+                              </Typography>
+
+                              <Field
+                                as={TextField}
+                                label="Persona do Agente"
+                                name={`agents.${index}.persona`}
+                                variant="outlined"
+                                margin="dense"
+                                fullWidth
+                                multiline
+                                rows={3}
+                                size="small"
+                                placeholder="Ex: Você é cordial e sempre confirma informações..."
+                                helperText="Como o agente deve se apresentar e agir"
+                              />
+
+                              <Field
+                                as={TextField}
+                                label="Regras - O que FAZER"
+                                name={`agents.${index}.guardrailsDo`}
+                                variant="outlined"
+                                margin="dense"
+                                fullWidth
+                                multiline
+                                rows={3}
+                                size="small"
+                                placeholder="Sempre confirme os dados&#10;Seja cordial&#10;Pergunte se pode ajudar em algo mais"
+                                helperText="Uma regra por linha - comportamentos desejados"
+                              />
+
+                              <Field
+                                as={TextField}
+                                label="Regras - O que NÃO fazer"
+                                name={`agents.${index}.guardrailsDont`}
+                                variant="outlined"
+                                margin="dense"
+                                fullWidth
+                                multiline
+                                rows={3}
+                                size="small"
+                                placeholder="Nunca divulgue informações confidenciais&#10;Nunca use linguagem informal&#10;Nunca encerre sem confirmar"
+                                helperText="Uma regra por linha - comportamentos a evitar"
+                              />
+
+                              {/* Ferramentas */}
+                              <Typography className={classes.sectionTitle}>
+                                🔧 Ferramentas Disponíveis
+                              </Typography>
+
+                              <Field name={`agents.${index}.useKnowledge`}>
+                                {({ field }) => (
+                                  <FormControlLabel
+                                    control={
+                                      <Checkbox
+                                        {...field}
+                                        checked={field.value}
+                                        color="primary"
+                                      />
+                                    }
+                                    label="📚 Usar base de conhecimento"
+                                  />
+                                )}
+                              </Field>
+                            </Box>
+                          </AccordionDetails>
+                        </Accordion>
                       ))}
 
                       <Button
@@ -405,9 +556,15 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
                             goal: "",
                             backstory: "",
                             useKnowledge: false,
+                            keywords: "",
+                            customInstructions: "",
+                            persona: "",
+                            guardrailsDo: "",
+                            guardrailsDont: "",
                           })
                         }
                         fullWidth
+                        style={{ marginTop: 16 }}
                       >
                         Adicionar Agente
                       </Button>
