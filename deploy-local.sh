@@ -51,25 +51,7 @@ echo -e "${GREEN}✓ Credenciais copiadas com sucesso!${NC}"
 echo -e "\n${YELLOW}[3/4] Executando deploy na VM...${NC}"
 echo -e "${YELLOW}Digite a senha do sudo na VM quando solicitado...${NC}"
 
-ssh -t $VM_SSH << 'ENDSSH'
-set -e
-
-# Cores
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
-
-echo -e "${YELLOW}Baixando script de deploy...${NC}"
-cd ~
-rm -f deploy-git.sh
-curl -o deploy-git.sh https://raw.githubusercontent.com/Airton659/atendechat/main/deploy-git.sh
-chmod +x deploy-git.sh
-
-echo -e "${YELLOW}Executando deploy...${NC}"
-bash deploy-git.sh
-
-ENDSSH
+ssh -t $VM_SSH "cd ~ && rm -f deploy-git.sh && curl -o deploy-git.sh https://raw.githubusercontent.com/Airton659/atendechat/main/deploy-git.sh && chmod +x deploy-git.sh && bash deploy-git.sh"
 
 ###############################################################################
 # 4. FINALIZADO
