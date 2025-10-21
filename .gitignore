@@ -1,0 +1,5 @@
+# Ignorar tudo do atendelimpo EXCETO o google-credentials.json
+atendelimpo/*
+!atendelimpo/backend/
+atendelimpo/backend/*
+!atendelimpo/backend/google-credentials.json

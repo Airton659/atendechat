@@ -294,24 +294,35 @@ pip install --upgrade pip
 pip install -r requirements.txt
 deactivate
 
+# Copiar google-credentials.json do atendelimpo
+echo "Copiando credenciais do Google Cloud..."
+sudo mkdir -p /opt/crewai
+
+if [ -f "$APP_DIR/atendechat/atendelimpo/backend/google-credentials.json" ]; then
+    sudo cp "$APP_DIR/atendechat/atendelimpo/backend/google-credentials.json" /opt/crewai/
+    sudo chmod 600 /opt/crewai/google-credentials.json
+    echo -e "${GREEN}Credenciais copiadas com sucesso!${NC}"
+
+    # Extrair Project ID do arquivo de credenciais
+    PROJECT_ID=$(grep -o '"project_id":\s*"[^"]*"' /opt/crewai/google-credentials.json | sed 's/"project_id":\s*"\([^"]*\)"/\1/')
+    echo "Project ID detectado: $PROJECT_ID"
+else
+    echo -e "${RED}ERRO: google-credentials.json não encontrado em atendelimpo/backend/${NC}"
+    echo "Criando .env com valores padrão - VOCÊ PRECISARÁ CONFIGURAR MANUALMENTE!"
+    PROJECT_ID="seu-projeto-gcp"
+fi
+
 # Criar .env para CrewAI service
 echo "Criando .env para CrewAI service..."
-cat > .env << 'EOF'
-GOOGLE_CLOUD_PROJECT=seu-projeto-gcp
+cat > .env << EOF
+GOOGLE_CLOUD_PROJECT=$PROJECT_ID
 GOOGLE_CLOUD_LOCATION=us-central1
 GOOGLE_APPLICATION_CREDENTIALS=/opt/crewai/google-credentials.json
 VERTEX_MODEL=gemini-2.0-flash-exp
 PORT=8000
 EOF
 
-echo -e "${YELLOW}ATENÇÃO: Configure as credenciais do Google Cloud!${NC}"
-echo "1. Coloque o arquivo google-credentials.json em /opt/crewai/"
-echo "2. Atualize GOOGLE_CLOUD_PROJECT no arquivo .env"
-echo "3. Certifique-se de ter ativado Vertex AI e Firestore no projeto"
-
-# Criar diretório para credenciais (se não existir)
-sudo mkdir -p /opt/crewai
-echo -e "${YELLOW}Copie seu google-credentials.json para /opt/crewai/${NC}"
+echo -e "${GREEN}CrewAI configurado automaticamente!${NC}"
 
 # Criar systemd service para CrewAI
 echo "Criando systemd service para CrewAI..."
