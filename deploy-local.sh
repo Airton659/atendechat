@@ -72,9 +72,12 @@ echo -e "\n${YELLOW}[5/6] Rebuild frontend e backend, restart Docker...${NC}"
 ssh $VM_SSH << 'ENDSSH'
 cd /home/airton/atendechat/codatendechat-main
 
-# Rebuild frontend React
+# Rebuild frontend React (NO HOST, não no container)
 echo "Rebuilding frontend React..."
-docker-compose exec -T frontend npm run build
+cd frontend
+npm install
+npm run build
+cd ..
 
 # Rebuild backend TypeScript
 echo "Rebuilding backend TypeScript..."
