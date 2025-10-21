@@ -49,8 +49,9 @@ echo -e "${GREEN}✓ Credenciais copiadas com sucesso!${NC}"
 # 3. BAIXAR E EXECUTAR SCRIPT DE DEPLOY NA VM
 ###############################################################################
 echo -e "\n${YELLOW}[3/4] Executando deploy na VM...${NC}"
+echo -e "${YELLOW}Digite a senha do sudo na VM quando solicitado...${NC}"
 
-ssh $VM_SSH << 'ENDSSH'
+ssh -t $VM_SSH << 'ENDSSH'
 set -e
 
 # Cores
