@@ -151,9 +151,17 @@ export const generateTeam = async (req: Request, res: Response): Promise<Respons
       tone: response.data.blueprint.config?.tone || "professional"
     });
 
+    // Transformar agents de objeto para array
+    const blueprint = {
+      ...response.data.blueprint,
+      agents: response.data.blueprint.agents
+        ? Object.values(response.data.blueprint.agents)
+        : []
+    };
+
     return res.status(201).json({
       crew,
-      blueprint: response.data.blueprint,
+      blueprint,
       analysis: response.data.analysis,
       suggestions: response.data.suggestions
     });
