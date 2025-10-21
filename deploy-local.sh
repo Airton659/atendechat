@@ -40,10 +40,8 @@ echo -e "${GREEN}✓ Credenciais encontradas!${NC}"
 ###############################################################################
 echo -e "\n${YELLOW}[2/4] Copiando credenciais para a VM...${NC}"
 
-# Criar diretório na VM e copiar arquivo
-ssh $VM_SSH "sudo mkdir -p /opt/crewai"
-scp "$LOCAL_CREDENTIALS" $VM_SSH:/tmp/google-credentials.json
-ssh $VM_SSH "sudo mv /tmp/google-credentials.json /opt/crewai/ && sudo chmod 600 /opt/crewai/google-credentials.json"
+# Copiar arquivo para home do usuário primeiro (não precisa sudo)
+scp "$LOCAL_CREDENTIALS" $VM_SSH:~/google-credentials.json
 
 echo -e "${GREEN}✓ Credenciais copiadas com sucesso!${NC}"
 

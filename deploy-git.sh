@@ -298,21 +298,33 @@ pip install --upgrade pip
 pip install -r requirements.txt
 deactivate
 
-# Copiar google-credentials.json do atendelimpo
-echo "Copiando credenciais do Google Cloud..."
+# Copiar google-credentials.json
+echo "Configurando credenciais do Google Cloud..."
 sudo mkdir -p /opt/crewai
 
-if [ -f "$APP_DIR/atendechat/atendelimpo/backend/google-credentials.json" ]; then
-    sudo cp "$APP_DIR/atendechat/atendelimpo/backend/google-credentials.json" /opt/crewai/
+# Verificar se foi copiado do script local
+if [ -f "$HOME/google-credentials.json" ]; then
+    sudo cp "$HOME/google-credentials.json" /opt/crewai/
     sudo chmod 600 /opt/crewai/google-credentials.json
     echo -e "${GREEN}Credenciais copiadas com sucesso!${NC}"
 
     # Extrair Project ID do arquivo de credenciais
     PROJECT_ID=$(grep -o '"project_id":\s*"[^"]*"' /opt/crewai/google-credentials.json | sed 's/"project_id":\s*"\([^"]*\)"/\1/')
     echo "Project ID detectado: $PROJECT_ID"
+
+    # Remover arquivo temporário
+    rm -f "$HOME/google-credentials.json"
+elif [ -f "$APP_DIR/atendechat/atendelimpo/backend/google-credentials.json" ]; then
+    sudo cp "$APP_DIR/atendechat/atendelimpo/backend/google-credentials.json" /opt/crewai/
+    sudo chmod 600 /opt/crewai/google-credentials.json
+    echo -e "${GREEN}Credenciais copiadas do repositório!${NC}"
+
+    # Extrair Project ID
+    PROJECT_ID=$(grep -o '"project_id":\s*"[^"]*"' /opt/crewai/google-credentials.json | sed 's/"project_id":\s*"\([^"]*\)"/\1/')
+    echo "Project ID detectado: $PROJECT_ID"
 else
-    echo -e "${RED}ERRO: google-credentials.json não encontrado em atendelimpo/backend/${NC}"
-    echo "Criando .env com valores padrão - VOCÊ PRECISARÁ CONFIGURAR MANUALMENTE!"
+    echo -e "${YELLOW}AVISO: google-credentials.json não encontrado${NC}"
+    echo "Criando .env com valores padrão - configure manualmente depois!"
     PROJECT_ID="seu-projeto-gcp"
 fi
 
