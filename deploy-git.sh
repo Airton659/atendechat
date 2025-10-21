@@ -433,7 +433,7 @@ sudo systemctl enable nginx
 echo -e "\n${YELLOW}[9/9] Configurando SSL (Certbot)...${NC}"
 
 # Obter certificados SSL
-sudo certbot --nginx -d api.atendeaibr.com -d www.atendeaibr.com -d atendeaibr.com --non-interactive --agree-tos --email contato@atendeaibr.com --redirect --expand
+sudo certbot --nginx -d www.atendeaibr.com -d atendeaibr.com --non-interactive --agree-tos --email contato@atendeaibr.com --redirect --expand
 
 # Configurar renovação automática
 sudo systemctl enable certbot.timer
