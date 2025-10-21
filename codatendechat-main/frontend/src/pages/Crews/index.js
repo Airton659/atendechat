@@ -231,6 +231,7 @@ const Crews = () => {
           const fetchCrews = async () => {
             try {
               const { data } = await api.get("/crews");
+              dispatch({ type: "RESET" });
               dispatch({ type: "LOAD_CREWS", payload: data });
             } catch (err) {
               toastError(err);
@@ -248,6 +249,7 @@ const Crews = () => {
           const fetchCrews = async () => {
             try {
               const { data } = await api.get("/crews");
+              dispatch({ type: "RESET" });
               dispatch({ type: "LOAD_CREWS", payload: data });
             } catch (err) {
               toastError(err);

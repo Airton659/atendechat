@@ -82,18 +82,27 @@ export const update = async (req: Request, res: Response): Promise<Response> => 
   const { crewId } = req.params;
   const tenantId = `company_${companyId}`;
 
+  const payload = {
+    ...req.body,
+    tenantId
+  };
+
+  console.log("[CrewController.update] Enviando para CrewAI Service:");
+  console.log(`Crew ID: ${crewId}`);
+  console.log(JSON.stringify(payload, null, 2));
+
   try {
     const { data } = await axios.put(
       `${crewaiUrl}/api/v2/crews/${crewId}`,
-      {
-        ...req.body,
-        tenantId
-      }
+      payload
     );
+
+    console.log("[CrewController.update] Resposta do CrewAI Service:");
+    console.log(JSON.stringify(data, null, 2));
 
     return res.status(200).json(data);
   } catch (error: any) {
-    console.error("Erro ao atualizar crew:", error);
+    console.error("Erro ao atualizar crew:", error.response?.data || error.message);
     throw new AppError(
       error.response?.data?.message || "ERR_UPDATING_CREW",
       error.response?.status || 500
