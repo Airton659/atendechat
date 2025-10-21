@@ -59,9 +59,14 @@ async def analyze_business(request: AnalyzeBusinessRequest = Body(...)):
 @router.post("/generate-team")
 async def generate_team(request: GenerateTeamRequest = Body(...)):
     """
-    Gera automaticamente uma equipe de IA baseada na descrição do negócio
+    Gera automaticamente uma equipe de IA baseada na descrição do negócio e salva no Firestore
     """
     try:
+        from firebase_admin import firestore
+        from datetime import datetime
+
+        db = firestore.client()
+
         # Analisar contexto do negócio
         business_context = BusinessContext(
             description=request.businessDescription,
@@ -76,20 +81,29 @@ async def generate_team(request: GenerateTeamRequest = Body(...)):
         blueprint["createdBy"] = "architect_ai"
         blueprint["version"] = "1.0"
         blueprint["status"] = "draft"
+        blueprint["createdAt"] = datetime.utcnow().isoformat()
+        blueprint["updatedAt"] = datetime.utcnow().isoformat()
 
         if request.teamName:
             blueprint["name"] = request.teamName
+
+        # Salvar no Firestore
+        doc_ref = db.collection('crews').document()
+        doc_ref.set(blueprint)
+        blueprint["id"] = doc_ref.id
 
         # Incluir sugestões de melhorias
         suggestions = architect.suggest_improvements(blueprint)
 
         return {
+            "id": doc_ref.id,
             "blueprint": blueprint,
             "analysis": {
                 "industry": business_context.industry,
                 "detected_complexity": _assess_complexity(blueprint),
                 "agent_count": len(blueprint.get("agents", {})),
-                "recommended_tools": _extract_recommended_tools(blueprint)
+                "recommended_tools": _extract_recommended_tools(blueprint),
+                "summary": f"Equipe de {len(blueprint.get('agents', {}))} agentes para {business_context.industry}"
             },
             "suggestions": suggestions,
             "next_steps": [

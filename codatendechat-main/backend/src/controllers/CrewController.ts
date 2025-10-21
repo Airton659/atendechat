@@ -122,7 +122,7 @@ export const remove = async (req: Request, res: Response): Promise<Response> => 
 // Gerar equipe usando o Arquiteto IA
 export const generateTeam = async (req: Request, res: Response): Promise<Response> => {
   const { companyId } = req.user;
-  const { businessDescription, industry, teamName } = req.body;
+  const { businessDescription, industry } = req.body;
   const tenantId = `company_${companyId}`;
 
   try {
@@ -131,12 +131,11 @@ export const generateTeam = async (req: Request, res: Response): Promise<Respons
       {
         businessDescription,
         industry,
-        tenantId,
-        teamName
+        tenantId
       }
     );
 
-    // Transformar agents de objeto para array
+    // Transformar agents de objeto para array para o frontend
     const blueprint = {
       ...data.blueprint,
       agents: data.blueprint.agents
@@ -145,8 +144,11 @@ export const generateTeam = async (req: Request, res: Response): Promise<Respons
     };
 
     return res.status(201).json({
-      ...data,
-      blueprint
+      id: data.id,
+      blueprint,
+      analysis: data.analysis,
+      suggestions: data.suggestions,
+      next_steps: data.next_steps
     });
   } catch (error: any) {
     console.error("Erro ao gerar equipe:", error);
