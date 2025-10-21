@@ -28,16 +28,11 @@ export const index = async (req: Request, res: Response): Promise<Response> => {
 // Criar nova crew (manual)
 export const store = async (req: Request, res: Response): Promise<Response> => {
   const { companyId, id: userId } = req.user;
-  const { name, description, industry, objective, tone } = req.body;
   const tenantId = `company_${companyId}`;
 
   try {
     const { data } = await axios.post(`${crewaiUrl}/api/v2/crews`, {
-      name,
-      description,
-      industry,
-      objective,
-      tone,
+      ...req.body,
       tenantId,
       createdBy: userId
     });

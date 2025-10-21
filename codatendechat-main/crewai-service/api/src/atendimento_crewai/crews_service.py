@@ -19,6 +19,7 @@ class CreateCrewRequest(BaseModel):
     objective: Optional[str] = None
     tone: Optional[str] = "professional"
     createdBy: Optional[str] = None
+    agents: Optional[Dict[str, Any]] = None
 
 class UpdateCrewRequest(BaseModel):
     tenantId: str
@@ -95,7 +96,7 @@ async def create_crew(request: CreateCrewRequest):
                 "tone": request.tone,
                 "language": "pt-BR"
             },
-            "agents": {},
+            "agents": request.agents if request.agents else {},
             "workflow": {
                 "entryPoint": "geral",
                 "fallbackAgent": "geral",
