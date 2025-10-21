@@ -153,8 +153,6 @@ const MainListItems = (props) => {
   const [searchParam] = useState("");
   const [chats, dispatch] = useReducer(reducer, []);
   const { getPlanCompany } = usePlans();
-  
-  const [openFlowsSubmenu, setOpenFlowsSubmenu] = useState(false);
 
   const socketManager = useContext(SocketContext);
 
@@ -419,52 +417,18 @@ const MainListItems = (props) => {
                     </ListItem>
                   </List>
                 </Collapse>
-                {/* Flow builder */}
+                {/* CrewAI */}
                 <ListItem
                     button
-                    onClick={() => setOpenFlowsSubmenu((prev) => !prev)}
+                    onClick={() => history.push("/crews")}
                 >
                   <ListItemIcon>
                     <AccountTree />
                   </ListItemIcon>
                   <ListItemText
-                      primary={i18n.t("mainDrawer.listItems.flows")}
+                      primary="CrewAI"
                   />
-                  {openCampaignSubmenu ? (
-                      <ExpandLessIcon />
-                  ) : (
-                      <ExpandMoreIcon />
-                  )}
                 </ListItem>
-
-                <Collapse
-                    style={{ paddingLeft: 15 }}
-                    in={openFlowsSubmenu}
-                    timeout="auto"
-                    unmountOnExit
-                >
-                  <List component="div" disablePadding>
-                    <ListItem
-                        onClick={() => history.push("/phrase-lists")}
-                        button
-                    >
-                      <ListItemIcon>
-                        <EventAvailableIcon />
-                      </ListItemIcon>
-                      <ListItemText primary="Campanha" />
-                    </ListItem>
-
-                    <ListItem
-                        onClick={() => history.push("/flowbuilders")}
-                        button
-                    >
-                      <ListItemIcon>
-                        <ShapeLine />
-                      </ListItemIcon>
-                      <ListItemText primary="Conversa" />
-                    </ListItem>
-                  </List>
-                </Collapse>
               </>
             )}
 
