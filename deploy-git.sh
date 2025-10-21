@@ -192,7 +192,7 @@ cd $PROJECT_DIR/backend || { echo "Erro: diretório backend não encontrado"; ex
 
 cat > .env << 'EOF'
 NODE_ENV=production
-BACKEND_URL=https://api.atendeaibr.com
+BACKEND_URL=https://www.atendeaibr.com
 FRONTEND_URL=https://www.atendeaibr.com
 PROXY_PORT=443
 PORT=3000
@@ -243,7 +243,7 @@ echo -e "\n${YELLOW}[5/8] Criando .env do frontend...${NC}"
 cd $PROJECT_DIR/frontend || { echo "Erro: diretório frontend não encontrado"; exit 1; }
 
 cat > .env << 'EOF'
-REACT_APP_BACKEND_URL=https://api.atendeaibr.com
+REACT_APP_BACKEND_URL=https://www.atendeaibr.com/api
 REACT_APP_HOURS_CLOSE_TICKETS_AUTO=24
 EOF
 
