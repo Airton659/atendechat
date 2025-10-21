@@ -4,4 +4,4 @@ dist/
 build/
 instances.json
 brands/
-certificates/
+certificates/crewai-service/api/src/atendimento_crewai/google-credentials.json
