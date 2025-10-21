@@ -65,22 +65,26 @@ echo "✓ Git pull concluído!"
 ENDSSH
 
 ###############################################################################
-# 5. REBUILD BACKEND E RESTART DOCKER
+# 5. REBUILD FRONTEND E BACKEND, RESTART DOCKER
 ###############################################################################
-echo -e "\n${YELLOW}[5/6] Rebuild backend e restart Docker...${NC}"
+echo -e "\n${YELLOW}[5/6] Rebuild frontend e backend, restart Docker...${NC}"
 
 ssh $VM_SSH << 'ENDSSH'
 cd /home/airton/atendechat/codatendechat-main
+
+# Rebuild frontend React
+echo "Rebuilding frontend React..."
+docker-compose exec -T frontend npm run build
 
 # Rebuild backend TypeScript
 echo "Rebuilding backend TypeScript..."
 docker-compose exec -T backend npm run build
 
-# Restart backend container
-echo "Reiniciando container backend..."
-docker-compose restart backend
+# Restart containers
+echo "Reiniciando containers..."
+docker-compose restart frontend backend
 
-echo "✓ Backend atualizado!"
+echo "✓ Frontend e Backend atualizados!"
 ENDSSH
 
 ###############################################################################
