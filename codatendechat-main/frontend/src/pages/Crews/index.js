@@ -29,7 +29,7 @@ import MainHeader from "../../components/MainHeader";
 import Title from "../../components/Title";
 import TableRowSkeleton from "../../components/TableRowSkeleton";
 import ConfirmationModal from "../../components/ConfirmationModal";
-import CrewEditorModal from "../../components/CrewEditorModal";
+import CrewModal from "../../components/CrewModal";
 import CrewArchitectModal from "../../components/CrewArchitectModal";
 import CrewTrainingModal from "../../components/CrewTrainingModal";
 
@@ -222,15 +222,39 @@ const Crews = () => {
         {i18n.t("crews.confirmationModal.deleteMessage")}
       </ConfirmationModal>
 
-      <CrewEditorModal
+      <CrewModal
         open={crewModalOpen}
         onClose={handleCloseCrewModal}
         crewId={selectedCrew?.id}
+        onSave={() => {
+          setSearchParam("");
+          const fetchCrews = async () => {
+            try {
+              const { data } = await api.get("/crews");
+              dispatch({ type: "LOAD_CREWS", payload: data });
+            } catch (err) {
+              toastError(err);
+            }
+          };
+          fetchCrews();
+        }}
       />
 
       <CrewArchitectModal
         open={architectModalOpen}
         onClose={handleCloseArchitectModal}
+        onSave={() => {
+          setSearchParam("");
+          const fetchCrews = async () => {
+            try {
+              const { data } = await api.get("/crews");
+              dispatch({ type: "LOAD_CREWS", payload: data });
+            } catch (err) {
+              toastError(err);
+            }
+          };
+          fetchCrews();
+        }}
       />
 
       <CrewTrainingModal
