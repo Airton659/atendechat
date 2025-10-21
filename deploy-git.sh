@@ -352,9 +352,10 @@ After=network.target
 [Service]
 Type=simple
 User=$USER
-WorkingDirectory=$PROJECT_DIR/crewai-service
+WorkingDirectory=$PROJECT_DIR/crewai-service/api/src
 Environment="PATH=$PROJECT_DIR/crewai-service/venv/bin"
-ExecStart=$PROJECT_DIR/crewai-service/venv/bin/python3 -m uvicorn api.src.main:app --host 0.0.0.0 --port 8000
+Environment="PYTHONPATH=$PROJECT_DIR/crewai-service/api/src"
+ExecStart=$PROJECT_DIR/crewai-service/venv/bin/python3 -m uvicorn main:app --host 0.0.0.0 --port 8000
 Restart=always
 RestartSec=10
 
