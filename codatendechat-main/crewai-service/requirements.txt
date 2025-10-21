@@ -1,21 +1,44 @@
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-pydantic>=2.6.1,<3.0.0
-python-dotenv==1.0.0
+# CrewAI e dependências (instalar primeiro para resolver conflitos)
+crewai>=0.80.0
+langchain-google-vertexai>=2.0.0
 
-# CrewAI e dependências
-crewai==0.28.0
-crewai-tools==0.2.6
+# Web e FastAPI
+fastapi>=0.100.0
+uvicorn>=0.24.0
+python-dotenv>=1.0.0
 
-# Google Cloud
-google-cloud-aiplatform==1.38.1
-google-cloud-firestore==2.13.1
-firebase-admin==6.2.0
+# Vertex AI e SDKs Google
+google-cloud-aiplatform>=1.100.0
+google-auth>=2.30.0
+google-api-core>=2.20.0
+google-api-python-client>=2.100.0  # Para Google Sheets API
 
-# LangChain (versões compatíveis com crewai 0.28.0)
-langchain>=0.1.10,<0.2.0
-langchain-google-vertexai==0.1.0
-langchain-community>=0.0.13
+# Base de Conhecimento - Processamento de Documentos
+PyPDF2>=3.0.0
+python-docx>=1.1.0
+pandas>=2.1.0
+numpy>=1.24.0
+openpyxl>=3.1.0
+xlrd>=2.0.1
+python-multipart>=0.0.18
+
+# Firebase
+firebase-admin>=6.5.0
 
 # Utilitários
-httpx==0.25.2
+PyYAML>=6.0.0
+requests>=2.31.0
+python-dateutil>=2.9.0
+jsonref>=1.1.0
+pillow>=11.0.0
+jsonschema>=4.20.0
+
+# Agentes Autogen (se ainda precisar)
+autogen>=0.9.0
+
+# Pydantic (deixar o pip resolver a versão compatível)
+pydantic>=2.4.0,<2.10.0
+pydantic-settings>=2.0.0
+
+# OpenAI (se precisar)
+openai>=1.0.0
