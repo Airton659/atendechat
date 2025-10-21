@@ -95,6 +95,24 @@ echo "$SUDO_PASSWORD" | sudo -S chown airton:airton /opt/crewai/google-credentia
 echo "$SUDO_PASSWORD" | sudo -S chmod 600 /opt/crewai/google-credentials.json
 rm -f ~/google-credentials.json
 
+# Criar/Atualizar virtualenv do CrewAI
+cd /home/airton/atendechat/codatendechat-main/crewai-service
+echo "Criando/atualizando virtualenv..."
+if [ ! -d "venv" ]; then
+    python3 -m venv venv
+    echo "✓ Virtualenv criado!"
+else
+    echo "✓ Virtualenv já existe!"
+fi
+
+# Ativar venv e instalar/atualizar dependências
+echo "Instalando dependências..."
+source venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+deactivate
+echo "✓ Dependências instaladas!"
+
 # Copiar arquivo de service atualizado
 echo "$SUDO_PASSWORD" | sudo -S cp /home/airton/atendechat/codatendechat-main/crewai-service/crewai-service.service /etc/systemd/system/crewai.service
 
@@ -103,6 +121,9 @@ echo "$SUDO_PASSWORD" | sudo -S systemctl daemon-reload
 
 # Restart CrewAI service
 echo "$SUDO_PASSWORD" | sudo -S systemctl restart crewai.service
+
+# Aguardar 3 segundos para o service iniciar
+sleep 3
 
 # Verificar status
 echo ""
