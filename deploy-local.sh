@@ -84,9 +84,9 @@ echo "✓ Backend atualizado!"
 ENDSSH
 
 ###############################################################################
-# 6. RESTART CREWAI SERVICE
+# 6. ATUALIZAR E RESTART CREWAI SERVICE
 ###############################################################################
-echo -e "\n${YELLOW}[6/6] Reiniciando CrewAI service...${NC}"
+echo -e "\n${YELLOW}[6/6] Atualizando e reiniciando CrewAI service...${NC}"
 
 ssh $VM_SSH bash << ENDSSH
 # Copiar credenciais para /opt/crewai
@@ -94,6 +94,12 @@ echo "$SUDO_PASSWORD" | sudo -S cp ~/google-credentials.json /opt/crewai/
 echo "$SUDO_PASSWORD" | sudo -S chown airton:airton /opt/crewai/google-credentials.json
 echo "$SUDO_PASSWORD" | sudo -S chmod 600 /opt/crewai/google-credentials.json
 rm -f ~/google-credentials.json
+
+# Copiar arquivo de service atualizado
+echo "$SUDO_PASSWORD" | sudo -S cp /home/airton/atendechat/codatendechat-main/crewai-service/crewai-service.service /etc/systemd/system/crewai.service
+
+# Reload systemd daemon
+echo "$SUDO_PASSWORD" | sudo -S systemctl daemon-reload
 
 # Restart CrewAI service
 echo "$SUDO_PASSWORD" | sudo -S systemctl restart crewai.service
@@ -103,7 +109,7 @@ echo ""
 echo "Status do CrewAI service:"
 echo "$SUDO_PASSWORD" | sudo -S systemctl status crewai.service --no-pager | head -20
 
-echo "✓ CrewAI service reiniciado!"
+echo "✓ CrewAI service atualizado e reiniciado!"
 ENDSSH
 
 ###############################################################################

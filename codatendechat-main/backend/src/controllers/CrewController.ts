@@ -30,16 +30,24 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
   const { companyId, id: userId } = req.user;
   const tenantId = `company_${companyId}`;
 
+  const payload = {
+    ...req.body,
+    tenantId,
+    createdBy: userId
+  };
+
+  console.log("[CrewController.store] Enviando para CrewAI Service:");
+  console.log(JSON.stringify(payload, null, 2));
+
   try {
-    const { data } = await axios.post(`${crewaiUrl}/api/v2/crews`, {
-      ...req.body,
-      tenantId,
-      createdBy: userId
-    });
+    const { data } = await axios.post(`${crewaiUrl}/api/v2/crews`, payload);
+
+    console.log("[CrewController.store] Resposta do CrewAI Service:");
+    console.log(JSON.stringify(data, null, 2));
 
     return res.status(201).json(data);
   } catch (error: any) {
-    console.error("Erro ao criar crew:", error);
+    console.error("Erro ao criar crew:", error.response?.data || error.message);
     throw new AppError(
       error.response?.data?.message || "ERR_CREATING_CREW",
       error.response?.status || 500
