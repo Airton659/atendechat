@@ -11,6 +11,7 @@ from .crew_engine_simple import SimpleCrewEngine
 from .architect_service import router as architect_router
 from .knowledge_service import router as knowledge_router
 from .training_service import router as training_router
+from .crews_service import router as crews_router
 
 # Router principal
 router = APIRouter()
@@ -22,6 +23,7 @@ crew_engine = SimpleCrewEngine()
 router.include_router(architect_router)
 router.include_router(knowledge_router)
 router.include_router(training_router)
+router.include_router(crews_router)
 
 class ProcessMessageRequest(BaseModel):
     tenantId: str
