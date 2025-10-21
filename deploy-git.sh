@@ -447,8 +447,12 @@ sudo systemctl enable nginx
 ###############################################################################
 echo -e "\n${YELLOW}[9/9] Configurando SSL (Certbot)...${NC}"
 
+# Matar processos certbot travados e limpar locks
+sudo pkill -9 certbot 2>/dev/null || true
+sudo rm -f /var/lib/letsencrypt/.certbot.lock 2>/dev/null || true
+
 # Obter certificados SSL
-sudo certbot --nginx -d www.atendeaibr.com -d atendeaibr.com --non-interactive --agree-tos --email contato@atendeaibr.com --redirect --expand
+sudo certbot --nginx -d www.atendeaibr.com -d atendeaibr.com -d api.atendeaibr.com --non-interactive --agree-tos --email contato@atendeaibr.com --redirect --expand
 
 # Configurar renovação automática
 sudo systemctl enable certbot.timer
