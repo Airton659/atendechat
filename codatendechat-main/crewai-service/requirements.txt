@@ -12,10 +12,10 @@ google-cloud-aiplatform==1.38.1
 google-cloud-firestore==2.13.1
 firebase-admin==6.2.0
 
-# LangChain
-langchain==0.1.0
+# LangChain (versões compatíveis com crewai 0.28.0)
+langchain>=0.1.10,<0.2.0
 langchain-google-vertexai==0.1.0
-langchain-community==0.0.13
+langchain-community>=0.0.13
 
 # Utilitários
 httpx==0.25.2
