@@ -63,10 +63,6 @@ const ArchitectSchema = Yup.object().shape({
     .min(20, "Descrição muito curta (mínimo 20 caracteres)")
     .max(1000, "Descrição muito longa (máximo 1000 caracteres)")
     .required("Descrição do negócio é obrigatória"),
-  teamName: Yup.string()
-    .min(2, "Nome muito curto")
-    .max(100, "Nome muito longo")
-    .required("Nome da equipe é obrigatório"),
   industry: Yup.string()
     .required("Indústria é obrigatória"),
 });
@@ -90,7 +86,6 @@ const CrewArchitectModal = ({ open, onClose }) => {
 
   const initialValues = {
     businessDescription: "",
-    teamName: "",
     industry: "",
   };
 
@@ -146,21 +141,6 @@ const CrewArchitectModal = ({ open, onClose }) => {
               </Typography>
 
               <div className={classes.root} style={{ marginTop: 16 }}>
-                <Field
-                  as={TextField}
-                  label={i18n.t("crews.architect.teamName")}
-                  autoFocus
-                  name="teamName"
-                  error={touched.teamName && Boolean(errors.teamName)}
-                  helperText={touched.teamName && errors.teamName}
-                  variant="outlined"
-                  margin="dense"
-                  fullWidth
-                  className={classes.textField}
-                />
-              </div>
-
-              <div className={classes.root}>
                 <FormControl
                   variant="outlined"
                   margin="dense"
