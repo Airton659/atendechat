@@ -340,7 +340,7 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
                   {({ push, remove }) => (
                     <>
                       {values.agents.map((agent, index) => (
-                        <Accordion key={index} className={classes.accordion}>
+                        <Accordion key={index} className={classes.accordion} defaultExpanded={index === 0}>
                           <AccordionSummary
                             expandIcon={<ExpandMoreIcon />}
                             className={classes.accordionSummary}

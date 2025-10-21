@@ -197,6 +197,11 @@ const Crews = () => {
     try {
       await api.delete(`/crews/${crewId}`);
       toast.success(i18n.t("crews.toasts.deleted"));
+
+      // Recarregar lista após delete
+      const { data } = await api.get("/crews");
+      dispatch({ type: "RESET" });
+      dispatch({ type: "LOAD_CREWS", payload: data });
     } catch (err) {
       toastError(err);
     }
