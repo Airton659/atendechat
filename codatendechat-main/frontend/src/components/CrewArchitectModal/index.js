@@ -22,7 +22,7 @@ import {
   Chip,
   Box,
 } from "@material-ui/core";
-import { AutoAwesome as AutoAwesomeIcon } from "@material-ui/icons";
+import { Stars as AutoAwesomeIcon } from "@material-ui/icons";
 
 import { i18n } from "../../translate/i18n";
 import api from "../../services/api";

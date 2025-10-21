@@ -20,7 +20,7 @@ import {
   DeleteOutline as DeleteOutlineIcon,
   Edit as EditIcon,
   Add as AddIcon,
-  AutoAwesome as AutoAwesomeIcon,
+  Stars as AutoAwesomeIcon,
   School as SchoolIcon
 } from "@material-ui/icons";
 
