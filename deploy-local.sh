@@ -26,7 +26,7 @@ PROJECT_DIR="/home/airton/atendechat/codatendechat-main"
 ###############################################################################
 # 1. VERIFICAR CREDENCIAIS LOCAIS
 ###############################################################################
-echo -e "\n${YELLOW}[1/5] Verificando credenciais do Google Cloud...${NC}"
+echo -e "\n${YELLOW}[1/6] Verificando credenciais do Google Cloud...${NC}"
 
 if [ ! -f "$LOCAL_CREDENTIALS" ]; then
     echo -e "${RED}ERRO: google-credentials.json não encontrado em:${NC}"
@@ -37,9 +37,16 @@ fi
 echo -e "${GREEN}✓ Credenciais encontradas!${NC}"
 
 ###############################################################################
-# 2. COPIAR CREDENCIAIS PARA A VM
+# 2. PEDIR SENHA SUDO UMA VEZ
 ###############################################################################
-echo -e "\n${YELLOW}[2/5] Copiando credenciais para a VM...${NC}"
+echo -e "\n${YELLOW}[2/6] Digite a senha do sudo da VM:${NC}"
+read -s SUDO_PASSWORD
+echo ""
+
+###############################################################################
+# 3. COPIAR CREDENCIAIS PARA A VM
+###############################################################################
+echo -e "\n${YELLOW}[3/6] Copiando credenciais para a VM...${NC}"
 
 # Copiar arquivo para home do usuário primeiro (não precisa sudo)
 scp "$LOCAL_CREDENTIALS" $VM_SSH:~/google-credentials.json
@@ -47,9 +54,9 @@ scp "$LOCAL_CREDENTIALS" $VM_SSH:~/google-credentials.json
 echo -e "${GREEN}✓ Credenciais copiadas com sucesso!${NC}"
 
 ###############################################################################
-# 3. FAZER GIT PULL NA VM
+# 4. FAZER GIT PULL NA VM
 ###############################################################################
-echo -e "\n${YELLOW}[3/5] Fazendo git pull na VM...${NC}"
+echo -e "\n${YELLOW}[4/6] Fazendo git pull na VM...${NC}"
 
 ssh $VM_SSH << 'ENDSSH'
 cd /home/airton/atendechat
@@ -58,9 +65,9 @@ echo "✓ Git pull concluído!"
 ENDSSH
 
 ###############################################################################
-# 4. REBUILD BACKEND E RESTART DOCKER
+# 5. REBUILD BACKEND E RESTART DOCKER
 ###############################################################################
-echo -e "\n${YELLOW}[4/5] Rebuild backend e restart Docker...${NC}"
+echo -e "\n${YELLOW}[5/6] Rebuild backend e restart Docker...${NC}"
 
 ssh $VM_SSH << 'ENDSSH'
 cd /home/airton/atendechat/codatendechat-main
@@ -77,25 +84,24 @@ echo "✓ Backend atualizado!"
 ENDSSH
 
 ###############################################################################
-# 5. RESTART CREWAI SERVICE
+# 6. RESTART CREWAI SERVICE
 ###############################################################################
-echo -e "\n${YELLOW}[5/5] Reiniciando CrewAI service...${NC}"
-echo -e "${YELLOW}Digite a senha do sudo quando solicitado...${NC}"
+echo -e "\n${YELLOW}[6/6] Reiniciando CrewAI service...${NC}"
 
-ssh -t $VM_SSH << 'ENDSSH'
+ssh $VM_SSH bash << ENDSSH
 # Copiar credenciais para /opt/crewai
-sudo cp ~/google-credentials.json /opt/crewai/
-sudo chown airton:airton /opt/crewai/google-credentials.json
-sudo chmod 600 /opt/crewai/google-credentials.json
+echo "$SUDO_PASSWORD" | sudo -S cp ~/google-credentials.json /opt/crewai/
+echo "$SUDO_PASSWORD" | sudo -S chown airton:airton /opt/crewai/google-credentials.json
+echo "$SUDO_PASSWORD" | sudo -S chmod 600 /opt/crewai/google-credentials.json
 rm -f ~/google-credentials.json
 
 # Restart CrewAI service
-sudo systemctl restart crewai.service
+echo "$SUDO_PASSWORD" | sudo -S systemctl restart crewai.service
 
 # Verificar status
 echo ""
 echo "Status do CrewAI service:"
-sudo systemctl status crewai.service --no-pager | head -20
+echo "$SUDO_PASSWORD" | sudo -S systemctl status crewai.service --no-pager | head -20
 
 echo "✓ CrewAI service reiniciado!"
 ENDSSH
