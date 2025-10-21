@@ -115,11 +115,11 @@ const SocketManager = {
         return new DummySocket();
       }
       
-      // Usar domínio raiz para WebSocket (não /api)
-      const socketUrl = process.env.REACT_APP_BACKEND_URL.replace('/api', '');
+      // Usar URL completa do backend para WebSocket
+      const socketUrl = process.env.REACT_APP_BACKEND_URL;
 
       this.currentSocket = openSocket(socketUrl, {
-        transports: ["websocket", "polling"], // WebSocket primeiro, polling como fallback
+        transports: ["websocket", "polling"],
         pingTimeout: 18000,
         pingInterval: 18000,
         query: { token },
