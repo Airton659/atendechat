@@ -231,8 +231,8 @@ MAIL_PORT=465
 CAMPAIGN_RATE_LIMIT=10000
 CAMPAIGN_BATCH_SIZE=50
 
-# CrewAI Service
-CREWAI_API_URL=http://localhost:8000
+# CrewAI Service (usa IP da VM porque backend está em Docker)
+CREWAI_API_URL=http://46.62.147.212:8000
 EOF
 
 ###############################################################################
