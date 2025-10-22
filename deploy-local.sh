@@ -99,7 +99,7 @@ echo "Parando frontend..."
 docker-compose stop frontend
 
 echo "Rebuildando imagem Docker do frontend (sem cache)..."
-docker-compose build --no-cache frontend
+docker build --no-cache -f frontend/Dockerfile.production -t codatendechat-main-frontend:latest .
 
 # Restart containers
 echo "Reiniciando containers..."
