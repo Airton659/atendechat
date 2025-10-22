@@ -65,32 +65,46 @@ echo "✓ Git pull concluído!"
 ENDSSH
 
 ###############################################################################
-# 5. REBUILD DOCKER IMAGES E RESTART
+# 5. BUILD FRONTEND LOCALMENTE E UPLOAD
 ###############################################################################
-echo -e "\n${YELLOW}[5/6] Rebuild Docker images e restart...${NC}"
+echo -e "\n${YELLOW}[5/6] Build frontend localmente e upload...${NC}"
+
+cd codatendechat-main/frontend
+
+echo "Instalando dependências do frontend..."
+npm install
+
+echo "Buildando frontend localmente..."
+REACT_APP_BACKEND_URL=https://api.atendeaibr.com npm run build
+
+echo "Fazendo upload do build para a VM..."
+rsync -avz --delete build/ $VM_SSH:/home/airton/atendechat/codatendechat-main/frontend/build/
+
+cd ../..
+
+###############################################################################
+# 6. REBUILD BACKEND E RESTART CONTAINERS
+###############################################################################
+echo -e "\n${YELLOW}[6/7] Rebuild backend e restart containers...${NC}"
 
 ssh $VM_SSH << 'ENDSSH'
 cd /home/airton/atendechat/codatendechat-main
-
-# Rebuild frontend Docker image (isso faz yarn build dentro)
-echo "Rebuilding frontend Docker image..."
-docker-compose build --no-cache frontend
 
 # Rebuild backend TypeScript
 echo "Rebuilding backend TypeScript..."
 docker-compose exec -T backend npm run build
 
-# Restart containers com nova imagem
+# Restart containers
 echo "Reiniciando containers..."
-docker-compose up -d frontend backend
+docker-compose restart frontend backend
 
 echo "✓ Frontend e Backend atualizados!"
 ENDSSH
 
 ###############################################################################
-# 6. ATUALIZAR E RESTART CREWAI SERVICE
+# 7. ATUALIZAR E RESTART CREWAI SERVICE
 ###############################################################################
-echo -e "\n${YELLOW}[6/6] Atualizando e reiniciando CrewAI service...${NC}"
+echo -e "\n${YELLOW}[7/7] Atualizando e reiniciando CrewAI service...${NC}"
 
 ssh $VM_SSH bash << ENDSSH
 # Copiar credenciais para /opt/crewai
