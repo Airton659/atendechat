@@ -158,20 +158,22 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
       try {
         const { data } = await api.get(`/crews/${crewId}`);
 
-        // Converter agents de objeto para array
+        // Converter agents de objeto para array ORDENADO por order
         const agentsArray = data.agents
-          ? Object.values(data.agents).map(agent => ({
-              name: agent.name || "",
-              role: agent.role || "",
-              goal: agent.goal || "",
-              backstory: agent.backstory || "",
-              useKnowledge: agent.knowledgeDocuments?.length > 0 || false,
-              keywords: (agent.keywords || []).join("\n"),
-              customInstructions: agent.personality?.customInstructions || "",
-              persona: agent.training?.persona || "",
-              guardrailsDo: (agent.training?.guardrails?.do || []).join("\n"),
-              guardrailsDont: (agent.training?.guardrails?.dont || []).join("\n"),
-            }))
+          ? Object.entries(data.agents)
+              .sort((a, b) => (a[1].order || 0) - (b[1].order || 0))
+              .map(([key, agent]) => ({
+                name: agent.name || "",
+                role: agent.role || "",
+                goal: agent.goal || "",
+                backstory: agent.backstory || "",
+                useKnowledge: agent.knowledgeDocuments?.length > 0 || false,
+                keywords: (agent.keywords || []).join("\n"),
+                customInstructions: agent.personality?.customInstructions || "",
+                persona: agent.training?.persona || "",
+                guardrailsDo: (agent.training?.guardrails?.do || []).join("\n"),
+                guardrailsDont: (agent.training?.guardrails?.dont || []).join("\n"),
+              }))
           : [{
               name: "",
               role: "",
