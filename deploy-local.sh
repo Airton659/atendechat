@@ -94,9 +94,16 @@ cd /home/airton/atendechat/codatendechat-main
 echo "Rebuilding backend TypeScript..."
 docker-compose exec -T backend npm run build
 
+# Parar frontend e rebuildar imagem Docker sem cache
+echo "Parando frontend..."
+docker-compose stop frontend
+
+echo "Rebuildando imagem Docker do frontend (sem cache)..."
+docker-compose build --no-cache frontend
+
 # Restart containers
 echo "Reiniciando containers..."
-docker-compose restart frontend backend
+docker-compose up -d frontend backend
 
 echo "✓ Frontend e Backend atualizados!"
 ENDSSH
