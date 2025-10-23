@@ -20,7 +20,7 @@ echo -e "${GREEN}========================================${NC}"
 VM_USER="airton"
 VM_HOST="46.62.147.212"
 VM_SSH="$VM_USER@$VM_HOST"
-LOCAL_CREDENTIALS="/Users/joseairton/Documents/atendechat/atendelimpo/backend/google-credentials.json"
+LOCAL_CREDENTIALS="/Users/joseairton/Documents/atendechat/google-credentials.json"
 PROJECT_DIR="/home/airton/atendechat/codatendechat-main"
 
 ###############################################################################
