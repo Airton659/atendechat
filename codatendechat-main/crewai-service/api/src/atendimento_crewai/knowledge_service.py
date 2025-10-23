@@ -551,23 +551,20 @@ async def get_knowledge_stats(tenant_id: str):
 @router.post("/upload")
 async def upload_document(
     file: UploadFile = File(...),
-    tenantId: str = Form(...),
-    crewId: str = Form(None)
+    crewId: str = Form(...)
 ):
     """
     Upload de documento para a base de conhecimento
 
     Multipart form-data com:
     - file: arquivo a ser processado
-    - tenantId: ID do tenant
-    - crewId: ID da crew (opcional)
+    - crewId: ID da crew (obrigatório)
     """
     try:
         print(f"📥 Upload recebido na API Python")
         print(f"   Arquivo: {file.filename}")
         print(f"   Content-Type: {file.content_type}")
-        print(f"   Tenant: {tenantId}")
-        print(f"   Crew: {crewId if crewId else 'N/A'}")
+        print(f"   Crew: {crewId}")
 
         # Validar tipo de arquivo
         allowed_extensions = ['.pdf', '.docx', '.txt', '.csv', '.xlsx']
@@ -580,10 +577,10 @@ async def upload_document(
             )
 
         # Gerar ID único para o documento
-        document_id = hashlib.md5(f"{tenantId}-{file.filename}-{datetime.now()}".encode()).hexdigest()
+        document_id = hashlib.md5(f"{crewId}-{file.filename}-{datetime.now()}".encode()).hexdigest()
 
         # Criar diretório temporário se não existir
-        upload_dir = Path(tempfile.gettempdir()) / "knowledge_uploads" / tenantId
+        upload_dir = Path(tempfile.gettempdir()) / "knowledge_uploads" / crewId
         upload_dir.mkdir(parents=True, exist_ok=True)
 
         # Salvar arquivo
@@ -624,13 +621,13 @@ async def upload_document(
             raise HTTPException(status_code=400, detail="Não foi possível criar chunks do documento")
 
         # Armazenar vetores
-        stored_count = await knowledge_service.store_vectors(tenantId, document_id, chunks)
+        stored_count = await knowledge_service.store_vectors(crewId, document_id, chunks)
 
         # Salvar metadados do documento no Firestore
         db = firestore.client()
         doc_ref = db.collection('knowledge_documents').document(document_id)
         doc_data = {
-            'tenantId': tenantId,
+            'crewId': crewId,
             'documentId': document_id,
             'filename': file.filename,
             'fileType': file_type,
@@ -642,10 +639,6 @@ async def upload_document(
             'wordCount': len(text.split()),
             'status': 'processed'
         }
-
-        # Adicionar crewId se fornecido
-        if crewId:
-            doc_data['crewId'] = crewId
 
         doc_ref.set(doc_data)
 
@@ -667,19 +660,14 @@ async def upload_document(
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
 
-@router.get("/documents/{tenant_id}")
-async def list_documents(tenant_id: str, crewId: str = None):
+@router.get("/documents")
+async def list_documents(crewId: str):
     """
-    Lista todos os documentos de um tenant, opcionalmente filtrados por crewId
+    Lista todos os documentos de uma crew
     """
     try:
         db = firestore.client()
-        query = db.collection('knowledge_documents').where('tenantId', '==', tenant_id)
-
-        # Filtrar por crewId se fornecido
-        if crewId:
-            query = query.where('crewId', '==', crewId)
-
+        query = db.collection('knowledge_documents').where('crewId', '==', crewId)
         docs_query = query.get()
 
         documents = []
@@ -709,7 +697,7 @@ async def list_documents(tenant_id: str, crewId: str = None):
         raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
 
 @router.delete("/documents/{document_id}")
-async def delete_document(document_id: str, tenantId: str = Body(...)):
+async def delete_document(document_id: str):
     """
     Remove um documento e todos os seus vetores
     """
@@ -725,12 +713,11 @@ async def delete_document(document_id: str, tenantId: str = Body(...)):
 
         doc_data = doc.to_dict()
 
-        # Verificar se pertence ao tenant
-        if doc_data.get('tenantId') != tenantId:
-            raise HTTPException(status_code=403, detail="Acesso negado")
+        # Pegar crewId do documento
+        crewId = doc_data.get('crewId')
 
         # Remover vetores
-        deleted_vectors = await knowledge_service.delete_document_vectors(tenantId, document_id)
+        deleted_vectors = await knowledge_service.delete_document_vectors(crewId, document_id)
 
         # Remover arquivo físico se existir
         file_path = doc_data.get('filePath')

@@ -238,12 +238,10 @@ export const uploadKnowledge = async (
       filename: req.file.originalname,
       contentType: req.file.mimetype,
     });
-    formData.append("tenantId", tenantId);
     formData.append("crewId", crewId);
 
     console.log(`[UploadKnowledge] Fazendo upload para CrewAI Service...`);
     console.log(`  Arquivo: ${req.file.originalname}`);
-    console.log(`  TenantId: ${tenantId}`);
     console.log(`  CrewId: ${crewId}`);
 
     const { data } = await axios.post(
@@ -284,10 +282,7 @@ export const deleteKnowledge = async (
 
   try {
     await axios.delete(
-      `${crewaiUrl}/api/v2/knowledge/documents/${fileId}`,
-      {
-        data: { tenantId }
-      }
+      `${crewaiUrl}/api/v2/knowledge/documents/${fileId}`
     );
 
     return res.status(200).json({ message: "Knowledge file deleted" });
@@ -313,7 +308,7 @@ export const listKnowledge = async (
     const { data } = await axios.get(
       `${crewaiUrl}/api/v2/knowledge/documents`,
       {
-        params: { tenantId, crewId }
+        params: { crewId }
       }
     );
 
