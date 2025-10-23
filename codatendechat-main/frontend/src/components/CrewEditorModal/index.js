@@ -345,7 +345,7 @@ const CrewEditorModal = ({ open, onClose, crewId }) => {
         <Tab label="Agentes" />
         <Tab label="Ferramentas" />
         <Tab label="Guardrails" />
-        <Tab label="Conhecimento" />
+        <Tab label="Base de Conhecimento" />
       </Tabs>
 
       <DialogContent dividers style={{ minHeight: 500 }}>
