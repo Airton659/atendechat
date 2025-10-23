@@ -551,7 +551,8 @@ async def get_knowledge_stats(tenant_id: str):
 @router.post("/upload")
 async def upload_document(
     file: UploadFile = File(...),
-    tenantId: str = Form(...)
+    tenantId: str = Form(...),
+    crewId: str = Form(None)
 ):
     """
     Upload de documento para a base de conhecimento
@@ -559,12 +560,14 @@ async def upload_document(
     Multipart form-data com:
     - file: arquivo a ser processado
     - tenantId: ID do tenant
+    - crewId: ID da crew (opcional)
     """
     try:
         print(f"📥 Upload recebido na API Python")
         print(f"   Arquivo: {file.filename}")
         print(f"   Content-Type: {file.content_type}")
         print(f"   Tenant: {tenantId}")
+        print(f"   Crew: {crewId if crewId else 'N/A'}")
 
         # Validar tipo de arquivo
         allowed_extensions = ['.pdf', '.docx', '.txt', '.csv', '.xlsx']
@@ -626,7 +629,7 @@ async def upload_document(
         # Salvar metadados do documento no Firestore
         db = firestore.client()
         doc_ref = db.collection('knowledge_documents').document(document_id)
-        doc_ref.set({
+        doc_data = {
             'tenantId': tenantId,
             'documentId': document_id,
             'filename': file.filename,
@@ -638,7 +641,13 @@ async def upload_document(
             'chunksCount': stored_count,
             'wordCount': len(text.split()),
             'status': 'processed'
-        })
+        }
+
+        # Adicionar crewId se fornecido
+        if crewId:
+            doc_data['crewId'] = crewId
+
+        doc_ref.set(doc_data)
 
         return {
             "success": True,
@@ -659,13 +668,19 @@ async def upload_document(
         raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
 
 @router.get("/documents/{tenant_id}")
-async def list_documents(tenant_id: str):
+async def list_documents(tenant_id: str, crewId: str = None):
     """
-    Lista todos os documentos de um tenant
+    Lista todos os documentos de um tenant, opcionalmente filtrados por crewId
     """
     try:
         db = firestore.client()
-        docs_query = db.collection('knowledge_documents').where('tenantId', '==', tenant_id).get()
+        query = db.collection('knowledge_documents').where('tenantId', '==', tenant_id)
+
+        # Filtrar por crewId se fornecido
+        if crewId:
+            query = query.where('crewId', '==', crewId)
+
+        docs_query = query.get()
 
         documents = []
         for doc in docs_query:
