@@ -257,7 +257,13 @@ export const uploadKnowledge = async (
     console.log(`[UploadKnowledge] Upload concluído com sucesso!`);
     console.log(`  DocumentId: ${data.documentId}`);
 
-    return res.status(200).json(data);
+    // Retornar formato esperado pelo frontend
+    return res.status(200).json({
+      id: data.documentId,
+      name: req.file.originalname,
+      size: req.file.size,
+      createdAt: new Date().toISOString()
+    });
   } catch (error: any) {
     console.error("Erro ao fazer upload:", error);
     throw new AppError(
