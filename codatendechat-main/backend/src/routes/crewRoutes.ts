@@ -1,8 +1,11 @@
 import express from "express";
 import isAuth from "../middleware/isAuth";
+import uploadConfig from "../config/upload";
+import multer from "multer";
 
 import * as CrewController from "../controllers/CrewController";
 
+const upload = multer(uploadConfig);
 const crewRoutes = express.Router();
 
 // Listar equipes
@@ -27,7 +30,7 @@ crewRoutes.delete("/crews/:crewId", isAuth, CrewController.remove);
 crewRoutes.post("/crews/:crewId/train", isAuth, CrewController.train);
 
 // Upload knowledge
-crewRoutes.post("/crews/:crewId/knowledge/upload", isAuth, CrewController.uploadKnowledge);
+crewRoutes.post("/crews/:crewId/knowledge/upload", isAuth, upload.single("file"), CrewController.uploadKnowledge);
 
 // Delete knowledge
 crewRoutes.delete("/crews/:crewId/knowledge/:fileId", isAuth, CrewController.deleteKnowledge);
