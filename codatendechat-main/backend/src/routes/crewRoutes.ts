@@ -31,6 +31,9 @@ crewRoutes.delete("/crews/:crewId", isAuth, CrewController.remove);
 // Treinar equipe
 crewRoutes.post("/crews/:crewId/train", isAuth, CrewController.train);
 
+// Listar knowledge
+crewRoutes.get("/crews/:crewId/knowledge", isAuth, CrewController.listKnowledge);
+
 // Upload knowledge
 crewRoutes.post("/crews/:crewId/knowledge/upload", isAuth, knowledgeUpload.single("file"), CrewController.uploadKnowledge);
 

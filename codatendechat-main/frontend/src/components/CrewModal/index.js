@@ -245,6 +245,26 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
     }
   }, [crewId, open]);
 
+  // Carregar arquivos de conhecimento quando abrir modal de edição
+  useEffect(() => {
+    const fetchKnowledgeFiles = async () => {
+      if (!crewId || !open) {
+        setKnowledgeFiles([]);
+        return;
+      }
+
+      try {
+        const { data } = await api.get(`/crews/${crewId}/knowledge`);
+        setKnowledgeFiles(data || []);
+      } catch (err) {
+        console.error("Erro ao carregar arquivos de conhecimento:", err);
+        setKnowledgeFiles([]);
+      }
+    };
+
+    fetchKnowledgeFiles();
+  }, [crewId, open]);
+
   const handleClose = () => {
     onClose();
   };

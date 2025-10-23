@@ -299,3 +299,36 @@ export const deleteKnowledge = async (
     );
   }
 };
+
+// Listar arquivos de conhecimento de uma equipe
+export const listKnowledge = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { companyId } = req.user;
+  const { crewId } = req.params;
+  const tenantId = `company_${companyId}`;
+
+  try {
+    const { data } = await axios.get(
+      `${crewaiUrl}/api/v2/knowledge/documents`,
+      {
+        params: { tenantId, crewId }
+      }
+    );
+
+    // Transformar formato para o frontend
+    const files = data.documents?.map((doc: any) => ({
+      id: doc.id || doc.documentId,
+      name: doc.filename || doc.name || 'Documento sem nome',
+      size: doc.size || 0,
+      createdAt: doc.createdAt || doc.created_at
+    })) || [];
+
+    return res.status(200).json(files);
+  } catch (error: any) {
+    console.error("Erro ao listar conhecimento:", error);
+    // Se der erro, retorna lista vazia em vez de quebrar
+    return res.status(200).json([]);
+  }
+};
