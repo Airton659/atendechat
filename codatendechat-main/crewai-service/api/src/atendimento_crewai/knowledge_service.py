@@ -236,7 +236,7 @@ class KnowledgeService:
         except Exception as e:
             raise Exception(f"Erro ao gerar embeddings: {str(e)}")
 
-    async def store_vectors(self, tenant_id: str, document_id: str, chunks: List[Dict[str, Any]]) -> int:
+    async def store_vectors(self, crew_id: str, document_id: str, chunks: List[Dict[str, Any]]) -> int:
         """Armazena chunks no Firestore com embeddings (se disponível)"""
         try:
             db = firestore.client()
@@ -260,7 +260,7 @@ class KnowledgeService:
             stored_count = 0
             for i, chunk in enumerate(chunks):
                 vector_doc = {
-                    'tenantId': tenant_id,
+                    'crewId': crew_id,
                     'documentId': document_id,
                     'chunkId': f"{document_id}-chunk-{i}",
                     'content': chunk['content'],
@@ -341,13 +341,13 @@ class KnowledgeService:
         except:
             return 0.0
 
-    async def delete_document_vectors(self, tenant_id: str, document_id: str) -> int:
+    async def delete_document_vectors(self, crew_id: str, document_id: str) -> int:
         """Remove todos os vetores de um documento"""
         try:
             db = firestore.client()
 
             # Buscar todos os chunks do documento
-            vectors_query = db.collection('vectors').where('tenantId', '==', tenant_id).where('documentId', '==', document_id).get()
+            vectors_query = db.collection('vectors').where('crewId', '==', crew_id).where('documentId', '==', document_id).get()
 
             deleted_count = 0
             for doc in vectors_query:
