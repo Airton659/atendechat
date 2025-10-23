@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import axios from "axios";
 import FormData from "form-data";
 import AppError from "../errors/AppError";
+import Whatsapp from "../models/Whatsapp";
 
 const crewaiUrl = process.env.CREWAI_API_URL || "http://localhost:8000";
 
@@ -15,7 +16,26 @@ export const index = async (req: Request, res: Response): Promise<Response> => {
       params: { tenantId }
     });
 
-    return res.status(200).json(data);
+    // Buscar todas as conexões da empresa para verificar quais crews estão ativas
+    const whatsapps = await Whatsapp.findAll({
+      where: { companyId },
+      attributes: ["crewId"]
+    });
+
+    // Set com todos os crewIds que estão sendo usados
+    const activeCrewIds = new Set(
+      whatsapps
+        .map(w => w.crewId)
+        .filter(id => id !== null && id !== undefined && id !== "")
+    );
+
+    // Adicionar campo isActive em cada crew
+    const crewsWithStatus = data.map((crew: any) => ({
+      ...crew,
+      isActive: activeCrewIds.has(crew.id)
+    }));
+
+    return res.status(200).json(crewsWithStatus);
   } catch (error: any) {
     console.error("Erro ao listar crews:", error);
     throw new AppError(
