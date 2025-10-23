@@ -27,7 +27,8 @@ interface Request {
   timeUseBotQueues?: number;
   expiresTicket?: number;
   expiresInactiveMessage?: string;
-  integrationId?: number
+  integrationId?: number;
+  crewId?: string;
 }
 
 interface Response {
@@ -56,7 +57,8 @@ const CreateWhatsAppService = async ({
   timeUseBotQueues = 0,
   expiresTicket = 0,
   expiresInactiveMessage = "",
-  integrationId = null
+  integrationId = null,
+  crewId = null
 }: Request): Promise<Response> => {
 
   const company = await Company.findOne({
@@ -169,7 +171,8 @@ const CreateWhatsAppService = async ({
       timeUseBotQueues,
       expiresTicket,
       expiresInactiveMessage,
-      integrationId
+      integrationId,
+      crewId
     },
     { include: ["queues"] }
   );
