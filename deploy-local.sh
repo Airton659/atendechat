@@ -71,8 +71,9 @@ echo -e "\n${YELLOW}[5/6] Build frontend localmente e upload...${NC}"
 
 cd codatendechat-main/frontend
 
-echo "Limpando cache do webpack..."
-rm -rf build node_modules/.cache
+echo "Limpando TODO o cache (webpack, babel, npm)..."
+rm -rf build node_modules/.cache .cache
+npm cache clean --force
 
 echo "Instalando dependências do frontend..."
 npm install
