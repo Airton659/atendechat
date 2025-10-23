@@ -87,8 +87,8 @@ cd ../..
 ###############################################################################
 echo -e "\n${YELLOW}[6/7] Rebuild backend e restart containers...${NC}"
 
-# Backend rebuild e restart
-ssh $VM_SSH "cd /home/airton/atendechat/codatendechat-main && docker-compose exec -T backend npm run build && docker-compose restart backend"
+# Backend rebuild completo
+ssh $VM_SSH "cd /home/airton/atendechat/codatendechat-main && docker-compose stop backend && docker-compose build --no-cache backend && docker-compose up -d backend"
 
 # Frontend rebuild completo
 ssh $VM_SSH bash << 'ENDSSH'
