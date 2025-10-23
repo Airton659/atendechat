@@ -31,7 +31,7 @@ services:
   frontend:
     build:
       context: .
-      dockerfile: frontend/Dockerfile
+      dockerfile: frontend/Dockerfile.production
       args:
         - REACT_APP_BACKEND_URL=${BACKEND_URL}
         - REACT_APP_HOURS_CLOSE_TICKETS_AUTO=24

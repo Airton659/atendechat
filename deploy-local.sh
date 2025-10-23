@@ -98,10 +98,6 @@ docker-compose exec -T backend npm run build
 echo "Reiniciando backend..."
 docker-compose restart backend
 
-# Alterar temporariamente o docker-compose.yml para usar Dockerfile.production
-echo "Configurando docker-compose para usar Dockerfile.production..."
-sed -i.bak 's|dockerfile: frontend/Dockerfile|dockerfile: frontend/Dockerfile.production|g' docker-compose.yml
-
 # Parar e remover container frontend completamente
 echo "Parando e removendo container frontend..."
 docker-compose stop frontend
@@ -119,10 +115,6 @@ docker-compose build --no-cache frontend
 echo "Subindo containers..."
 docker-compose up -d --force-recreate frontend
 docker-compose up -d backend
-
-# Restaurar docker-compose.yml original
-echo "Restaurando docker-compose.yml original..."
-mv docker-compose.yml.bak docker-compose.yml
 
 echo "✓ Frontend e Backend atualizados!"
 ENDSSH
