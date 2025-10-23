@@ -141,6 +141,11 @@ const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
   }, []);
 
   const handleSaveWhatsApp = async (values) => {
+    console.log("=== SAVE WHATSAPP CALLED ===");
+    console.log("values:", values);
+    console.log("selectedCrew:", selectedCrew);
+    console.log("selectedQueueIds:", selectedQueueIds);
+
     const whatsappData = {
       ...values, queueIds: selectedQueueIds, transferQueueId: selectedQueueId,
       crewId: selectedCrew ? selectedCrew : null,
@@ -149,15 +154,21 @@ const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
     delete whatsappData["queues"];
     delete whatsappData["session"];
 
+    console.log("whatsappData to send:", whatsappData);
+
     try {
       if (whatsAppId) {
+        console.log("PUT /whatsapp/" + whatsAppId);
         await api.put(`/whatsapp/${whatsAppId}`, whatsappData);
       } else {
+        console.log("POST /whatsapp");
         await api.post("/whatsapp", whatsappData);
       }
+      console.log("SUCCESS!");
       toast.success(i18n.t("whatsappModal.success"));
       handleClose();
     } catch (err) {
+      console.log("ERROR:", err);
       toastError(err);
     }
   };
