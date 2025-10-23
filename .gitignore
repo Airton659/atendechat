@@ -3,3 +3,4 @@ atendelimpo/*
 !atendelimpo/backend/
 atendelimpo/backend/*
 !atendelimpo/backend/google-credentials.json
+google-credentials.json

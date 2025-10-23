@@ -239,7 +239,11 @@ export const uploadKnowledge = async (
       contentType: req.file.mimetype,
     });
     formData.append("tenantId", tenantId);
-    formData.append("teamId", crewId);
+
+    console.log(`[UploadKnowledge] Fazendo upload para CrewAI Service...`);
+    console.log(`  Arquivo: ${req.file.originalname}`);
+    console.log(`  TenantId: ${tenantId}`);
+    console.log(`  CrewId: ${crewId}`);
 
     const { data } = await axios.post(
       `${crewaiUrl}/api/v2/knowledge/upload`,
@@ -248,6 +252,9 @@ export const uploadKnowledge = async (
         headers: formData.getHeaders(),
       }
     );
+
+    console.log(`[UploadKnowledge] Upload concluído com sucesso!`);
+    console.log(`  DocumentId: ${data.documentId}`);
 
     return res.status(200).json(data);
   } catch (error: any) {

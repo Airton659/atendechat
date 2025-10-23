@@ -266,19 +266,20 @@ const CrewEditorModal = ({ open, onClose, crewId }) => {
     setUploadingFile(true);
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("crewId", crewId);
 
     try {
+      // Chama backend que repassa para o CrewAI Service
       const { data } = await api.post(`/crews/${crewId}/knowledge/upload`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      setKnowledgeFiles([...knowledgeFiles, data.file]);
-      toast.success("Arquivo enviado com sucesso!");
+      setKnowledgeFiles([...knowledgeFiles, data]);
+      toast.success(`Arquivo "${file.name}" enviado com sucesso!`);
     } catch (err) {
       toastError(err);
     } finally {
       setUploadingFile(false);
+      event.target.value = null; // Reset input
     }
   };
 
