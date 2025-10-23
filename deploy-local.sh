@@ -105,11 +105,12 @@ docker-compose rm -f frontend
 
 # Remover imagem antiga do frontend
 echo "Removendo imagem antiga do frontend..."
-docker rmi codatendechat-main-frontend 2>/dev/null || true
+docker rmi -f codatendechat-main-frontend 2>/dev/null || true
 
-# Rebuildar imagem usando docker-compose (sem cache)
-echo "Rebuildando frontend com docker-compose (sem cache)..."
-docker-compose build --no-cache frontend
+# Rebuildar imagem DIRETAMENTE (sem docker-compose) para garantir que usa Dockerfile.production
+echo "Rebuildando frontend com Dockerfile.production..."
+cd /home/airton/atendechat/codatendechat-main
+docker build --no-cache -f frontend/Dockerfile.production -t codatendechat-main-frontend .
 
 # Subir containers (forçar recriação do frontend)
 echo "Subindo containers..."
