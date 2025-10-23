@@ -390,67 +390,7 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
 
                 <Divider style={{ margin: "24px 0 16px 0" }} />
 
-                {/* Base de Conhecimento */}
-                {crewId && (
-                  <>
-                    <Typography variant="h6" gutterBottom>
-                      📚 Base de Conhecimento
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary" paragraph>
-                      Faça upload de documentos para a equipe consultar
-                    </Typography>
-
-                    <input
-                      accept=".pdf,.txt,.doc,.docx"
-                      style={{ display: 'none' }}
-                      id="knowledge-upload"
-                      type="file"
-                      onChange={handleFileUpload}
-                      disabled={uploadingFile}
-                    />
-                    <label htmlFor="knowledge-upload">
-                      <Paper className={classes.uploadArea} elevation={0} component="div">
-                        <CloudUploadIcon style={{ fontSize: 48, color: '#666' }} />
-                        <Typography variant="body1" gutterBottom>
-                          {uploadingFile ? "Enviando..." : "Clique para fazer upload"}
-                        </Typography>
-                        <Typography variant="caption" color="textSecondary">
-                          Formatos: PDF, TXT, DOC, DOCX
-                        </Typography>
-                      </Paper>
-                    </label>
-
-                    {knowledgeFiles.length > 0 && (
-                      <Box mt={2}>
-                        <Typography variant="subtitle2" gutterBottom>
-                          Arquivos ({knowledgeFiles.length})
-                        </Typography>
-                        <List>
-                          {knowledgeFiles.map((file) => (
-                            <Paper key={file.id} className={classes.knowledgeItem}>
-                              <ListItem>
-                                <DescriptionIcon style={{ marginRight: 16 }} />
-                                <ListItemText
-                                  primary={file.name}
-                                  secondary={`${(file.size / 1024).toFixed(2)} KB`}
-                                />
-                                <ListItemSecondaryAction>
-                                  <IconButton edge="end" onClick={() => handleDeleteKnowledge(file.id)}>
-                                    <DeleteIcon />
-                                  </IconButton>
-                                </ListItemSecondaryAction>
-                              </ListItem>
-                            </Paper>
-                          ))}
-                        </List>
-                      </Box>
-                    )}
-
-                    <Divider style={{ margin: "24px 0 16px 0" }} />
-                  </>
-                )}
-
-                {/* Lista de Agentes */}}
+                {/* Lista de Agentes */}
                 <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                   <Typography variant="h6">
                     Agentes
@@ -698,6 +638,66 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
                     </>
                   )}
                 </FieldArray>
+
+                {/* Base de Conhecimento */}
+                {crewId && (
+                  <>
+                    <Divider style={{ margin: "32px 0 24px 0" }} />
+
+                    <Typography variant="h6" gutterBottom>
+                      📚 Base de Conhecimento
+                    </Typography>
+                    <Typography variant="body2" color="textSecondary" paragraph>
+                      Faça upload de documentos para a equipe consultar (PDF, TXT, DOC, DOCX)
+                    </Typography>
+
+                    <input
+                      accept=".pdf,.txt,.doc,.docx"
+                      style={{ display: 'none' }}
+                      id="knowledge-upload"
+                      type="file"
+                      onChange={handleFileUpload}
+                      disabled={uploadingFile}
+                    />
+                    <label htmlFor="knowledge-upload">
+                      <Paper className={classes.uploadArea} elevation={0} component="div">
+                        <CloudUploadIcon style={{ fontSize: 48, color: '#666' }} />
+                        <Typography variant="body1" gutterBottom>
+                          {uploadingFile ? "Enviando..." : "Clique para fazer upload"}
+                        </Typography>
+                        <Typography variant="caption" color="textSecondary">
+                          Arraste um arquivo ou clique aqui
+                        </Typography>
+                      </Paper>
+                    </label>
+
+                    {knowledgeFiles.length > 0 && (
+                      <Box mt={3}>
+                        <Typography variant="subtitle1" gutterBottom>
+                          Documentos Carregados ({knowledgeFiles.length})
+                        </Typography>
+                        <List>
+                          {knowledgeFiles.map((file) => (
+                            <Paper key={file.id} className={classes.knowledgeItem} elevation={1}>
+                              <ListItem>
+                                <DescriptionIcon color="primary" style={{ marginRight: 16 }} />
+                                <ListItemText
+                                  primary={file.name}
+                                  secondary={`Tamanho: ${(file.size / 1024).toFixed(2)} KB`}
+                                />
+                                <ListItemSecondaryAction>
+                                  <IconButton edge="end" onClick={() => handleDeleteKnowledge(file.id)} color="secondary">
+                                    <DeleteIcon />
+                                  </IconButton>
+                                </ListItemSecondaryAction>
+                              </ListItem>
+                            </Paper>
+                          ))}
+                        </List>
+                      </Box>
+                    )}
+                  </>
+                )}
               </DialogContent>
               <DialogActions>
                 <Button
