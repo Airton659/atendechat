@@ -70,12 +70,19 @@ class ConsultarBaseConhecimentoTool:
         query_lower = query.lower()
         query_words = set(query_lower.split())
 
+        total_docs = 0
+        filtered_docs = 0
+
         for doc in vectors_ref.stream():
             data = doc.to_dict()
+            total_docs += 1
 
             # Filtrar por documentos específicos se fornecido
             if document_ids and data.get('documentId') not in document_ids:
+                print(f"   ⏭️ Pulando chunk (documentId {data.get('documentId')} não está em {document_ids})")
                 continue
+
+            filtered_docs += 1
 
             content = data.get('content', '').lower()
 
@@ -93,6 +100,10 @@ class ConsultarBaseConhecimentoTool:
                     'documentId': data.get('documentId'),
                     'chunkIndex': data.get('chunkIndex', 0)
                 })
+
+        print(f"   📊 Total de chunks encontrados na crew: {total_docs}")
+        print(f"   📊 Chunks após filtrar por documentId: {filtered_docs}")
+        print(f"   📊 Chunks com score > 0: {len(results)}")
 
         # Ordenar por score e retornar top results
         results.sort(key=lambda x: x['score'], reverse=True)
