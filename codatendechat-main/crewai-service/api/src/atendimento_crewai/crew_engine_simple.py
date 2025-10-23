@@ -49,12 +49,74 @@ class SimpleCrewEngine:
             print(f"❌ Erro ao conectar Firestore no SimpleCrewEngine: {e}")
             self.db = None
 
-        # TEMPORÁRIO: Desabilitar embeddings até resolver conflito de location
-        # Embeddings não funcionam com location=global
-        # Gemini não funciona com southamerica-east1
-        print("⚠️ Embeddings temporariamente desabilitados (conflito de location)")
+        # Usar busca por palavra-chave ao invés de embeddings
+        # Embeddings não funcionam com location=global, Gemini não funciona com southamerica-east1
+        print("ℹ️ Usando busca por palavra-chave na base de conhecimento")
         self.embedding_model = None
-        self.knowledge_tool = None
+        self.knowledge_tool = self._create_keyword_search_tool()
+
+    def _create_keyword_search_tool(self):
+        """Cria ferramenta de busca por palavra-chave na base de conhecimento"""
+        class KeywordSearchTool:
+            def __init__(self, db):
+                self.db = db
+
+            def _run(self, query: str, tenant_id: str, max_results: int = 3, document_ids: List[str] = None) -> str:
+                """Busca por palavra-chave nos vetores"""
+                try:
+                    results = []
+                    vectors_ref = self.db.collection('vectors').where('tenantId', '==', tenant_id)
+
+                    query_lower = query.lower()
+                    query_words = set(query_lower.split())
+
+                    print(f"🔍 Buscando por palavra-chave: '{query}' (tenant: {tenant_id})")
+                    if document_ids:
+                        print(f"   Filtrando por {len(document_ids)} documento(s)")
+
+                    for doc in vectors_ref.stream():
+                        data = doc.to_dict()
+
+                        # Filtrar por documentos específicos se fornecido
+                        if document_ids and data.get('documentId') not in document_ids:
+                            continue
+
+                        content = data.get('content', '').lower()
+
+                        # Calcular score baseado em palavras encontradas
+                        score = 0
+                        for word in query_words:
+                            if word in content:
+                                score += content.count(word)
+
+                        if score > 0:
+                            results.append({
+                                'content': data.get('content'),
+                                'metadata': data.get('metadata', {}),
+                                'similarity': score
+                            })
+
+                    # Ordenar por score
+                    results.sort(key=lambda x: x['similarity'], reverse=True)
+
+                    print(f"✅ Encontrados {len(results)} resultados por palavra-chave")
+
+                    if not results:
+                        return "Não foram encontradas informações relevantes na base de conhecimento."
+
+                    # Formatar resultados
+                    formatted = []
+                    for i, r in enumerate(results[:max_results], 1):
+                        source = r.get('metadata', {}).get('source', 'documento')
+                        formatted.append(f"{i}. [{source.upper()}] {r['content']}")
+
+                    return "\n".join(formatted)
+
+                except Exception as e:
+                    print(f"Erro ao buscar conhecimento: {e}")
+                    return "Erro ao consultar base de conhecimento."
+
+        return KeywordSearchTool(self.db) if self.db else None
 
     async def process_message(
         self,
