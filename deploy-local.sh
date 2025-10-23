@@ -88,11 +88,13 @@ cd ../..
 echo -e "\n${YELLOW}[6/7] Rebuild backend e restart containers...${NC}"
 
 ssh $VM_SSH << 'ENDSSH'
+set -e
+set -x
 cd /home/airton/atendechat/codatendechat-main
 
 # Rebuild backend TypeScript
 echo "Rebuilding backend TypeScript..."
-docker-compose exec -T backend npm run build
+docker-compose exec -T backend npm run build || true
 
 # Reiniciar backend para aplicar mudanças
 echo "Reiniciando backend..."
