@@ -94,6 +94,10 @@ cd /home/airton/atendechat/codatendechat-main
 echo "Rebuilding backend TypeScript..."
 docker-compose exec -T backend npm run build
 
+# Reiniciar backend para aplicar mudanças
+echo "Reiniciando backend..."
+docker-compose restart backend
+
 # Alterar temporariamente o docker-compose.yml para usar Dockerfile.production
 echo "Configurando docker-compose para usar Dockerfile.production..."
 sed -i.bak 's|dockerfile: frontend/Dockerfile|dockerfile: frontend/Dockerfile.production|g' docker-compose.yml
