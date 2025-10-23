@@ -22,20 +22,7 @@ from firebase_admin import firestore
 
 router = APIRouter(prefix="/knowledge", tags=["Knowledge"])
 
-class ProcessDocumentRequest(BaseModel):
-    tenantId: str
-    kbId: str
-    documentId: str
-
-class SearchRequest(BaseModel):
-    tenantId: str
-    query: str
-    maxResults: int = 5
-    includeMetadata: bool = True
-
-class DeleteVectorsRequest(BaseModel):
-    tenantId: str
-    documentId: str
+# Classes antigas removidas - não são mais usadas
 
 class KnowledgeService:
     def __init__(self):
@@ -285,16 +272,16 @@ class KnowledgeService:
         except Exception as e:
             raise Exception(f"Erro ao armazenar chunks: {str(e)}")
 
-    async def search_vectors(self, tenant_id: str, query: str, max_results: int = 5) -> List[Dict[str, Any]]:
+    async def search_vectors(self, crew_id: str, query: str, max_results: int = 5) -> List[Dict[str, Any]]:
         """Busca vetorial semântica"""
         try:
             # Gerar embedding da consulta
             query_embeddings = await self.generate_embeddings([query])
             query_embedding = query_embeddings[0]
 
-            # Buscar vetores do tenant no Firestore
+            # Buscar vetores da crew no Firestore
             db = firestore.client()
-            vectors_query = db.collection('vectors').where('tenantId', '==', tenant_id).get()
+            vectors_query = db.collection('vectors').where('crewId', '==', crew_id).get()
 
             results = []
             for doc in vectors_query:
@@ -362,175 +349,16 @@ class KnowledgeService:
 # Instância global do serviço
 knowledge_service = KnowledgeService()
 
-@router.post("/process-document")
-async def process_document(request: ProcessDocumentRequest = Body(...)):
+@router.get("/stats/{crew_id}")
+async def get_knowledge_stats(crew_id: str):
     """
-    Processa um documento: extrai texto, cria chunks e gera embeddings
-    """
-    try:
-        # Obter informações do documento do Firestore
-        db = firestore.client()
-        kb_doc = db.collection('knowledge_bases').document(request.kbId).get()
-
-        if not kb_doc.exists:
-            raise HTTPException(status_code=404, detail="Base de conhecimento não encontrada")
-
-        kb_data = kb_doc.to_dict()
-        documents = kb_data.get('documents', [])
-
-        # Encontrar o documento
-        document = None
-        for doc in documents:
-            if doc['id'] == request.documentId:
-                document = doc
-                break
-
-        if not document:
-            raise HTTPException(status_code=404, detail="Documento não encontrado")
-
-        # Extrair texto do arquivo
-        text = knowledge_service.extract_text_from_document(document['path'], document['type'])
-
-        if not text or len(text.strip()) < 50:
-            raise HTTPException(status_code=400, detail="Documento não contém texto suficiente")
-
-        # Criar metadados do documento
-        doc_metadata = {
-            'filename': document['originalName'],
-            'documentId': document['id'],
-            'type': document['type'],
-            'uploadedAt': document['uploadedAt']
-        }
-
-        # Criar chunks
-        chunks = knowledge_service.create_chunks(text, doc_metadata)
-
-        if not chunks:
-            raise HTTPException(status_code=400, detail="Não foi possível criar chunks do documento")
-
-        # Armazenar vetores
-        stored_count = await knowledge_service.store_vectors(request.tenantId, request.documentId, chunks)
-
-        # Calcular estatísticas do texto
-        word_count = len(text.split())
-        char_count = len(text)
-
-        # Criar metadados do processamento
-        processing_metadata = {
-            'wordCount': word_count,
-            'charCount': char_count,
-            'language': 'pt-BR',  # Detectar idioma no futuro
-            'summary': text[:200] + "..." if len(text) > 200 else text
-        }
-
-        return {
-            "success": True,
-            "chunks": stored_count,
-            "metadata": processing_metadata,
-            "textLength": len(text),
-            "message": f"Documento processado com sucesso. {stored_count} chunks criados."
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Erro no processamento do documento: {e}")
-        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
-
-@router.post("/search")
-async def search_knowledge(request: SearchRequest = Body(...)):
-    """
-    Busca semântica na base de conhecimento
-    """
-    try:
-        if not request.query or len(request.query.strip()) < 3:
-            raise HTTPException(status_code=400, detail="Consulta deve ter pelo menos 3 caracteres")
-
-        # Busca vetorial
-        vector_results = await knowledge_service.search_vectors(request.tenantId, request.query, request.maxResults)
-
-        # Buscar também conhecimento treinado (respostas manuais)
-        db = firestore.client()
-        kb_query = db.collection('knowledge_bases').where('tenantId', '==', request.tenantId).limit(1).get()
-
-        trained_results = []
-        if not kb_query.empty:
-            kb_data = kb_query.docs[0].to_dict()
-            trained_knowledge = kb_data.get('trainedKnowledge', [])
-
-            # Busca simples por palavras-chave no conhecimento treinado
-            query_words = request.query.lower().split()
-            for tk in trained_knowledge:
-                question_words = tk['question'].lower().split()
-                # Score baseado em palavras em comum
-                common_words = set(query_words) & set(question_words)
-                if common_words:
-                    score = len(common_words) / max(len(query_words), len(question_words))
-                    if score > 0.3:  # Threshold mínimo
-                        trained_results.append({
-                            'content': tk['idealAnswer'],
-                            'metadata': {
-                                'source': 'trained',
-                                'question': tk['question'],
-                                'context': tk['context'],
-                                'priority': tk['priority'],
-                                'agentScope': tk['agentScope']
-                            },
-                            'similarity': score,
-                            'type': 'trained_knowledge'
-                        })
-
-        # Combinar resultados (priorizar conhecimento treinado)
-        all_results = trained_results + vector_results
-        all_results.sort(key=lambda x: (x.get('metadata', {}).get('priority') == 'high', x['similarity']), reverse=True)
-
-        # Limitar resultados finais
-        final_results = all_results[:request.maxResults]
-
-        return {
-            "results": final_results,
-            "total": len(final_results),
-            "query": request.query,
-            "sources": {
-                "vectorSearch": len(vector_results),
-                "trainedKnowledge": len(trained_results)
-            }
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Erro na busca de conhecimento: {e}")
-        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
-
-@router.delete("/delete-vectors")
-async def delete_vectors(request: DeleteVectorsRequest = Body(...)):
-    """
-    Remove vetores de um documento específico
-    """
-    try:
-        deleted_count = await knowledge_service.delete_document_vectors(request.tenantId, request.documentId)
-
-        return {
-            "success": True,
-            "deletedCount": deleted_count,
-            "message": f"{deleted_count} vetores removidos com sucesso"
-        }
-
-    except Exception as e:
-        print(f"Erro ao remover vetores: {e}")
-        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
-
-@router.get("/stats/{tenant_id}")
-async def get_knowledge_stats(tenant_id: str):
-    """
-    Obtém estatísticas da base de conhecimento
+    Obtém estatísticas da base de conhecimento de uma crew
     """
     try:
         db = firestore.client()
 
         # Contar vetores
-        vectors_query = db.collection('vectors').where('tenantId', '==', tenant_id).get()
+        vectors_query = db.collection('vectors').where('crewId', '==', crew_id).get()
         total_vectors = len(vectors_query.docs)
 
         # Contar documentos únicos
