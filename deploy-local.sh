@@ -103,14 +103,14 @@ echo "Parando e removendo container frontend..."
 docker-compose stop frontend
 docker-compose rm -f frontend
 
-# Remover imagem antiga do frontend
+# Remover imagem antiga do frontend (com força!)
 echo "Removendo imagem antiga do frontend..."
 docker rmi -f codatendechat-main-frontend 2>/dev/null || true
+docker image prune -f
 
 # Rebuildar imagem DIRETAMENTE (sem docker-compose) para garantir que usa Dockerfile.production
 echo "Rebuildando frontend com Dockerfile.production..."
-cd /home/airton/atendechat/codatendechat-main
-docker build --no-cache -f frontend/Dockerfile.production -t codatendechat-main-frontend .
+docker build --no-cache -f frontend/Dockerfile.production -t codatendechat-main-frontend /home/airton/atendechat/codatendechat-main
 
 # Subir containers (forçar recriação do frontend)
 echo "Subindo containers..."
