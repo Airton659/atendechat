@@ -162,6 +162,7 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
         goal: "",
         backstory: "",
         useKnowledge: false,
+        knowledgeDocuments: [],
         keywords: "",
         customInstructions: "",
         persona: "",
@@ -184,6 +185,7 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
               goal: "",
               backstory: "",
               useKnowledge: false,
+              knowledgeDocuments: [],
               keywords: "",
               customInstructions: "",
               persona: "",
@@ -209,6 +211,7 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
                 goal: agent.goal || "",
                 backstory: agent.backstory || "",
                 useKnowledge: agent.knowledgeDocuments?.length > 0 || false,
+                knowledgeDocuments: agent.knowledgeDocuments || [],
                 keywords: (agent.keywords || []).join("\n"),
                 customInstructions: agent.personality?.customInstructions || "",
                 persona: agent.training?.persona || "",
@@ -221,6 +224,7 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
               goal: "",
               backstory: "",
               useKnowledge: false,
+              knowledgeDocuments: [],
               keywords: "",
               customInstructions: "",
               persona: "",
@@ -292,7 +296,7 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
           },
           tools: [],
           toolConfigs: {},
-          knowledgeDocuments: agent.useKnowledge ? [] : [],
+          knowledgeDocuments: agent.useKnowledge ? (agent.knowledgeDocuments || []) : [],
           training: {
             guardrails: {
               do: agent.guardrailsDo
@@ -651,6 +655,53 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
                                   />
                                 )}
                               </Field>
+
+                              {/* Mostrar documentos disponíveis quando useKnowledge está marcado */}
+                              {values.agents[index]?.useKnowledge && knowledgeFiles.length > 0 && (
+                                <Box mt={2} p={2} style={{ background: '#f5f5f5', borderRadius: 4 }}>
+                                  <Typography variant="subtitle2" gutterBottom>
+                                    Documentos disponíveis:
+                                  </Typography>
+                                  <FieldArray name={`agents.${index}.knowledgeDocuments`}>
+                                    {({ push: pushDoc, remove: removeDoc }) => (
+                                      <Box>
+                                        {knowledgeFiles.map((file) => {
+                                          const isSelected = values.agents[index]?.knowledgeDocuments?.includes(file.id);
+                                          return (
+                                            <FormControlLabel
+                                              key={file.id}
+                                              control={
+                                                <Checkbox
+                                                  checked={isSelected}
+                                                  onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                      pushDoc(file.id);
+                                                    } else {
+                                                      const idx = values.agents[index].knowledgeDocuments.indexOf(file.id);
+                                                      if (idx > -1) removeDoc(idx);
+                                                    }
+                                                  }}
+                                                  color="primary"
+                                                  size="small"
+                                                />
+                                              }
+                                              label={`${file.name} (${(file.size / 1024).toFixed(2)} KB)`}
+                                            />
+                                          );
+                                        })}
+                                      </Box>
+                                    )}
+                                  </FieldArray>
+                                </Box>
+                              )}
+
+                              {values.agents[index]?.useKnowledge && knowledgeFiles.length === 0 && (
+                                <Box mt={2} p={2} style={{ background: '#fff3cd', borderRadius: 4 }}>
+                                  <Typography variant="caption" color="textSecondary">
+                                    ⚠️ Nenhum documento disponível. Adicione documentos na aba "Base de Conhecimento".
+                                  </Typography>
+                                </Box>
+                              )}
                             </Box>
                           </AccordionDetails>
                         </Accordion>
@@ -667,6 +718,7 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
                             goal: "",
                             backstory: "",
                             useKnowledge: false,
+                            knowledgeDocuments: [],
                             keywords: "",
                             customInstructions: "",
                             persona: "",

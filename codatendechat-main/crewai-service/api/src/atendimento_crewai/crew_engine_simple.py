@@ -61,16 +61,16 @@ class SimpleCrewEngine:
             def __init__(self, db):
                 self.db = db
 
-            def _run(self, query: str, tenant_id: str, max_results: int = 3, document_ids: List[str] = None) -> str:
+            def _run(self, query: str, crew_id: str, max_results: int = 3, document_ids: List[str] = None) -> str:
                 """Busca por palavra-chave nos vetores"""
                 try:
                     results = []
-                    vectors_ref = self.db.collection('vectors').where('tenantId', '==', tenant_id)
+                    vectors_ref = self.db.collection('vectors').where('crewId', '==', crew_id)
 
                     query_lower = query.lower()
                     query_words = set(query_lower.split())
 
-                    print(f"🔍 Buscando por palavra-chave: '{query}' (tenant: {tenant_id})")
+                    print(f"🔍 Buscando por palavra-chave: '{query}' (crew: {crew_id})")
                     if document_ids:
                         print(f"   Filtrando por {len(document_ids)} documento(s)")
 
@@ -211,7 +211,7 @@ class SimpleCrewEngine:
 
                     knowledge_result = self.knowledge_tool._run(
                         query=message,
-                        tenant_id=tenant_id,
+                        crew_id=crew_id,
                         max_results=3,
                         document_ids=agent_document_ids if agent_document_ids else None
                     )

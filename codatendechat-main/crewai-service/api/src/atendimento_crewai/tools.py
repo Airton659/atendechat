@@ -49,22 +49,22 @@ class ConsultarBaseConhecimentoTool:
 
         return float(dot_product / (norm1 * norm2))
 
-    def _keyword_search(self, query: str, tenant_id: str, max_results: int, document_ids: List[str] = None) -> List[Dict[str, Any]]:
+    def _keyword_search(self, query: str, crew_id: str, max_results: int, document_ids: List[str] = None) -> List[Dict[str, Any]]:
         """
         Busca por palavra-chave quando embeddings não estão disponíveis
 
         Args:
             query: Texto da consulta
-            tenant_id: ID do tenant
+            crew_id: ID da crew
             max_results: Número máximo de resultados
             document_ids: Lista opcional de IDs de documentos para filtrar busca
         """
-        print(f"🔍 Busca por palavra-chave: '{query}' (tenant: {tenant_id})")
+        print(f"🔍 Busca por palavra-chave: '{query}' (crew: {crew_id})")
         if document_ids:
             print(f"   Filtrando por {len(document_ids)} documento(s) específico(s)")
 
-        # Buscar todos os chunks do tenant
-        vectors_ref = self.db.collection('vectors').where('tenantId', '==', tenant_id)
+        # Buscar todos os chunks da crew
+        vectors_ref = self.db.collection('vectors').where('crewId', '==', crew_id)
 
         results = []
         query_lower = query.lower()
@@ -98,17 +98,17 @@ class ConsultarBaseConhecimentoTool:
         results.sort(key=lambda x: x['score'], reverse=True)
         return results[:max_results]
 
-    def _semantic_search(self, query: str, tenant_id: str, max_results: int, document_ids: List[str] = None) -> List[Dict[str, Any]]:
+    def _semantic_search(self, query: str, crew_id: str, max_results: int, document_ids: List[str] = None) -> List[Dict[str, Any]]:
         """
         Busca semântica usando embeddings
 
         Args:
             query: Texto da consulta
-            tenant_id: ID do tenant
+            crew_id: ID da crew
             max_results: Número máximo de resultados
             document_ids: Lista opcional de IDs de documentos para filtrar busca
         """
-        print(f"🧠 Busca semântica: '{query}' (tenant: {tenant_id})")
+        print(f"🧠 Busca semântica: '{query}' (crew: {crew_id})")
         if document_ids:
             print(f"   Filtrando por {len(document_ids)} documento(s) específico(s)")
 
@@ -118,10 +118,10 @@ class ConsultarBaseConhecimentoTool:
             query_embedding = query_embeddings[0].values
         except Exception as e:
             print(f"⚠️ Erro ao gerar embedding da query: {e}")
-            return self._keyword_search(query, tenant_id, max_results, document_ids)
+            return self._keyword_search(query, crew_id, max_results, document_ids)
 
-        # Buscar vetores do tenant
-        vectors_ref = self.db.collection('vectors').where('tenantId', '==', tenant_id)
+        # Buscar vetores da crew
+        vectors_ref = self.db.collection('vectors').where('crewId', '==', crew_id)
 
         results = []
         for doc in vectors_ref.stream():
@@ -150,13 +150,13 @@ class ConsultarBaseConhecimentoTool:
         results.sort(key=lambda x: x['score'], reverse=True)
         return results[:max_results]
 
-    def _run(self, query: str, tenant_id: str, max_results: int = 3, document_ids: List[str] = None) -> str:
+    def _run(self, query: str, crew_id: str, max_results: int = 3, document_ids: List[str] = None) -> str:
         """
         Executa a busca na base de conhecimento
 
         Args:
             query: Texto da consulta
-            tenant_id: ID do tenant
+            crew_id: ID da crew
             max_results: Número máximo de resultados
             document_ids: Lista opcional de IDs de documentos para filtrar busca
 
@@ -166,16 +166,16 @@ class ConsultarBaseConhecimentoTool:
         try:
             print(f"📚 Consultando base de conhecimento...")
             print(f"   Query: {query}")
-            print(f"   Tenant: {tenant_id}")
+            print(f"   Crew: {crew_id}")
             print(f"   Max results: {max_results}")
             if document_ids:
                 print(f"   Documentos específicos: {document_ids}")
 
             # Escolher método de busca
             if self.embedding_model:
-                results = self._semantic_search(query, tenant_id, max_results, document_ids)
+                results = self._semantic_search(query, crew_id, max_results, document_ids)
             else:
-                results = self._keyword_search(query, tenant_id, max_results, document_ids)
+                results = self._keyword_search(query, crew_id, max_results, document_ids)
 
             if not results:
                 return "Não foram encontradas informações relevantes na base de conhecimento para esta consulta."
