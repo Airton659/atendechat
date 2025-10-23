@@ -22,11 +22,18 @@ import {
   AccordionSummary,
   AccordionDetails,
   Chip,
+  Paper,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemSecondaryAction,
 } from "@material-ui/core";
 import {
   Add as AddIcon,
   Delete as DeleteIcon,
   ExpandMore as ExpandMoreIcon,
+  CloudUpload as CloudUploadIcon,
+  Description as DescriptionIcon,
 } from "@material-ui/icons";
 
 import { i18n } from "../../translate/i18n";
@@ -81,6 +88,21 @@ const useStyles = makeStyles((theme) => ({
     backgroundColor: theme.palette.grey[50],
     borderRadius: 4,
   },
+  uploadArea: {
+    border: `2px dashed ${theme.palette.divider}`,
+    borderRadius: 4,
+    padding: theme.spacing(4),
+    textAlign: "center",
+    cursor: "pointer",
+    marginTop: theme.spacing(2),
+    marginBottom: theme.spacing(2),
+    "&:hover": {
+      backgroundColor: theme.palette.action.hover,
+    },
+  },
+  knowledgeItem: {
+    marginBottom: theme.spacing(1),
+  },
 }));
 
 const AgentSchema = Yup.object().shape({
@@ -111,6 +133,8 @@ const CrewSchema = Yup.object().shape({
 const CrewModal = ({ open, onClose, crewId, onSave }) => {
   const classes = useStyles();
   const [loading, setLoading] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [knowledgeFiles, setKnowledgeFiles] = useState([]);
   const [initialValues, setInitialValues] = useState({
     name: "",
     description: "",
@@ -270,6 +294,41 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
     }
   };
 
+  const handleFileUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file || !crewId) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      setUploadingFile(true);
+      const { data } = await api.post(`/crews/${crewId}/knowledge/upload`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      setKnowledgeFiles(prev => [...prev, data]);
+      toast.success("Arquivo enviado com sucesso!");
+    } catch (err) {
+      toastError(err);
+    } finally {
+      setUploadingFile(false);
+      event.target.value = "";
+    }
+  };
+
+  const handleDeleteKnowledge = async (fileId) => {
+    if (!crewId) return;
+
+    try {
+      await api.delete(`/crews/${crewId}/knowledge/${fileId}`);
+      setKnowledgeFiles(prev => prev.filter(f => f.id !== fileId));
+      toast.success("Arquivo removido com sucesso!");
+    } catch (err) {
+      toastError(err);
+    }
+  };
+
   return (
     <Dialog
       open={open}
@@ -331,7 +390,67 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
 
                 <Divider style={{ margin: "24px 0 16px 0" }} />
 
-                {/* Lista de Agentes */}
+                {/* Base de Conhecimento */}
+                {crewId && (
+                  <>
+                    <Typography variant="h6" gutterBottom>
+                      📚 Base de Conhecimento
+                    </Typography>
+                    <Typography variant="body2" color="textSecondary" paragraph>
+                      Faça upload de documentos para a equipe consultar
+                    </Typography>
+
+                    <input
+                      accept=".pdf,.txt,.doc,.docx"
+                      style={{ display: 'none' }}
+                      id="knowledge-upload"
+                      type="file"
+                      onChange={handleFileUpload}
+                      disabled={uploadingFile}
+                    />
+                    <label htmlFor="knowledge-upload">
+                      <Paper className={classes.uploadArea} elevation={0} component="div">
+                        <CloudUploadIcon style={{ fontSize: 48, color: '#666' }} />
+                        <Typography variant="body1" gutterBottom>
+                          {uploadingFile ? "Enviando..." : "Clique para fazer upload"}
+                        </Typography>
+                        <Typography variant="caption" color="textSecondary">
+                          Formatos: PDF, TXT, DOC, DOCX
+                        </Typography>
+                      </Paper>
+                    </label>
+
+                    {knowledgeFiles.length > 0 && (
+                      <Box mt={2}>
+                        <Typography variant="subtitle2" gutterBottom>
+                          Arquivos ({knowledgeFiles.length})
+                        </Typography>
+                        <List>
+                          {knowledgeFiles.map((file) => (
+                            <Paper key={file.id} className={classes.knowledgeItem}>
+                              <ListItem>
+                                <DescriptionIcon style={{ marginRight: 16 }} />
+                                <ListItemText
+                                  primary={file.name}
+                                  secondary={`${(file.size / 1024).toFixed(2)} KB`}
+                                />
+                                <ListItemSecondaryAction>
+                                  <IconButton edge="end" onClick={() => handleDeleteKnowledge(file.id)}>
+                                    <DeleteIcon />
+                                  </IconButton>
+                                </ListItemSecondaryAction>
+                              </ListItem>
+                            </Paper>
+                          ))}
+                        </List>
+                      </Box>
+                    )}
+
+                    <Divider style={{ margin: "24px 0 16px 0" }} />
+                  </>
+                )}
+
+                {/* Lista de Agentes */}}
                 <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                   <Typography variant="h6">
                     Agentes

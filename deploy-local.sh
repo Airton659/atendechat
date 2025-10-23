@@ -54,12 +54,15 @@ scp "$LOCAL_CREDENTIALS" $VM_SSH:~/google-credentials.json
 echo -e "${GREEN}✓ Credenciais copiadas com sucesso!${NC}"
 
 ###############################################################################
-# 4. FAZER GIT PULL NA VM
+# 4. FAZER GIT PULL NA VM (com stash de alterações locais)
 ###############################################################################
 echo -e "\n${YELLOW}[4/6] Fazendo git pull na VM...${NC}"
 
 ssh $VM_SSH << 'ENDSSH'
 cd /home/airton/atendechat
+echo "Salvando alterações locais (stash)..."
+git stash
+echo "Fazendo git pull..."
 git pull origin main
 echo "✓ Git pull concluído!"
 ENDSSH
