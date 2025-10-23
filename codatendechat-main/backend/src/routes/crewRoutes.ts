@@ -6,6 +6,8 @@ import multer from "multer";
 import * as CrewController from "../controllers/CrewController";
 
 const upload = multer(uploadConfig);
+// Upload para knowledge base usa memoryStorage para enviar buffer ao CrewAI
+const knowledgeUpload = multer({ storage: multer.memoryStorage() });
 const crewRoutes = express.Router();
 
 // Listar equipes
@@ -30,7 +32,7 @@ crewRoutes.delete("/crews/:crewId", isAuth, CrewController.remove);
 crewRoutes.post("/crews/:crewId/train", isAuth, CrewController.train);
 
 // Upload knowledge
-crewRoutes.post("/crews/:crewId/knowledge/upload", isAuth, upload.single("file"), CrewController.uploadKnowledge);
+crewRoutes.post("/crews/:crewId/knowledge/upload", isAuth, knowledgeUpload.single("file"), CrewController.uploadKnowledge);
 
 // Delete knowledge
 crewRoutes.delete("/crews/:crewId/knowledge/:fileId", isAuth, CrewController.deleteKnowledge);

@@ -239,6 +239,7 @@ export const uploadKnowledge = async (
       contentType: req.file.mimetype,
     });
     formData.append("tenantId", tenantId);
+    formData.append("crewId", crewId);
 
     console.log(`[UploadKnowledge] Fazendo upload para CrewAI Service...`);
     console.log(`  Arquivo: ${req.file.originalname}`);
