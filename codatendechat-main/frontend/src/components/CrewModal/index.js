@@ -294,7 +294,7 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
             traits: [],
             customInstructions: agent.customInstructions || "",
           },
-          tools: [],
+          tools: agent.useKnowledge ? ['consultar_base_conhecimento'] : [],
           toolConfigs: {},
           knowledgeDocuments: agent.useKnowledge ? (agent.knowledgeDocuments || []) : [],
           training: {
