@@ -1,3 +1,4 @@
+// Knowledge Base Upload Feature - v2.0
 import React, { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import { makeStyles } from "@material-ui/core/styles";

@@ -71,14 +71,15 @@ echo -e "\n${YELLOW}[5/6] Build frontend localmente e upload...${NC}"
 
 cd codatendechat-main/frontend
 
-echo "Limpando TODO o cache (webpack, babel, npm)..."
-rm -rf build node_modules/.cache .cache
+echo "LIMPANDO ABSOLUTAMENTE TUDO (build, node_modules, caches, lock)..."
+rm -rf build node_modules node_modules/.cache .cache package-lock.json
 npm cache clean --force
 
-echo "Instalando dependências do frontend..."
-npm install
+echo "Instalando dependências do ZERO (fresh install)..."
+npm install --force --no-cache
 
-echo "Buildando frontend localmente (sem cache)..."
+echo "Buildando frontend LIMPO (sem nenhum cache)..."
+rm -rf build
 REACT_APP_BACKEND_URL=https://api.atendeaibr.com npm run build
 
 echo "Fazendo upload do build para a VM..."
