@@ -48,6 +48,8 @@ import { cacheLayer } from "../../libs/cache";
 import { provider } from "./providers";
 import { debounce } from "../../helpers/Debounce";
 import { ChatCompletionRequestMessage, Configuration, OpenAIApi } from "openai";
+import { handleCrewAIMessage } from "../CrewAIServices/CrewAIService";
+import SendWhatsAppMedia from "./SendWhatsAppMedia";
 import ffmpeg from "fluent-ffmpeg";
 import {
   SpeechConfig,
@@ -2484,6 +2486,44 @@ const handleMessage = async (
       Sentry.captureException(e);
       console.log(e);
     }
+
+    // ====================================================================
+    // INTEGRAÇÃO CREWAI - Verificar se a conexão tem uma equipe associada
+    // ====================================================================
+    if (
+      !msg.key.fromMe &&
+      !isGroup &&
+      whatsapp.crewId &&
+      whatsapp.crewId.trim() !== ""
+    ) {
+      console.log(
+        `[CrewAI] Conexão ${whatsapp.name} tem crew associada: ${whatsapp.crewId}`
+      );
+
+      try {
+        const crewProcessed = await handleCrewAIMessage(
+          msg,
+          ticket,
+          whatsapp.crewId,
+          companyId
+        );
+
+        if (crewProcessed) {
+          console.log("[CrewAI] Mensagem processada com sucesso, enviando resposta...");
+          // Resposta já foi enviada pelo CrewAI, não precisa continuar o fluxo
+          return;
+        } else {
+          console.log(
+            "[CrewAI] CrewAI não conseguiu processar, continuando fluxo normal..."
+          );
+        }
+      } catch (error) {
+        console.error("[CrewAI] Erro ao processar com CrewAI:", error);
+        console.log("[CrewAI] Caindo para fluxo normal devido ao erro");
+        // Continua o fluxo normal em caso de erro
+      }
+    }
+    // ====================================================================
 
     const flow = await FlowBuilderModel.findOne({
       where: {
