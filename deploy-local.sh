@@ -87,34 +87,26 @@ cd ../..
 ###############################################################################
 echo -e "\n${YELLOW}[6/7] Rebuild backend e restart containers...${NC}"
 
-ssh $VM_SSH << 'ENDSSH'
+# Backend rebuild e restart
+ssh $VM_SSH "cd /home/airton/atendechat/codatendechat-main && docker-compose exec -T backend npm run build && docker-compose restart backend"
+
+# Frontend rebuild completo
+ssh $VM_SSH bash << 'ENDSSH'
 set -e
 set -x
 cd /home/airton/atendechat/codatendechat-main
 
-# Rebuild backend TypeScript
-echo "Rebuilding backend TypeScript..."
-docker-compose exec -T backend npm run build || true
-
-# Reiniciar backend para aplicar mudanças
-echo "Reiniciando backend..."
-docker-compose restart backend
-
-# Parar e remover container frontend completamente
 echo "Parando e removendo container frontend..."
 docker-compose stop frontend
 docker-compose rm -f frontend
 
-# Remover imagem antiga do frontend (com força!)
 echo "Removendo imagem antiga do frontend..."
 docker rmi -f codatendechat-main-frontend 2>/dev/null || true
 docker image prune -f
 
-# Rebuildar imagem DIRETAMENTE (sem docker-compose) para garantir que usa Dockerfile.production
 echo "Rebuildando frontend com Dockerfile.production..."
 docker build --no-cache -f frontend/Dockerfile.production -t codatendechat-main-frontend /home/airton/atendechat/codatendechat-main
 
-# Subir containers (forçar recriação do frontend)
 echo "Subindo containers..."
 docker-compose up -d --force-recreate frontend
 docker-compose up -d backend
