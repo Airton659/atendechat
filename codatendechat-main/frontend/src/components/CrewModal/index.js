@@ -27,6 +27,8 @@ import {
   ListItem,
   ListItemText,
   ListItemSecondaryAction,
+  Tabs,
+  Tab,
 } from "@material-ui/core";
 import {
   Add as AddIcon,
@@ -130,11 +132,26 @@ const CrewSchema = Yup.object().shape({
   agents: Yup.array().of(AgentSchema).min(1, "Pelo menos um agente é necessário"),
 });
 
+function TabPanel(props) {
+  const { children, value, index, ...other } = props;
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`crew-tabpanel-${index}`}
+      {...other}
+    >
+      {value === index && <Box>{children}</Box>}
+    </div>
+  );
+}
+
 const CrewModal = ({ open, onClose, crewId, onSave }) => {
   const classes = useStyles();
   const [loading, setLoading] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
   const [knowledgeFiles, setKnowledgeFiles] = useState([]);
+  const [tabValue, setTabValue] = useState(0);
   const [initialValues, setInitialValues] = useState({
     name: "",
     description: "",
@@ -356,8 +373,21 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
         >
           {({ touched, errors, isSubmitting, values }) => (
             <Form>
-              <DialogContent dividers>
-                {/* Nome e Descrição */}
+              <Tabs
+                value={tabValue}
+                onChange={(e, newValue) => setTabValue(newValue)}
+                indicatorColor="primary"
+                textColor="primary"
+                variant="fullWidth"
+              >
+                <Tab label="Geral" />
+                <Tab label="Agentes" />
+                <Tab label="Base de Conhecimento" disabled={!crewId} />
+              </Tabs>
+
+              <DialogContent dividers style={{ minHeight: 500 }}>
+                {/* Tab 0 - Geral (Nome e Descrição) */}
+                <TabPanel value={tabValue} index={0}>
                 <div className={classes.root}>
                   <Field
                     as={TextField}
@@ -387,10 +417,10 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
                     className={classes.textField}
                   />
                 </div>
+                </TabPanel>
 
-                <Divider style={{ margin: "24px 0 16px 0" }} />
-
-                {/* Lista de Agentes */}
+                {/* Tab 1 - Agentes */}
+                <TabPanel value={tabValue} index={1}>
                 <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                   <Typography variant="h6">
                     Agentes
@@ -638,15 +668,13 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
                     </>
                   )}
                 </FieldArray>
+                </TabPanel>
 
-                {/* Base de Conhecimento */}
-                {crewId && (
-                  <>
-                    <Divider style={{ margin: "32px 0 24px 0" }} />
-
-                    <Typography variant="h6" gutterBottom>
-                      📚 Base de Conhecimento
-                    </Typography>
+                {/* Tab 2 - Base de Conhecimento */}
+                <TabPanel value={tabValue} index={2}>
+                  <Typography variant="h6" gutterBottom>
+                    📚 Base de Conhecimento
+                  </Typography>
                     <Typography variant="body2" color="textSecondary" paragraph>
                       Faça upload de documentos para a equipe consultar (PDF, TXT, DOC, DOCX)
                     </Typography>
@@ -696,8 +724,7 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
                         </List>
                       </Box>
                     )}
-                  </>
-                )}
+                </TabPanel>
               </DialogContent>
               <DialogActions>
                 <Button
