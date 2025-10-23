@@ -398,15 +398,21 @@ class SimpleCrewEngine:
     async def _load_crew_data(self, crew_id: str) -> Optional[Dict[str, Any]]:
         """Carrega dados da equipe do Firestore"""
         try:
-            doc_ref = self.db.collection('crew_blueprints').document(crew_id)
+            # Tentar primeiro em 'crews' (nova estrutura)
+            doc_ref = self.db.collection('crews').document(crew_id)
             doc = doc_ref.get()
+
+            # Se não encontrar, tentar em 'crew_blueprints' (estrutura antiga)
+            if not doc.exists:
+                doc_ref = self.db.collection('crew_blueprints').document(crew_id)
+                doc = doc_ref.get()
 
             if doc.exists:
                 data = doc.to_dict()
                 print(f"✅ Dados da equipe carregados: {data.get('name', 'Sem nome')}")
                 return data
             else:
-                print(f"❌ Equipe {crew_id} não encontrada")
+                print(f"❌ Equipe {crew_id} não encontrada em /crews nem /crew_blueprints")
                 return None
 
         except Exception as e:
