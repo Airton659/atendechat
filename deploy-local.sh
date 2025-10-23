@@ -115,9 +115,10 @@ docker rmi codatendechat-main-frontend 2>/dev/null || true
 echo "Rebuildando frontend com docker-compose (sem cache)..."
 docker-compose build --no-cache frontend
 
-# Subir containers
+# Subir containers (forçar recriação do frontend)
 echo "Subindo containers..."
-docker-compose up -d frontend backend
+docker-compose up -d --force-recreate frontend
+docker-compose up -d backend
 
 # Restaurar docker-compose.yml original
 echo "Restaurando docker-compose.yml original..."
