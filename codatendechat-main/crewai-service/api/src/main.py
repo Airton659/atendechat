@@ -35,6 +35,7 @@ from atendimento_crewai.main_service import router as main_router
 from atendimento_crewai.architect_service import router as architect_router
 from atendimento_crewai.training_service import router as training_router
 from atendimento_crewai.crews_service import router as crews_router
+from atendimento_crewai.knowledge_service import router as knowledge_router
 
 # Criar aplicação FastAPI
 app = FastAPI(
@@ -60,6 +61,7 @@ app.include_router(main_router, prefix="/api/v2")
 app.include_router(architect_router, prefix="/api/v2")
 app.include_router(training_router, prefix="/api/v2")
 app.include_router(crews_router, prefix="/api/v2")
+app.include_router(knowledge_router, prefix="/api/v2")
 
 @app.get("/")
 def read_root():
