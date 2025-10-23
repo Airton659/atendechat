@@ -69,7 +69,7 @@ export const sendMessageToCrewAI = async (
 
     const payload = {
       tenantId,
-      teamId: crewId,
+      crewId: crewId,
       message,
       conversationHistory
     };
@@ -77,7 +77,7 @@ export const sendMessageToCrewAI = async (
     console.log(`[CrewAI] Payload:`, JSON.stringify(payload, null, 2));
 
     const response = await axios.post<CrewAIResponse>(
-      `${CREWAI_SERVICE_URL}/api/v2/training/generate-response`,
+      `${CREWAI_SERVICE_URL}/api/v2/process-message`,
       payload,
       {
         timeout: 30000, // 30 segundos
