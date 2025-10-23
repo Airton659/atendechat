@@ -72,14 +72,22 @@ class SimpleCrewEngine:
 
                     print(f"🔍 Buscando por palavra-chave: '{query}' (crew: {crew_id})")
                     if document_ids:
-                        print(f"   Filtrando por {len(document_ids)} documento(s)")
+                        print(f"   Filtrando por {len(document_ids)} documento(s) específico(s): {document_ids}")
+
+                    total_docs = 0
+                    filtered_docs = 0
 
                     for doc in vectors_ref.stream():
                         data = doc.to_dict()
+                        total_docs += 1
 
                         # Filtrar por documentos específicos se fornecido
                         if document_ids and data.get('documentId') not in document_ids:
+                            if total_docs <= 3:  # Só mostrar os primeiros 3 para não poluir o log
+                                print(f"   ⏭️ Pulando chunk (documentId '{data.get('documentId')}' não está em {document_ids})")
                             continue
+
+                        filtered_docs += 1
 
                         content = data.get('content', '').lower()
 
@@ -95,6 +103,10 @@ class SimpleCrewEngine:
                                 'metadata': data.get('metadata', {}),
                                 'similarity': score
                             })
+
+                    print(f"   📊 Total de chunks encontrados na crew: {total_docs}")
+                    print(f"   📊 Chunks após filtrar por documentId: {filtered_docs}")
+                    print(f"   📊 Chunks com score > 0: {len(results)}")
 
                     # Ordenar por score
                     results.sort(key=lambda x: x['similarity'], reverse=True)
