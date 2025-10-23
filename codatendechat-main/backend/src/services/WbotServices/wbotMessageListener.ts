@@ -2502,7 +2502,7 @@ const handleMessage = async (
 
       try {
         const crewProcessed = await handleCrewAIMessage(
-          msg,
+          bodyMessage,
           ticket,
           whatsapp.crewId,
           companyId

@@ -1,8 +1,6 @@
 import axios from "axios";
 import Message from "../../models/Message";
 import Ticket from "../../models/Ticket";
-import { proto } from "@whiskeysockets/baileys";
-import { getBodyMessage } from "../WbotServices/wbotMessageListener";
 import SendWhatsAppMessage from "../WbotServices/SendWhatsAppMessage";
 
 interface CrewAIResponse {
@@ -37,7 +35,7 @@ const getConversationHistory = async (
     const history: ConversationMessage[] = messages
       .reverse()
       .map(msg => ({
-        role: msg.fromMe ? "assistant" : "user",
+        role: (msg.fromMe ? "assistant" : "user") as "user" | "assistant",
         content: msg.body
       }))
       .filter(msg => msg.content && msg.content.trim() !== "");
@@ -119,15 +117,12 @@ export const sendMessageToCrewAI = async (
  * Processa mensagem com CrewAI e retorna true se foi processada com sucesso
  */
 export const handleCrewAIMessage = async (
-  msg: proto.IWebMessageInfo,
+  messageBody: string,
   ticket: Ticket,
   crewId: string,
   companyId: number
 ): Promise<boolean> => {
   try {
-    // Extrai mensagem do usuário
-    const messageBody = getBodyMessage(msg);
-
     if (!messageBody || messageBody.trim() === "") {
       console.log("[CrewAI] Mensagem vazia, ignorando CrewAI");
       return false;
