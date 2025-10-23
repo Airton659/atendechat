@@ -284,9 +284,9 @@ export const deleteKnowledge = async (
 
   try {
     await axios.delete(
-      `${crewaiUrl}/api/v2/knowledge/${fileId}`,
+      `${crewaiUrl}/api/v2/knowledge/documents/${fileId}`,
       {
-        params: { tenantId, teamId: crewId }
+        data: { tenantId }
       }
     );
 
