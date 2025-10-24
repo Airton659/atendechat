@@ -174,9 +174,11 @@ const CrewTrainingModal = ({ open, onClose, crew }) => {
 
   useEffect(() => {
     if (open && crew) {
-      // Selecionar primeiro agente ativo por padrão
+      // Selecionar primeiro agente ativo por padrão (ordem alfabética por ID)
       const agents = crew.agents || {};
-      const activeAgents = Object.entries(agents).filter(([_, config]) => config.isActive);
+      const activeAgents = Object.entries(agents)
+        .filter(([_, config]) => config.isActive)
+        .sort(([idA], [idB]) => idA.localeCompare(idB));
       if (activeAgents.length > 0) {
         setSelectedAgent(activeAgents[0][0]);
       }
@@ -341,7 +343,9 @@ const CrewTrainingModal = ({ open, onClose, crew }) => {
   };
 
   const agents = crew?.agents || {};
-  const activeAgents = Object.entries(agents).filter(([_, config]) => config.isActive);
+  const activeAgents = Object.entries(agents)
+    .filter(([_, config]) => config.isActive)
+    .sort(([idA], [idB]) => idA.localeCompare(idB));
 
   return (
     <Dialog
