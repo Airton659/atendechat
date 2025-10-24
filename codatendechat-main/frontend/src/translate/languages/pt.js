@@ -2,6 +2,9 @@ const messages = {
   pt: {
     translations: {
       selectLanguage: "Selecione um idioma",
+      common: {
+        close: "Fechar",
+      },
       signup: {
         title: "Cadastre-se",
         toasts: {
@@ -1659,6 +1662,7 @@ const messages = {
           saveCorrection: "Salvar Correção",
           correctionSaved: "Correção salva como exemplo de treinamento!",
           edited: "Editado",
+          clearChat: "Limpar conversa",
         },
         confirmationModal: {
           deleteTitle: "Excluir equipe",
