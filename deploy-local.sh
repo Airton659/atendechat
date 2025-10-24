@@ -136,13 +136,10 @@ rm -f ~/google-credentials.json
 
 # Criar/Atualizar virtualenv do CrewAI
 cd /home/airton/atendechat/codatendechat-main/crewai-service
-echo "Criando/atualizando virtualenv..."
-if [ ! -d "venv" ]; then
-    python3 -m venv venv
-    echo "✓ Virtualenv criado!"
-else
-    echo "✓ Virtualenv já existe!"
-fi
+echo "Recriando virtualenv do zero..."
+rm -rf venv
+python3 -m venv venv
+echo "✓ Virtualenv criado!"
 
 # Ativar venv e instalar/atualizar dependências
 echo "Instalando dependências..."
