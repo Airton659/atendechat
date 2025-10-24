@@ -183,14 +183,27 @@ const Crews = () => {
     setCrewModalOpen(true);
   };
 
-  const handleTrainCrew = (crew) => {
-    setSelectedCrew(crew);
-    setTrainingModalOpen(true);
+  const handleTrainCrew = async (crew) => {
+    try {
+      // Recarregar dados da crew para pegar exemplos e métricas atualizadas
+      const { data } = await api.get(`/crews/${crew.id}`);
+      setSelectedCrew(data);
+      setTrainingModalOpen(true);
+    } catch (err) {
+      toastError(err);
+    }
   };
 
-  const handleCloseTrainingModal = () => {
+  const handleCloseTrainingModal = async () => {
     setSelectedCrew(null);
     setTrainingModalOpen(false);
+    // Recarregar lista de crews para atualizar com novos exemplos/métricas
+    try {
+      const { data } = await api.get("/crews");
+      setCrews(data);
+    } catch (err) {
+      toastError(err);
+    }
   };
 
   const handleDeleteCrew = async (crewId) => {

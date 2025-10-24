@@ -168,6 +168,32 @@ const CrewTrainingModal = ({ open, onClose, crew }) => {
     }
   };
 
+  const loadAgentMetrics = (agentId) => {
+    if (!crew || !agentId) return;
+
+    const agents = crew.agents || {};
+    const agentTraining = agents[agentId]?.training || {};
+    const savedMetrics = agentTraining.metrics || {};
+
+    if (savedMetrics.totalMessages > 0) {
+      setMetrics({
+        totalMessages: savedMetrics.totalMessages || 0,
+        avgResponseTime: savedMetrics.avgResponseTime || 0,
+        correctionsCount: savedMetrics.correctionsCount || 0,
+        avgConfidence: savedMetrics.avgConfidence || 0,
+      });
+      console.log(`✅ Métricas carregadas do agente ${agentId}:`, savedMetrics);
+    } else {
+      // Reset se não tiver métricas
+      setMetrics({
+        totalMessages: 0,
+        avgResponseTime: 0,
+        correctionsCount: 0,
+        avgConfidence: 0,
+      });
+    }
+  };
+
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
@@ -180,10 +206,19 @@ const CrewTrainingModal = ({ open, onClose, crew }) => {
         .filter(([_, config]) => config.isActive)
         .sort(([idA], [idB]) => idA.localeCompare(idB));
       if (activeAgents.length > 0) {
-        setSelectedAgent(activeAgents[0][0]);
+        const firstAgentId = activeAgents[0][0];
+        setSelectedAgent(firstAgentId);
+        loadAgentMetrics(firstAgentId);
       }
     }
   }, [open, crew]);
+
+  // Carregar métricas quando trocar de agente
+  useEffect(() => {
+    if (selectedAgent) {
+      loadAgentMetrics(selectedAgent);
+    }
+  }, [selectedAgent]);
 
   const handleClose = async () => {
     // Salvar métricas antes de fechar (se houver dados)
