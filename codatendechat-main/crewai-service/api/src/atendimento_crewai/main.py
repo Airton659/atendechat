@@ -64,6 +64,7 @@ except Exception as e:
 
 # Os imports da aplicação vêm DEPOIS da inicialização
 from atendimento_crewai.main_service import router as main_router
+from atendimento_crewai.training_service import router as training_router
 
 # Criar aplicação FastAPI
 app = FastAPI(
@@ -85,6 +86,7 @@ app.add_middleware(
 
 # Incluir routers
 app.include_router(main_router, prefix="/api/v2")
+app.include_router(training_router)
 
 # Manter compatibilidade com API v1 (AutoGen)
 try:

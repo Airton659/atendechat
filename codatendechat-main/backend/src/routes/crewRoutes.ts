@@ -40,4 +40,8 @@ crewRoutes.post("/crews/:crewId/knowledge/upload", isAuth, knowledgeUpload.singl
 // Delete knowledge
 crewRoutes.delete("/crews/:crewId/knowledge/:fileId", isAuth, CrewController.deleteKnowledge);
 
+// Training endpoints - proxy direto para CrewAI service
+crewRoutes.post("/training/generate-response", isAuth, CrewController.generateTrainingResponse);
+crewRoutes.post("/training/save-correction", isAuth, CrewController.saveCorrection);
+
 export default crewRoutes;

@@ -156,17 +156,33 @@ echo "✓ Dependências instaladas!"
 echo "Parando CrewAI service..."
 echo "$SUDO_PASSWORD" | sudo -S systemctl stop crewai.service
 
-# Matar qualquer processo Python antigo na porta 8000
+# Aguardar um pouco para o systemd parar
+sleep 2
+
+# Matar qualquer processo Python antigo na porta 8000 (múltiplas tentativas)
 echo "Limpando processos antigos na porta 8000..."
-OLD_PIDS=\$(echo "$SUDO_PASSWORD" | sudo -S lsof -ti :8000 2>/dev/null || true)
-if [ ! -z "\$OLD_PIDS" ]; then
-    echo "Matando processos: \$OLD_PIDS"
-    echo "$SUDO_PASSWORD" | sudo -S kill -9 \$OLD_PIDS 2>/dev/null || true
+for i in {1..3}; do
+    OLD_PIDS=\$(echo "$SUDO_PASSWORD" | sudo -S lsof -ti :8000 2>/dev/null || true)
+    if [ ! -z "\$OLD_PIDS" ]; then
+        echo "Tentativa \$i: Matando processos: \$OLD_PIDS"
+        echo "$SUDO_PASSWORD" | sudo -S kill -9 \$OLD_PIDS 2>/dev/null || true
+        sleep 1
+    else
+        echo "✓ Nenhum processo na porta 8000!"
+        break
+    fi
+done
+
+# Verificação final
+REMAINING_PIDS=\$(echo "$SUDO_PASSWORD" | sudo -S lsof -ti :8000 2>/dev/null || true)
+if [ ! -z "\$REMAINING_PIDS" ]; then
+    echo "⚠️ AVISO: Ainda existem processos na porta 8000: \$REMAINING_PIDS"
+    echo "Tentando matar com SIGKILL forcado..."
+    echo "$SUDO_PASSWORD" | sudo -S kill -9 \$REMAINING_PIDS 2>/dev/null || true
     sleep 2
-    echo "✓ Processos antigos finalizados!"
-else
-    echo "✓ Nenhum processo antigo encontrado!"
 fi
+
+echo "✓ Porta 8000 liberada!"
 
 # Copiar arquivo de service atualizado
 echo "$SUDO_PASSWORD" | sudo -S cp /home/airton/atendechat/codatendechat-main/crewai-service/crewai-service.service /etc/systemd/system/crewai.service

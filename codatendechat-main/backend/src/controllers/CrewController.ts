@@ -327,3 +327,57 @@ export const listKnowledge = async (
     return res.status(200).json([]);
   }
 };
+
+// Gerar resposta de treinamento
+export const generateTrainingResponse = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { companyId } = req.user;
+  const tenantId = `company_${companyId}`;
+
+  try {
+    const { data } = await axios.post(
+      `${crewaiUrl}/training/generate-response`,
+      {
+        ...req.body,
+        tenantId
+      }
+    );
+
+    return res.status(200).json(data);
+  } catch (error: any) {
+    console.error("Erro ao gerar resposta de treinamento:", error);
+    throw new AppError(
+      error.response?.data?.message || "ERR_GENERATING_TRAINING_RESPONSE",
+      error.response?.status || 500
+    );
+  }
+};
+
+// Salvar correção de treinamento
+export const saveCorrection = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { companyId } = req.user;
+  const tenantId = `company_${companyId}`;
+
+  try {
+    const { data } = await axios.post(
+      `${crewaiUrl}/training/save-correction`,
+      {
+        ...req.body,
+        tenantId
+      }
+    );
+
+    return res.status(200).json(data);
+  } catch (error: any) {
+    console.error("Erro ao salvar correção:", error);
+    throw new AppError(
+      error.response?.data?.message || "ERR_SAVING_CORRECTION",
+      error.response?.status || 500
+    );
+  }
+};
