@@ -45,28 +45,36 @@ class TrainingService:
         except Exception as e:
             raise Exception(f"Erro ao obter equipe: {str(e)}")
 
-    async def get_knowledge_context(self, tenant_id: str, query: str, max_results: int = 3, document_ids: List[str] = None) -> List[Dict[str, Any]]:
+    async def get_knowledge_context(self, crew_id: str, query: str, max_results: int = 3, document_ids: List[str] = None) -> List[Dict[str, Any]]:
         """Busca contexto relevante na base de conhecimento usando busca por palavra-chave"""
         try:
             results = []
 
-            # Busca por palavra-chave nos vetores (não precisa de embeddings)
-            vectors_ref = self.db.collection('vectors').where('tenantId', '==', tenant_id)
+            # Busca por palavra-chave nos vetores usando crewId (não tenantId!)
+            vectors_ref = self.db.collection('vectors').where('crewId', '==', crew_id)
 
             query_lower = query.lower()
             query_words = set(query_lower.split())
 
-            print(f"🔍 Buscando por palavra-chave: '{query}' (tenant: {tenant_id})")
+            print(f"🔍 Buscando por palavra-chave: '{query}' (crew: {crew_id})")
             if document_ids:
-                print(f"   Filtrando por {len(document_ids)} documento(s)")
+                print(f"   Filtrando por {len(document_ids)} documento(s) específico(s): {document_ids}")
 
-            for doc in vectors_ref.stream():
+            all_chunks = list(vectors_ref.stream())
+            total_chunks = len(all_chunks)
+            print(f"   📊 Total de chunks encontrados na crew: {total_chunks}")
+
+            chunks_after_filter = []
+            chunks_with_score = []
+
+            for doc in all_chunks:
                 data = doc.to_dict()
 
                 # Filtrar por documentos específicos se fornecido
                 if document_ids and data.get('documentId') not in document_ids:
                     continue
 
+                chunks_after_filter.append(data)
                 content = data.get('content', '').lower()
 
                 # Calcular score baseado em palavras encontradas
@@ -76,6 +84,7 @@ class TrainingService:
                         score += content.count(word)
 
                 if score > 0:
+                    chunks_with_score.append(data)
                     results.append({
                         'content': data.get('content'),
                         'metadata': data.get('metadata', {}),
@@ -83,6 +92,9 @@ class TrainingService:
                         'documentId': data.get('documentId'),
                         'chunkIndex': data.get('chunkIndex', 0)
                     })
+
+            print(f"   📊 Chunks após filtrar por documentId: {len(chunks_after_filter)}")
+            print(f"   📊 Chunks com score > 0: {len(chunks_with_score)}")
 
             # Ordenar por score
             results.sort(key=lambda x: x['similarity'], reverse=True)
@@ -124,7 +136,7 @@ class TrainingService:
 
             # Buscar contexto na base de conhecimento (filtrado por documentos do agente)
             knowledge_context = await self.get_knowledge_context(
-                request.tenantId,
+                request.teamId,  # Usar teamId/crewId, NÃO tenantId!
                 request.message,
                 document_ids=agent_document_ids if agent_document_ids else None
             )
