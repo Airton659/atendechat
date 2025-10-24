@@ -28,9 +28,9 @@ class TrainingService:
             # Tentar primeiro em 'crews' (nova estrutura)
             team_doc = self.db.collection('crews').document(team_id).get()
 
-            # Se não encontrar, tentar em 'crew_blueprints' (estrutura antiga)
+            # Se não encontrar, tentar em 'crews' (estrutura antiga)
             if not team_doc.exists:
-                team_doc = self.db.collection('crew_blueprints').document(team_id).get()
+                team_doc = self.db.collection('crews').document(team_id).get()
 
             if not team_doc.exists:
                 raise Exception(f"Equipe {team_id} não encontrada")
@@ -786,7 +786,7 @@ async def save_correction(
         db = firestore.client()
 
         # Buscar equipe
-        team_ref = db.collection('crew_blueprints').document(teamId)
+        team_ref = db.collection('crews').document(teamId)
         team_doc = team_ref.get()
 
         if not team_doc.exists:
@@ -881,7 +881,7 @@ async def save_metrics(
         db = firestore.client()
 
         # Buscar equipe
-        team_ref = db.collection('crew_blueprints').document(teamId)
+        team_ref = db.collection('crews').document(teamId)
         team_doc = team_ref.get()
 
         if not team_doc.exists:
