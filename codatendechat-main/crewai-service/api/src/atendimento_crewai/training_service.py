@@ -360,10 +360,11 @@ class TrainingService:
 
             examples_text = ""
             if all_examples:
-                examples_text = "\n" + "="*50 + "\n"
-                examples_text += "EXEMPLOS DE INTERAÇÕES (USE COMO REFERÊNCIA):\n"
-                examples_text += "="*50 + "\n"
-                examples_text += "\nEstes são exemplos de boas respostas que você deve seguir:\n\n"
+                examples_text = "\n" + "="*70 + "\n"
+                examples_text += "🎯 EXEMPLOS DE RESPOSTAS CORRETAS - SIGA EXATAMENTE ESTE PADRÃO\n"
+                examples_text += "="*70 + "\n"
+                examples_text += "\n⚠️  ATENÇÃO: Você DEVE replicar o estilo, formato e abordagem destes exemplos.\n"
+                examples_text += "Estas são as ÚNICAS respostas corretas e aprovadas para situações similares.\n\n"
 
                 # Pegar os 5 exemplos mais recentes
                 recent_examples = all_examples[-5:] if len(all_examples) > 5 else all_examples
@@ -374,14 +375,12 @@ class TrainingService:
                     bad = example.get('bad', '')
 
                     if scenario and good:
-                        examples_text += f"--- Exemplo {i} ---\n"
-                        examples_text += f"Situação: {scenario}\n"
-                        examples_text += f"\n✅ RESPOSTA CORRETA que você DEVE seguir:\n{good}\n"
-
-                        # NÃO mostrar a resposta ruim - confunde o modelo
-                        # if bad:
-                        #     examples_text += f"\n❌ Evite: {bad}\n"
-                        examples_text += "\n"
+                        examples_text += f"━━━ EXEMPLO {i} ━━━\n"
+                        examples_text += f"📋 SITUAÇÃO:\n{scenario}\n\n"
+                        examples_text += f"✅ RESPOSTA OBRIGATÓRIA (copie este padrão):\n"
+                        examples_text += f"「{good}」\n"
+                        examples_text += f"\n⚠️  Para situações similares, você DEVE responder seguindo EXATAMENTE este modelo acima.\n"
+                        examples_text += "─"*70 + "\n\n"
 
                 print(f"📚 {len(recent_examples)} exemplo(s) de treinamento carregado(s) ({len(agent_examples)} específicos do agente, {len(team_examples)} gerais)")
 
@@ -405,17 +404,29 @@ class TrainingService:
             {tools_context}
             {conversation_context}
 
-            MENSAGEM DO USUÁRIO: {request.message}
+            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            📩 MENSAGEM DO USUÁRIO:
+            {request.message}
+            ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-            INSTRUÇÕES IMPORTANTES:
-            1. Responda como o agente especificado acima
-            2. Use o contexto da base de conhecimento quando relevante
-            3. Mantenha a personalidade e tom definidos
-            4. SIGA RIGOROSAMENTE as regras de guardrails acima
-            5. Se existirem exemplos acima, use-os como referência para o formato e estilo da resposta
-            6. Se não souber algo, seja honesto mas útil
-            7. Esta é uma sessão de treinamento - seja claro e didático
-            8. Não mencione que está em treinamento para o usuário
+            🎯 INSTRUÇÕES CRÍTICAS - LEIA COM ATENÇÃO:
+
+            ⚠️  PRIORIDADE MÁXIMA: Se há EXEMPLOS DE RESPOSTAS CORRETAS acima, você DEVE:
+               • Replicar EXATAMENTE o estilo, tom e formato mostrado nos exemplos
+               • Usar a mesma estrutura de resposta dos exemplos
+               • Manter o mesmo nível de detalhamento dos exemplos
+               • Os exemplos são OBRIGATÓRIOS - não são opcionais ou sugestões
+
+            📋 REGRAS OBRIGATÓRIAS:
+            1. ✅ SEMPRE siga o padrão dos exemplos quando fornecidos
+            2. ✅ Use o contexto da base de conhecimento quando relevante
+            3. ✅ Mantenha rigorosamente a personalidade e tom definidos
+            4. ✅ SIGA as regras de guardrails sem exceção
+            5. ✅ Seja honesto se não souber algo, mas sempre útil
+            6. ✅ Não mencione que está em treinamento
+
+            ⚠️  LEMBRE-SE: Esta é uma sessão de treinamento. A qualidade da sua resposta será avaliada.
+            Se você não seguir os exemplos fornecidos, sua resposta será marcada como INCORRETA.
 
             RESPOSTA:
             """
