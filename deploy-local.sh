@@ -154,56 +154,42 @@ echo "============================================"
 echo "INICIANDO LIMPEZA BRUTAL DA PORTA 8000..."
 echo "============================================"
 
-# PASSO 1: DESABILITAR restart automático do systemd (CRÍTICO!)
-echo "Desabilitando restart automático do serviço..."
-echo "$SUDO_PASSWORD" | sudo -S systemctl stop crewai.service || true
-echo "$SUDO_PASSWORD" | sudo -S systemctl disable crewai.service || true
-sleep 3
+# MATANÇA BRUTAL - EXECUTA DIRETO NA VM COM UM ÚNICO COMANDO
+echo "Parando serviço e matando TODOS os processos na porta 8000..."
+echo "$SUDO_PASSWORD" | sudo -S bash -c '
+    systemctl stop crewai.service
+    systemctl disable crewai.service
+    sleep 2
+    fuser -k -9 8000/tcp 2>/dev/null || true
+    sleep 1
+    pkill -9 uvicorn 2>/dev/null || true
+    pkill -9 -f "python.*crewai" 2>/dev/null || true
+    sleep 1
+    lsof -ti :8000 | xargs -r kill -9 2>/dev/null || true
+    sleep 2
+    fuser -k -9 8000/tcp 2>/dev/null || true
+    sleep 2
+' || true
 
-# PASSO 2: Matar qualquer processo restante COM FORÇA MÁXIMA
-echo "Matando TODOS os processos na porta 8000..."
-echo "$SUDO_PASSWORD" | sudo -S fuser -k -9 8000/tcp 2>/dev/null || true
-sleep 2
-
-# MÉTODO 1: Matar por porta usando fuser (MAIS EFETIVO)
-echo "Método 1: fuser kill..."
-echo "$SUDO_PASSWORD" | sudo -S fuser -k 8000/tcp 2>/dev/null || true
-sleep 1
-
-# MÉTODO 2: Matar por lsof (FORÇADO - sem loop)
-echo "Método 2: lsof kill..."
-echo "$SUDO_PASSWORD" | sudo -S bash -c 'lsof -ti :8000 | xargs -r kill -9' 2>/dev/null || true
-sleep 2
-
-# MÉTODO 3: Matar TODOS os processos uvicorn/python rodando CrewAI
-echo "Método 3: pkill uvicorn..."
-echo "$SUDO_PASSWORD" | sudo -S pkill -9 -f "uvicorn.*api.main:app" 2>/dev/null || true
-sleep 1
-
-echo "Método 4: pkill python crewai..."
-echo "$SUDO_PASSWORD" | sudo -S pkill -9 -f "python.*crewai" 2>/dev/null || true
-sleep 1
-
-# MÉTODO 5: Verificação final BRUTAL
-echo "Verificação final - últimas tentativas..."
-echo "$SUDO_PASSWORD" | sudo -S bash -c 'lsof -ti :8000 | xargs -r kill -9' 2>/dev/null || true
-echo "$SUDO_PASSWORD" | sudo -S fuser -k -9 8000/tcp 2>/dev/null || true
-echo "$SUDO_PASSWORD" | sudo -S pkill -9 uvicorn 2>/dev/null || true
-sleep 3
-
-# Verificação final - se ainda tiver processo, PARAR O DEPLOY
+# Verificação final
 FINAL_CHECK=\$(echo "$SUDO_PASSWORD" | sudo -S lsof -ti :8000 2>/dev/null || true)
 if [ ! -z "\$FINAL_CHECK" ]; then
     echo ""
-    echo "❌ ERRO CRÍTICO: AINDA EXISTE PROCESSO NA PORTA 8000!"
-    echo "PIDs restantes: \$FINAL_CHECK"
-    echo ""
-    echo "Execute manualmente na VM:"
-    echo "  sudo systemctl stop crewai.service"
-    echo "  sudo fuser -k -9 8000/tcp"
-    echo "  sudo pkill -9 uvicorn"
-    echo "  sudo systemctl start crewai.service"
-    exit 1
+    echo "❌ ERRO: Processos ainda na porta 8000: \$FINAL_CHECK"
+    echo "Tentando matar novamente com força total..."
+    echo "$SUDO_PASSWORD" | sudo -S kill -9 \$FINAL_CHECK 2>/dev/null || true
+    echo "$SUDO_PASSWORD" | sudo -S fuser -k -9 8000/tcp 2>/dev/null || true
+    sleep 3
+
+    # Verifica DE NOVO
+    FINAL_CHECK2=\$(echo "$SUDO_PASSWORD" | sudo -S lsof -ti :8000 2>/dev/null || true)
+    if [ ! -z "\$FINAL_CHECK2" ]; then
+        echo "❌ FALHOU! Processos persistentes: \$FINAL_CHECK2"
+        echo "Abortando deploy. Execute manualmente:"
+        echo "  ssh airton@46.62.147.212"
+        echo "  sudo kill -9 \$FINAL_CHECK2"
+        exit 1
+    fi
 fi
 
 echo "============================================"
