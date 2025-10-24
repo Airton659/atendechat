@@ -414,15 +414,46 @@ class TrainingService:
             print(training_prompt)
             print("="*80 + "\n")
 
-            # Gerar resposta usando Vertex AI
+            # Gerar resposta usando Vertex AI com retry para 429
             from vertexai.generative_models import GenerativeModel
             import os
 
             model_name = os.getenv("VERTEX_MODEL", "gemini-2.5-flash-lite")
             model = GenerativeModel(model_name)
 
-            response = model.generate_content(training_prompt)
-            ai_response = response.text.strip()
+            # Tentar até 3 vezes com backoff exponencial em caso de erro 429
+            max_retries = 3
+            retry_delay = 2  # segundos
+            last_error = None
+
+            for attempt in range(max_retries):
+                try:
+                    response = model.generate_content(training_prompt)
+                    ai_response = response.text.strip()
+                    break  # Sucesso, sair do loop
+                except Exception as e:
+                    error_msg = str(e)
+                    last_error = e
+
+                    # Se for erro 429 (rate limit), tentar novamente
+                    if "429" in error_msg or "Resource exhausted" in error_msg or "quota" in error_msg.lower():
+                        if attempt < max_retries - 1:  # Não é a última tentativa
+                            wait_time = retry_delay * (2 ** attempt)  # Backoff exponencial: 2s, 4s, 8s
+                            print(f"⚠️ Erro 429 (Rate Limit) - Aguardando {wait_time}s antes de tentar novamente (tentativa {attempt + 1}/{max_retries})")
+                            time.sleep(wait_time)
+                            continue
+                        else:
+                            print(f"❌ Erro 429 persistiu após {max_retries} tentativas")
+                            raise HTTPException(
+                                status_code=429,
+                                detail="Limite de requisições atingido. Por favor, aguarde alguns segundos e tente novamente."
+                            )
+                    else:
+                        # Outro tipo de erro, não tentar novamente
+                        raise e
+            else:
+                # Se chegou aqui, todas as tentativas falharam
+                raise last_error if last_error else Exception("Falha ao gerar resposta")
 
             # Calcular tempo de resposta
             response_time = time.time() - start_time
