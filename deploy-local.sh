@@ -154,40 +154,62 @@ echo "============================================"
 echo "INICIANDO LIMPEZA BRUTAL DA PORTA 8000..."
 echo "============================================"
 
-# MATANÇA BRUTAL - EXECUTA DIRETO NA VM COM UM ÚNICO COMANDO
-echo "Parando serviço e matando TODOS os processos na porta 8000..."
+# RODADA 1: Para o serviço e mata processos
+echo "Rodada 1: Parando serviço e matando processos..."
 echo "$SUDO_PASSWORD" | sudo -S bash -c '
-    systemctl stop crewai.service
-    systemctl disable crewai.service
+    systemctl stop crewai.service 2>/dev/null || true
+    systemctl disable crewai.service 2>/dev/null || true
+    systemctl reset-failed crewai.service 2>/dev/null || true
     sleep 2
     fuser -k -9 8000/tcp 2>/dev/null || true
-    sleep 1
     pkill -9 uvicorn 2>/dev/null || true
     pkill -9 -f "python.*crewai" 2>/dev/null || true
-    sleep 1
+    pkill -9 -f "main:app" 2>/dev/null || true
     lsof -ti :8000 | xargs -r kill -9 2>/dev/null || true
-    sleep 2
-    fuser -k -9 8000/tcp 2>/dev/null || true
-    sleep 2
+    sleep 3
 ' || true
 
-# Verificação final
+# RODADA 2: Verificação e limpeza adicional
+echo "Rodada 2: Verificação e limpeza adicional..."
+REMAINING=\$(echo "$SUDO_PASSWORD" | sudo -S lsof -ti :8000 2>/dev/null || true)
+if [ ! -z "\$REMAINING" ]; then
+    echo "⚠️  Ainda há processos na porta 8000: \$REMAINING"
+    echo "Matando com força total..."
+    echo "$SUDO_PASSWORD" | sudo -S bash -c '
+        kill -9 '\$REMAINING' 2>/dev/null || true
+        fuser -k -9 8000/tcp 2>/dev/null || true
+        sleep 2
+    ' || true
+fi
+
+# RODADA 3: Verificação final e mata qualquer coisa restante
+echo "Rodada 3: Verificação final..."
+sleep 2
 FINAL_CHECK=\$(echo "$SUDO_PASSWORD" | sudo -S lsof -ti :8000 2>/dev/null || true)
 if [ ! -z "\$FINAL_CHECK" ]; then
-    echo ""
-    echo "❌ ERRO: Processos ainda na porta 8000: \$FINAL_CHECK"
-    echo "Tentando matar novamente com força total..."
-    echo "$SUDO_PASSWORD" | sudo -S kill -9 \$FINAL_CHECK 2>/dev/null || true
-    echo "$SUDO_PASSWORD" | sudo -S fuser -k -9 8000/tcp 2>/dev/null || true
-    sleep 3
+    echo "⚠️  PROCESSOS TEIMOSOS DETECTADOS: \$FINAL_CHECK"
+    echo "Aplicando força nuclear..."
+    echo "$SUDO_PASSWORD" | sudo -S bash -c '
+        kill -9 '\$FINAL_CHECK' 2>/dev/null || true
+        fuser -k -9 8000/tcp 2>/dev/null || true
+        pkill -9 -f ":8000" 2>/dev/null || true
+        sleep 3
+        fuser -k -9 8000/tcp 2>/dev/null || true
+    ' || true
 
-    # Verifica DE NOVO
-    FINAL_CHECK2=\$(echo "$SUDO_PASSWORD" | sudo -S lsof -ti :8000 2>/dev/null || true)
-    if [ ! -z "\$FINAL_CHECK2" ]; then
-        echo "❌ FALHOU! Processos persistentes: \$FINAL_CHECK2"
-        echo "Abortando deploy. Execute manualmente:"
-        echo "  ssh airton@46.62.147.212"
-        echo "  sudo kill -9 \$FINAL_CHECK2"
+    # Verificação DEFINITIVA
+    sleep 2
+    ULTRA_FINAL=\$(echo "$SUDO_PASSWORD" | sudo -S lsof -ti :8000 2>/dev/null || true)
+    if [ ! -z "\$ULTRA_FINAL" ]; then
+        echo ""
+        echo "❌❌❌ FALHA CRÍTICA ❌❌❌"
+        echo "Processos ainda ativos na porta 8000: \$ULTRA_FINAL"
+        echo "Abortando deploy."
+        echo ""
+        echo "Execute manualmente na VM:"
+        echo "  sudo systemctl stop crewai.service"
+        echo "  sudo fuser -k -9 8000/tcp"
+        echo "  sudo kill -9 \$ULTRA_FINAL"
         exit 1
     fi
 fi
