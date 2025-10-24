@@ -71,7 +71,8 @@ export const sendMessageToCrewAI = async (
       tenantId,
       crewId: crewId,
       message,
-      conversationHistory
+      conversationHistory,
+      remoteJid: ticket.contact?.number || ticket.contact?.id || null
     };
 
     console.log(`[CrewAI] Payload:`, JSON.stringify(payload, null, 2));

@@ -471,13 +471,18 @@ const getSenderMessage = (
 const getContactMessage = async (msg: proto.IWebMessageInfo, wbot: Session) => {
   const isGroup = msg.key.remoteJid.includes("g.us");
   const rawNumber = msg.key.remoteJid.replace(/\D/g, "");
+
+  // Se a mensagem tem senderPn (número real do remetente), use-o ao invés do remoteJid
+  // Isso corrige o bug onde @lid (ID local) era usado ao invés do número real
+  const actualJid = (msg.key as any).senderPn || msg.key.remoteJid;
+
   return isGroup
     ? {
         id: getSenderMessage(msg, wbot),
         name: msg.pushName
       }
     : {
-        id: msg.key.remoteJid,
+        id: actualJid,
         name: msg.key.fromMe ? rawNumber : msg.pushName
       };
 };
