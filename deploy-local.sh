@@ -170,18 +170,10 @@ echo "Método 1: fuser kill..."
 echo "$SUDO_PASSWORD" | sudo -S fuser -k 8000/tcp 2>/dev/null || true
 sleep 1
 
-# MÉTODO 2: Matar por lsof
+# MÉTODO 2: Matar por lsof (FORÇADO - sem loop)
 echo "Método 2: lsof kill..."
-for i in {1..5}; do
-    OLD_PIDS=\$(echo "$SUDO_PASSWORD" | sudo -S lsof -ti :8000 2>/dev/null || true)
-    if [ ! -z "\$OLD_PIDS" ]; then
-        echo "  Tentativa \$i: Matando PIDs: \$OLD_PIDS"
-        echo "$SUDO_PASSWORD" | sudo -S kill -9 \$OLD_PIDS 2>/dev/null || true
-        sleep 1
-    else
-        break
-    fi
-done
+echo "$SUDO_PASSWORD" | sudo -S bash -c 'lsof -ti :8000 | xargs -r kill -9' 2>/dev/null || true
+sleep 2
 
 # MÉTODO 3: Matar TODOS os processos uvicorn/python rodando CrewAI
 echo "Método 3: pkill uvicorn..."
@@ -192,29 +184,25 @@ echo "Método 4: pkill python crewai..."
 echo "$SUDO_PASSWORD" | sudo -S pkill -9 -f "python.*crewai" 2>/dev/null || true
 sleep 1
 
-# MÉTODO 5: Verificação final AGRESSIVA
-echo "Verificação final..."
-for i in {1..3}; do
-    REMAINING=\$(echo "$SUDO_PASSWORD" | sudo -S lsof -ti :8000 2>/dev/null || true)
-    if [ ! -z "\$REMAINING" ]; then
-        echo "  ⚠️ Ainda tem processo vivo! Matando com SIGKILL: \$REMAINING"
-        echo "$SUDO_PASSWORD" | sudo -S kill -9 \$REMAINING 2>/dev/null || true
-        echo "$SUDO_PASSWORD" | sudo -S fuser -k -9 8000/tcp 2>/dev/null || true
-        sleep 2
-    else
-        echo "✓ Porta 8000 COMPLETAMENTE LIMPA!"
-        break
-    fi
-done
+# MÉTODO 5: Verificação final BRUTAL
+echo "Verificação final - últimas tentativas..."
+echo "$SUDO_PASSWORD" | sudo -S bash -c 'lsof -ti :8000 | xargs -r kill -9' 2>/dev/null || true
+echo "$SUDO_PASSWORD" | sudo -S fuser -k -9 8000/tcp 2>/dev/null || true
+echo "$SUDO_PASSWORD" | sudo -S pkill -9 uvicorn 2>/dev/null || true
+sleep 3
 
-# Verificação final mesmo
+# Verificação final - se ainda tiver processo, PARAR O DEPLOY
 FINAL_CHECK=\$(echo "$SUDO_PASSWORD" | sudo -S lsof -ti :8000 2>/dev/null || true)
 if [ ! -z "\$FINAL_CHECK" ]; then
     echo ""
     echo "❌ ERRO CRÍTICO: AINDA EXISTE PROCESSO NA PORTA 8000!"
     echo "PIDs restantes: \$FINAL_CHECK"
-    echo "Por favor, mate manualmente:"
-    echo "  sudo kill -9 \$FINAL_CHECK"
+    echo ""
+    echo "Execute manualmente na VM:"
+    echo "  sudo systemctl stop crewai.service"
+    echo "  sudo fuser -k -9 8000/tcp"
+    echo "  sudo pkill -9 uvicorn"
+    echo "  sudo systemctl start crewai.service"
     exit 1
 fi
 
