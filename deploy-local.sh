@@ -154,9 +154,15 @@ echo "============================================"
 echo "INICIANDO LIMPEZA BRUTAL DA PORTA 8000..."
 echo "============================================"
 
-# Parar o service primeiro
-echo "Parando CrewAI service..."
+# PASSO 1: DESABILITAR restart automático do systemd (CRÍTICO!)
+echo "Desabilitando restart automático do serviço..."
 echo "$SUDO_PASSWORD" | sudo -S systemctl stop crewai.service || true
+echo "$SUDO_PASSWORD" | sudo -S systemctl disable crewai.service || true
+sleep 3
+
+# PASSO 2: Matar qualquer processo restante COM FORÇA MÁXIMA
+echo "Matando TODOS os processos na porta 8000..."
+echo "$SUDO_PASSWORD" | sudo -S fuser -k -9 8000/tcp 2>/dev/null || true
 sleep 2
 
 # MÉTODO 1: Matar por porta usando fuser (MAIS EFETIVO)
@@ -222,8 +228,9 @@ echo "$SUDO_PASSWORD" | sudo -S cp /home/airton/atendechat/codatendechat-main/cr
 # Reload systemd daemon
 echo "$SUDO_PASSWORD" | sudo -S systemctl daemon-reload
 
-# Restart CrewAI service
-echo "Iniciando CrewAI service..."
+# REABILITAR e iniciar o serviço
+echo "Habilitando e iniciando CrewAI service..."
+echo "$SUDO_PASSWORD" | sudo -S systemctl enable crewai.service
 echo "$SUDO_PASSWORD" | sudo -S systemctl start crewai.service
 
 # Aguardar 3 segundos para o service iniciar
