@@ -95,22 +95,8 @@ cd ../..
 ###############################################################################
 echo -e "\n${YELLOW}[6/7] Rebuild backend e restart containers...${NC}"
 
-# Backend rebuild completo - LIMPAR TUDO ANTES
-ssh $VM_SSH bash << 'ENDSSH'
-cd /home/airton/atendechat/codatendechat-main
-echo "Parando backend..."
-docker-compose stop backend
-echo "Removendo container e imagem antiga..."
-docker-compose rm -f backend
-docker rmi -f codatendechat-main-backend 2>/dev/null || true
-echo "Limpando cache do Docker..."
-docker builder prune -f
-echo "Rebuild backend SEM CACHE..."
-docker-compose build --no-cache --pull backend
-echo "Subindo backend..."
-docker-compose up -d backend
-echo "✓ Backend reconstruído do zero!"
-ENDSSH
+# Backend rebuild completo
+ssh $VM_SSH "cd /home/airton/atendechat/codatendechat-main && docker-compose build --no-cache backend && docker-compose up -d --force-recreate backend"
 
 # Frontend rebuild completo
 ssh $VM_SSH bash << 'ENDSSH'
