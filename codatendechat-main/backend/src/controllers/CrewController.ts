@@ -338,7 +338,7 @@ export const generateTrainingResponse = async (
 
   try {
     const { data } = await axios.post(
-      `${crewaiUrl}/training/generate-response`,
+      `${crewaiUrl}/api/v2/training/generate-response`,
       {
         ...req.body,
         tenantId
@@ -365,7 +365,7 @@ export const saveCorrection = async (
 
   try {
     const { data } = await axios.post(
-      `${crewaiUrl}/training/save-correction`,
+      `${crewaiUrl}/api/v2/training/save-correction`,
       {
         ...req.body,
         tenantId
