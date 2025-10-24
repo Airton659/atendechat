@@ -362,9 +362,14 @@ const CrewTrainingModal = ({ open, onClose, crew }) => {
             <SchoolIcon />
             <span>{i18n.t("crews.training.title")} - {crew?.name}</span>
           </Box>
-          <IconButton size="small" onClick={handleClearChat}>
-            <ClearIcon />
-          </IconButton>
+          <Box>
+            <IconButton size="small" onClick={handleClearChat} title={i18n.t("crews.training.clearChat")}>
+              <ClearIcon />
+            </IconButton>
+            <IconButton size="small" onClick={handleClose} title={i18n.t("common.close")}>
+              <CancelIcon />
+            </IconButton>
+          </Box>
         </Box>
       </DialogTitle>
 
