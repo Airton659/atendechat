@@ -60,11 +60,11 @@ echo -e "\n${YELLOW}[4/6] Fazendo git pull na VM...${NC}"
 
 ssh $VM_SSH << 'ENDSSH'
 cd /home/airton/atendechat
-echo "Salvando alterações locais (stash)..."
-git stash
-echo "Fazendo git pull..."
-git pull origin main
-echo "✓ Git pull concluído!"
+echo "Descartando alterações locais e pegando código mais recente..."
+git fetch origin main
+git reset --hard origin/main
+git clean -fd
+echo "✓ Código atualizado com sucesso!"
 ENDSSH
 
 ###############################################################################
