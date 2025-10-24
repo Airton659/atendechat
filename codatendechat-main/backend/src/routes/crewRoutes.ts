@@ -43,5 +43,6 @@ crewRoutes.delete("/crews/:crewId/knowledge/:fileId", isAuth, CrewController.del
 // Training endpoints - proxy direto para CrewAI service
 crewRoutes.post("/training/generate-response", isAuth, CrewController.generateTrainingResponse);
 crewRoutes.post("/training/save-correction", isAuth, CrewController.saveCorrection);
+crewRoutes.post("/training/save-metrics", isAuth, CrewController.saveTrainingMetrics);
 
 export default crewRoutes;

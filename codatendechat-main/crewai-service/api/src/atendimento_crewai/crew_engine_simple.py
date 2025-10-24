@@ -689,12 +689,21 @@ class SimpleCrewEngine:
                 if rule and rule.strip():
                     context_parts.append(f"✗ {rule}")
 
-        # Exemplos de Interação (Few-shot Learning) - ainda em nível de equipe
-        training = crew_data.get('training', {})
-        examples = training.get('examples', []) if training else []
-        if examples:
+        # Exemplos de Interação (Few-shot Learning)
+        # Combinar exemplos do agente específico + exemplos gerais da equipe
+        agent_examples = agent_training.get('examples', [])
+        team_training = crew_data.get('training', {})
+        team_examples = team_training.get('examples', []) if team_training else []
+
+        # Prioridade: exemplos do agente primeiro, depois exemplos gerais
+        all_examples = agent_examples + team_examples
+
+        if all_examples:
             context_parts.append("\nEXEMPLOS DE COMO RESPONDER:")
-            for i, example in enumerate(examples[:3], 1):  # Limitar a 3 exemplos para não poluir
+            # Pegar os 5 mais recentes (ou todos se forem menos que 5)
+            recent_examples = all_examples[-5:] if len(all_examples) > 5 else all_examples
+
+            for i, example in enumerate(recent_examples, 1):
                 scenario = example.get('scenario', '').strip()
                 good = example.get('good', '').strip()
                 bad = example.get('bad', '').strip()
@@ -704,6 +713,8 @@ class SimpleCrewEngine:
                     context_parts.append(f"✓ Resposta CORRETA: {good}")
                     if bad:
                         context_parts.append(f"✗ Resposta INCORRETA (evite): {bad}")
+
+            print(f"📚 {len(recent_examples)} exemplo(s) de treinamento carregado(s) ({len(agent_examples)} do agente, {len(team_examples)} da equipe)")
 
         # Adicionar contexto da base de conhecimento se disponível
         if knowledge_context:
@@ -755,7 +766,7 @@ class SimpleCrewEngine:
         context_parts.append("✓ Use o histórico da conversa para dar continuidade")
         context_parts.append("✓ NUNCA invente detalhes sobre fotos/imagens que você enviou - apenas confirme que foram enviadas")
 
-        if examples:
+        if all_examples:
             context_parts.append("✓ Use os exemplos como referência de qualidade nas respostas")
 
         final_context = "\n".join(context_parts)

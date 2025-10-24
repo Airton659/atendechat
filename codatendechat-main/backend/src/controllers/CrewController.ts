@@ -381,3 +381,30 @@ export const saveCorrection = async (
     );
   }
 };
+
+// Salvar métricas de treinamento
+export const saveTrainingMetrics = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { companyId } = req.user;
+  const tenantId = `company_${companyId}`;
+
+  try {
+    const { data } = await axios.post(
+      `${crewaiUrl}/api/v2/training/save-metrics`,
+      {
+        ...req.body,
+        tenantId
+      }
+    );
+
+    return res.status(200).json(data);
+  } catch (error: any) {
+    console.error("Erro ao salvar métricas:", error);
+    throw new AppError(
+      error.response?.data?.message || "ERR_SAVING_METRICS",
+      error.response?.status || 500
+    );
+  }
+};

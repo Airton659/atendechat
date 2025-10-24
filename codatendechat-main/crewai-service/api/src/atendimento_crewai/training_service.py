@@ -865,3 +865,58 @@ async def save_correction(
     except Exception as e:
         print(f"Erro ao salvar correção: {e}")
         raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+
+@router.post("/save-metrics")
+async def save_metrics(
+    teamId: str = Body(...),
+    tenantId: str = Body(...),
+    agentId: str = Body(...),
+    metrics: Dict[str, Any] = Body(...)
+):
+    """
+    Salva métricas de treinamento do agente no Firestore
+    """
+    try:
+        from firebase_admin import firestore
+        db = firestore.client()
+
+        # Buscar equipe
+        team_ref = db.collection('crew_blueprints').document(teamId)
+        team_doc = team_ref.get()
+
+        if not team_doc.exists:
+            raise HTTPException(status_code=404, detail="Equipe não encontrada")
+
+        team_data = team_doc.to_dict()
+
+        # Verificar se pertence ao tenant
+        if team_data.get('tenantId') != tenantId:
+            raise HTTPException(status_code=403, detail="Acesso negado")
+
+        # Salvar métricas no agente
+        metrics_data = {
+            'totalMessages': metrics.get('totalMessages', 0),
+            'avgResponseTime': metrics.get('avgResponseTime', 0),
+            'correctionsCount': metrics.get('correctionsCount', 0),
+            'avgConfidence': metrics.get('avgConfidence', 0),
+            'lastUpdated': datetime.now().isoformat()
+        }
+
+        # Atualizar no Firestore
+        team_ref.update({
+            f'agents.{agentId}.training.metrics': metrics_data
+        })
+
+        print(f"✅ Métricas salvas para o agente '{agentId}' da equipe {teamId}")
+
+        return {
+            "success": True,
+            "message": "Métricas salvas com sucesso",
+            "metrics": metrics_data
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Erro ao salvar métricas: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")

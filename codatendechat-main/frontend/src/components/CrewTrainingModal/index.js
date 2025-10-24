@@ -185,7 +185,27 @@ const CrewTrainingModal = ({ open, onClose, crew }) => {
     }
   }, [open, crew]);
 
-  const handleClose = () => {
+  const handleClose = async () => {
+    // Salvar métricas antes de fechar (se houver dados)
+    if (metrics.totalMessages > 0 && selectedAgent) {
+      try {
+        await api.post("/training/save-metrics", {
+          teamId: crew.id,
+          agentId: selectedAgent,
+          metrics: {
+            totalMessages: metrics.totalMessages,
+            avgResponseTime: metrics.avgResponseTime,
+            correctionsCount: metrics.correctionsCount,
+            avgConfidence: metrics.avgConfidence,
+          },
+        });
+        console.log("✅ Métricas salvas com sucesso");
+      } catch (err) {
+        console.error("Erro ao salvar métricas:", err);
+        // Não bloquear o fechamento se der erro
+      }
+    }
+
     setMessages([]);
     setInput("");
     setEditingMessageIndex(null);
