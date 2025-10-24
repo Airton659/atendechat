@@ -200,7 +200,7 @@ const Crews = () => {
     // Recarregar lista de crews para atualizar com novos exemplos/métricas
     try {
       const { data } = await api.get("/crews");
-      setCrews(data);
+      dispatch({ type: "LOAD_CREWS", payload: data });
     } catch (err) {
       toastError(err);
     }
