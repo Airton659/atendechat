@@ -376,11 +376,12 @@ class TrainingService:
                     if scenario and good:
                         examples_text += f"--- Exemplo {i} ---\n"
                         examples_text += f"Situação: {scenario}\n"
+                        examples_text += f"\n✅ RESPOSTA CORRETA que você DEVE seguir:\n{good}\n"
 
-                        if bad:
-                            examples_text += f"\n❌ RESPOSTA INADEQUADA (NÃO fazer assim):\n{bad}\n"
-
-                        examples_text += f"\n✅ RESPOSTA IDEAL (fazer assim):\n{good}\n\n"
+                        # NÃO mostrar a resposta ruim - confunde o modelo
+                        # if bad:
+                        #     examples_text += f"\n❌ Evite: {bad}\n"
+                        examples_text += "\n"
 
                 print(f"📚 {len(recent_examples)} exemplo(s) de treinamento carregado(s) ({len(agent_examples)} específicos do agente, {len(team_examples)} gerais)")
 
