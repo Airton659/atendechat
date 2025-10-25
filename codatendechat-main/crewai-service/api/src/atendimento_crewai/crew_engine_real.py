@@ -23,7 +23,10 @@ from .tools import (
     _coletar_info_agendamento_impl,
     _buscar_cliente_planilha_impl,
     _enviar_imagem_impl,
-    _schedule_appointment_impl
+    _schedule_appointment_impl,
+    _check_schedules_impl,
+    _cancel_schedule_impl,
+    _update_schedule_impl
 )
 
 
@@ -255,6 +258,130 @@ class RealCrewEngine:
 
             tools.append(schedule_appointment)
             print("   ✅ schedule_appointment adicionada")
+
+        # 2.1. CHECK_SCHEDULES (Consultar agendamentos)
+        if 'check_schedules' in agent_tools or 'schedule_appointment' in agent_tools:
+            _tenant_id = tenant_id
+            _contact_id = contact_id
+
+            @tool("check_schedules")
+            def check_schedules() -> str:
+                """
+                Consulta todos os agendamentos existentes do cliente.
+
+                Use esta ferramenta quando o cliente perguntar:
+                - "Minha consulta foi confirmada?"
+                - "Qual a data da minha consulta?"
+                - "Tenho algum agendamento?"
+                - "Quero ver meus agendamentos"
+
+                Returns:
+                    Lista de agendamentos com ID, data/hora, descrição e status
+                """
+                print(f"\n📋 EXECUTANDO check_schedules!")
+                print(f"   tenant_id: {_tenant_id}")
+                print(f"   contact_id: {_contact_id}")
+
+                result = _check_schedules_impl(
+                    tenant_id=_tenant_id,
+                    contact_id=_contact_id or 0
+                )
+
+                print(f"   Resultado: {result}")
+                return result
+
+            tools.append(check_schedules)
+            print("   ✅ check_schedules adicionada")
+
+        # 2.2. CANCEL_SCHEDULE (Cancelar agendamento)
+        if 'cancel_schedule' in agent_tools or 'schedule_appointment' in agent_tools:
+            _tenant_id = tenant_id
+
+            @tool("cancel_schedule")
+            def cancel_schedule(schedule_id: int) -> str:
+                """
+                Cancela um agendamento existente.
+
+                IMPORTANTE: Antes de cancelar, use check_schedules para mostrar os agendamentos
+                e obter o ID correto.
+
+                Use esta ferramenta quando o cliente solicitar:
+                - "Quero cancelar minha consulta"
+                - "Preciso desmarcar o agendamento"
+                - "Não vou poder ir, cancela pra mim"
+
+                Args:
+                    schedule_id: ID do agendamento a ser cancelado (obtido via check_schedules)
+
+                Returns:
+                    Mensagem de sucesso ou erro do cancelamento
+                """
+                print(f"\n🗑️ EXECUTANDO cancel_schedule!")
+                print(f"   tenant_id: {_tenant_id}")
+                print(f"   schedule_id: {schedule_id}")
+
+                result = _cancel_schedule_impl(
+                    tenant_id=_tenant_id,
+                    schedule_id=schedule_id
+                )
+
+                print(f"   Resultado: {result}")
+                return result
+
+            tools.append(cancel_schedule)
+            print("   ✅ cancel_schedule adicionada")
+
+        # 2.3. UPDATE_SCHEDULE (Atualizar agendamento)
+        if 'update_schedule' in agent_tools or 'schedule_appointment' in agent_tools:
+            _tenant_id = tenant_id
+
+            @tool("update_schedule")
+            def update_schedule(
+                schedule_id: int,
+                new_date_time: str = None,
+                new_body: str = None,
+                new_status: str = None
+            ) -> str:
+                """
+                Atualiza data/hora, descrição ou status de um agendamento existente.
+
+                IMPORTANTE: Antes de atualizar, use check_schedules para mostrar os agendamentos
+                e obter o ID correto.
+
+                Use esta ferramenta quando o cliente solicitar:
+                - "Quero remarcar para outro dia"
+                - "Pode mudar meu agendamento para às 15h?"
+                - "Quero trocar de cardiologia para ortopedia"
+
+                Args:
+                    schedule_id: ID do agendamento a ser atualizado (obtido via check_schedules)
+                    new_date_time: Nova data/hora em formato ISO 8601 (ex: '2025-10-28T15:00:00')
+                    new_body: Nova descrição do agendamento
+                    new_status: Novo status ('scheduled', 'pending_confirmation', 'cancelled')
+
+                Returns:
+                    Mensagem de sucesso mostrando as alterações realizadas
+                """
+                print(f"\n✏️ EXECUTANDO update_schedule!")
+                print(f"   tenant_id: {_tenant_id}")
+                print(f"   schedule_id: {schedule_id}")
+                print(f"   new_date_time: {new_date_time}")
+                print(f"   new_body: {new_body}")
+                print(f"   new_status: {new_status}")
+
+                result = _update_schedule_impl(
+                    tenant_id=_tenant_id,
+                    schedule_id=schedule_id,
+                    new_date_time=new_date_time,
+                    new_body=new_body,
+                    new_status=new_status
+                )
+
+                print(f"   Resultado: {result}")
+                return result
+
+            tools.append(update_schedule)
+            print("   ✅ update_schedule adicionada")
 
         # 3. CADASTRAR CLIENTE EM PLANILHA (se configurado)
         if 'cadastrar_cliente_planilha' in agent_tools and 'googleSheets' in tool_configs:

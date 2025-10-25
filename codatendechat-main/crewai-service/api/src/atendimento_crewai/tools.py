@@ -804,6 +804,223 @@ def _schedule_appointment_impl(
         return f"❌ Erro inesperado ao criar agendamento: {str(e)}"
 
 
+def _check_schedules_impl(
+    tenant_id: str,
+    contact_id: int
+) -> str:
+    """
+    Implementação da ferramenta de consulta de agendamentos.
+    Busca agendamentos existentes do cliente no backend Node.js via API.
+
+    Args:
+        tenant_id: ID do tenant (ex: "company_3")
+        contact_id: ID do contato no sistema
+
+    Returns:
+        str: Lista de agendamentos ou mensagem indicando que não há agendamentos
+    """
+    import requests
+    import os
+    from datetime import datetime
+
+    # URL do backend Node.js (Docker expõe na porta 3000)
+    backend_url = os.getenv("BACKEND_URL", "http://localhost:3000")
+
+    # Extrair companyId do tenant_id (ex: "company_3" -> 3)
+    company_id = tenant_id.replace("company_", "")
+
+    # Endpoint do backend para listar agendamentos
+    endpoint = f"{backend_url}/schedules"
+
+    # Parâmetros de consulta
+    params = {
+        "contactId": contact_id
+    }
+
+    try:
+        print(f"📅 Consultando agendamentos via API: {endpoint}")
+        print(f"   Params: {params}")
+
+        # Header com companyId (simula autenticação - ajustar conforme seu sistema)
+        # NOTA: Você pode precisar ajustar isso dependendo de como seu backend autentica
+        response = requests.get(endpoint, params=params, timeout=10)
+
+        if response.status_code == 200:
+            data = response.json()
+            schedules = data.get('schedules', [])
+
+            if not schedules:
+                return "ℹ️ Não há agendamentos encontrados para este cliente."
+
+            # Formatar lista de agendamentos
+            result = f"📋 Agendamentos encontrados ({len(schedules)}):\n\n"
+
+            for idx, schedule in enumerate(schedules, 1):
+                schedule_id = schedule.get('id', 'N/A')
+                send_at = schedule.get('sendAt', '')
+                body = schedule.get('body', 'Sem descrição')
+                status = schedule.get('status', 'unknown')
+
+                # Formatar data/hora
+                try:
+                    dt = datetime.fromisoformat(send_at.replace('Z', '+00:00'))
+                    formatted_date = dt.strftime('%d/%m/%Y às %H:%M')
+                except:
+                    formatted_date = send_at
+
+                # Status em português
+                status_map = {
+                    'pending_confirmation': '⏳ PENDENTE DE CONFIRMAÇÃO',
+                    'scheduled': '✅ CONFIRMADO',
+                    'cancelled': '❌ CANCELADO'
+                }
+                status_text = status_map.get(status, status.upper())
+
+                result += f"{idx}. [ID: {schedule_id}] {formatted_date}\n"
+                result += f"   Descrição: {body}\n"
+                result += f"   Status: {status_text}\n\n"
+
+            return result.strip()
+
+        else:
+            error_msg = response.text
+            print(f"❌ Erro ao consultar agendamentos: HTTP {response.status_code} - {error_msg}")
+            return f"❌ Erro ao consultar agendamentos. Não foi possível acessar o sistema."
+
+    except requests.exceptions.Timeout:
+        print(f"⏱️ Timeout ao chamar API de agendamentos")
+        return "❌ Erro: Timeout ao consultar agendamentos. Tente novamente."
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Erro de requisição: {e}")
+        return f"❌ Erro ao conectar com o sistema de agendamentos."
+    except Exception as e:
+        print(f"❌ Erro inesperado: {e}")
+        return f"❌ Erro inesperado ao consultar agendamentos."
+
+
+def _cancel_schedule_impl(
+    tenant_id: str,
+    schedule_id: int
+) -> str:
+    """
+    Implementação da ferramenta de cancelamento de agendamentos.
+    Cancela um agendamento existente no backend Node.js via API.
+
+    Args:
+        tenant_id: ID do tenant (ex: "company_3")
+        schedule_id: ID do agendamento a ser cancelado
+
+    Returns:
+        str: Mensagem de sucesso ou erro
+    """
+    import requests
+    import os
+
+    # URL do backend Node.js (Docker expõe na porta 3000)
+    backend_url = os.getenv("BACKEND_URL", "http://localhost:3000")
+
+    # Endpoint do backend para deletar agendamento
+    endpoint = f"{backend_url}/schedules/{schedule_id}"
+
+    try:
+        print(f"🗑️ Cancelando agendamento via API: {endpoint}")
+
+        response = requests.delete(endpoint, timeout=10)
+
+        if response.status_code == 200:
+            return f"✅ Agendamento #{schedule_id} cancelado com sucesso!\n" \
+                   f"O agendamento foi removido do sistema."
+        else:
+            error_msg = response.text
+            print(f"❌ Erro ao cancelar agendamento: HTTP {response.status_code} - {error_msg}")
+            return f"❌ Não foi possível cancelar o agendamento. Verifique se o ID está correto."
+
+    except requests.exceptions.Timeout:
+        print(f"⏱️ Timeout ao chamar API de agendamentos")
+        return "❌ Erro: Timeout ao cancelar agendamento. Tente novamente."
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Erro de requisição: {e}")
+        return f"❌ Erro ao conectar com o sistema de agendamentos."
+    except Exception as e:
+        print(f"❌ Erro inesperado: {e}")
+        return f"❌ Erro inesperado ao cancelar agendamento."
+
+
+def _update_schedule_impl(
+    tenant_id: str,
+    schedule_id: int,
+    new_date_time: str = None,
+    new_body: str = None,
+    new_status: str = None
+) -> str:
+    """
+    Implementação da ferramenta de atualização de agendamentos.
+    Atualiza data/hora, descrição ou status de um agendamento existente.
+
+    Args:
+        tenant_id: ID do tenant (ex: "company_3")
+        schedule_id: ID do agendamento a ser atualizado
+        new_date_time: Nova data/hora (ISO 8601 format) - opcional
+        new_body: Nova descrição - opcional
+        new_status: Novo status - opcional
+
+    Returns:
+        str: Mensagem de sucesso ou erro
+    """
+    import requests
+    import os
+
+    # URL do backend Node.js (Docker expõe na porta 3000)
+    backend_url = os.getenv("BACKEND_URL", "http://localhost:3000")
+
+    # Endpoint do backend para atualizar agendamento
+    endpoint = f"{backend_url}/schedules/{schedule_id}"
+
+    # Montar payload com apenas os campos fornecidos
+    payload = {}
+    if new_date_time:
+        payload["sendAt"] = new_date_time
+    if new_body:
+        payload["body"] = new_body
+    if new_status:
+        payload["status"] = new_status
+
+    if not payload:
+        return "❌ Erro: Nenhuma alteração foi especificada. Forneça nova data/hora, descrição ou status."
+
+    try:
+        print(f"✏️ Atualizando agendamento via API: {endpoint}")
+        print(f"   Payload: {payload}")
+
+        response = requests.put(endpoint, json=payload, timeout=10)
+
+        if response.status_code == 200:
+            changes = []
+            if new_date_time:
+                changes.append(f"Data/Hora alterada para: {new_date_time}")
+            if new_body:
+                changes.append(f"Descrição alterada para: {new_body}")
+            if new_status:
+                changes.append(f"Status alterado para: {new_status}")
+
+            changes_text = "\n".join(changes)
+            return f"✅ Agendamento #{schedule_id} atualizado com sucesso!\n\n{changes_text}"
+        else:
+            error_msg = response.text
+            print(f"❌ Erro ao atualizar agendamento: HTTP {response.status_code} - {error_msg}")
+            return f"❌ Não foi possível atualizar o agendamento. Verifique se o ID está correto."
+
+    except requests.exceptions.Timeout:
+        print(f"⏱️ Timeout ao chamar API de agendamentos")
+        return "❌ Erro: Timeout ao atualizar agendamento. Tente novamente."
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Erro de requisição: {e}")
+        return f"❌ Erro ao conectar com o sistema de agendamentos."
+    except Exception as e:
+        print(f"❌ Erro inesperado: {e}")
+        return f"❌ Erro inesperado ao atualizar agendamento."
+
+
 @tool("schedule_appointment")
 def schedule_appointment(
     tenant_id: str,
