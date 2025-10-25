@@ -7,6 +7,8 @@ mas usa Agent/Task/Crew real do framework para tool calling automático
 import os
 import json
 import time
+import random
+import asyncio
 import vertexai
 from vertexai.generative_models import GenerativeModel, GenerationConfig
 from firebase_admin import firestore
@@ -51,6 +53,12 @@ class RealCrewEngine:
             max_tokens=2048
         )
         print(f"✅ LLM configurado: vertex_ai/{model_name} (temp=0.2)")
+
+        # Controle de concorrência para requisições ao LLM
+        # Limita número de requisições simultâneas ao Vertex AI
+        max_concurrent = int(os.getenv("MAX_CONCURRENT_LLM_REQUESTS", "10"))
+        self._llm_semaphore = asyncio.Semaphore(max_concurrent)
+        print(f"✅ Controle de concorrência: máximo {max_concurrent} requests simultâneas")
 
         # Keyword search tool (não usa embeddings)
         self.knowledge_tool = self._create_keyword_search_tool()
@@ -379,11 +387,64 @@ class RealCrewEngine:
             print(f"   Ferramentas disponíveis: {[str(t.name) if hasattr(t, 'name') else str(t) for t in crewai_tools]}")
             print(f"   Mensagem: {message}")
 
-            result = crew.kickoff()
+            # Executar com controle de concorrência e retry logic
+            result = None
+            max_retries = 3
 
-            print(f"✅ CrewAI executado com sucesso!")
-            print(f"   Tipo do resultado: {type(result)}")
-            print(f"   Resultado bruto: {result}")
+            async with self._llm_semaphore:  # Controlar concorrência
+                for attempt in range(max_retries):
+                    try:
+                        # Executar CrewAI (sincronamente dentro do contexto async)
+                        result = await asyncio.to_thread(crew.kickoff)
+
+                        print(f"✅ CrewAI executado com sucesso!")
+                        print(f"   Tipo do resultado: {type(result)}")
+                        print(f"   Resultado bruto: {result}")
+                        break  # Sucesso, sair do loop
+
+                    except Exception as e:
+                        error_msg = str(e).lower()
+
+                        # Verificar se é erro de rate limit
+                        is_rate_limit = any(keyword in error_msg for keyword in [
+                            "429", "rate", "quota", "resource exhausted", "too many requests"
+                        ])
+
+                        if is_rate_limit and attempt < max_retries - 1:
+                            # Ainda tem tentativas, fazer backoff exponencial
+                            wait_time = 2 ** attempt  # 1s, 2s, 4s
+                            print(f"⚠️ Rate limit detectado (tentativa {attempt + 1}/{max_retries})")
+                            print(f"   Aguardando {wait_time}s antes de tentar novamente...")
+                            await asyncio.sleep(wait_time)
+                            continue
+                        else:
+                            # Não é rate limit OU última tentativa falhou
+                            # Retornar mensagem amigável ao cliente
+                            print(f"❌ Falha após {attempt + 1} tentativas: {e}")
+
+                            return {
+                                "response": self._create_friendly_error_message(selected_agent),
+                                "agent_used": selected_agent.get("key", "geral"),
+                                "agent_name": selected_agent.get("name", "Agente Geral"),
+                                "tools_used": [],
+                                "success": False,
+                                "error": True,  # Flag para backend saber que houve erro
+                                "processing_time": round(time.time() - start_time, 2),
+                                "demo_mode": False
+                            }
+
+            # Se result ainda é None (não deveria acontecer), retornar erro amigável
+            if result is None:
+                return {
+                    "response": self._create_friendly_error_message(selected_agent),
+                    "agent_used": selected_agent.get("key", "geral"),
+                    "agent_name": selected_agent.get("name", "Agente Geral"),
+                    "tools_used": [],
+                    "success": False,
+                    "error": True,
+                    "processing_time": round(time.time() - start_time, 2),
+                    "demo_mode": False
+                }
 
             # Processar resultado
             response_text = str(result).strip() if result else "Desculpe, não consegui processar sua solicitação."
@@ -421,14 +482,17 @@ class RealCrewEngine:
             import traceback
             traceback.print_exc()
 
+            # NUNCA retornar erro técnico ao cliente
+            # Sempre retornar mensagem amigável
             return {
-                "response": f"Desculpe, ocorreu um erro interno: {str(e)}",
+                "response": self._create_friendly_error_message({}),
                 "agent_used": "error",
                 "agent_name": "Sistema",
                 "tools_used": [],
                 "success": False,
-                "processing_time": time.time() - start_time,
-                "demo_mode": True
+                "error": True,
+                "processing_time": round(time.time() - start_time, 2),
+                "demo_mode": False
             }
 
     async def _load_crew_data(self, crew_id: str) -> Optional[Dict[str, Any]]:
@@ -653,6 +717,35 @@ class RealCrewEngine:
             "success": True,
             "demo_mode": True
         }
+
+    def _create_friendly_error_message(self, agent: Dict[str, Any]) -> str:
+        """
+        Cria mensagem amigável ao cliente quando o sistema falha.
+        NUNCA retorna erros técnicos - sempre mensagens claras e amigáveis.
+        """
+        agent_name = agent.get('name', 'Assistente') if agent else 'Assistente'
+
+        # Lista de mensagens amigáveis (rotaciona para variar)
+        messages = [
+            f"Olá! Sou o {agent_name}. Estou com muitas conversas no momento 😅\n\n"
+            "Por favor, envie sua mensagem novamente em 1-2 minutos.\n\n"
+            "Obrigado pela compreensão!",
+
+            f"Oi! Aqui é o {agent_name}. No momento estou atendendo vários clientes ao mesmo tempo.\n\n"
+            "Aguarde 1-2 minutos e me envie sua mensagem novamente, por favor.\n\n"
+            "Agradeço a paciência! 🙏",
+
+            f"Desculpe! Estou com alto volume de atendimentos agora.\n\n"
+            "Por gentileza, aguarde 1-2 minutos e tente novamente.\n\n"
+            "Obrigado!",
+
+            "Olá! Estou com muitas solicitações no momento.\n\n"
+            "Por favor, aguarde 1-2 minutos e me envie sua mensagem novamente.\n\n"
+            "Obrigado pela paciência! 😊"
+        ]
+
+        # Escolher mensagem aleatória para variar
+        return random.choice(messages)
 
     async def get_available_agents(self, tenant_id: str, crew_id: str) -> List[Dict[str, Any]]:
         """Retorna lista de agentes disponíveis"""
