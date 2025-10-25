@@ -11,7 +11,7 @@ import vertexai
 from vertexai.generative_models import GenerativeModel, GenerationConfig
 from firebase_admin import firestore
 from typing import Dict, Any, List, Optional
-from crewai import Agent, Task, Crew
+from crewai import Agent, Task, Crew, LLM
 from crewai.tools import tool
 
 # Importar implementações de ferramentas
@@ -38,6 +38,18 @@ class RealCrewEngine:
         except Exception as e:
             print(f"❌ Erro ao conectar Firestore: {e}")
             self.db = None
+
+        # Configurar LLM para usar Vertex AI (Gemini) ao invés de OpenAI
+        # CrewAI suporta vertex_ai via modelo vertex_ai/gemini-...
+        model_name = os.getenv("VERTEX_MODEL", "gemini-2.5-flash-lite")
+
+        # Formato para CrewAI usar Vertex AI: vertex_ai/model-name
+        self.llm = LLM(
+            model=f"vertex_ai/{model_name}",
+            temperature=0.2,  # Baixa temperatura para precisão
+            max_tokens=2048
+        )
+        print(f"✅ LLM configurado: vertex_ai/{model_name} (temp=0.2)")
 
         # Keyword search tool (não usa embeddings)
         self.knowledge_tool = self._create_keyword_search_tool()
@@ -316,6 +328,7 @@ class RealCrewEngine:
                 goal=agent_goal,
                 backstory=context,  # Todo o contexto vai aqui
                 tools=crewai_tools,
+                llm=self.llm,  # Usar Vertex AI (Gemini)
                 verbose=True,
                 allow_delegation=False
             )
