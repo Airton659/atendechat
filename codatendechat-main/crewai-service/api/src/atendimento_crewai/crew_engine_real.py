@@ -41,6 +41,7 @@ class RealCrewEngine:
 
         # Configurar LLM para usar Vertex AI (Gemini) ao invés de OpenAI
         # CrewAI suporta vertex_ai via modelo vertex_ai/gemini-...
+        # Usar gemini-2.5-flash-lite (mesmo modelo do SimpleEngine que funciona)
         model_name = os.getenv("VERTEX_MODEL", "gemini-2.5-flash-lite")
 
         # Formato para CrewAI usar Vertex AI: vertex_ai/model-name
