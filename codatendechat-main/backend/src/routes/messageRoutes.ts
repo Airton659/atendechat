@@ -15,4 +15,8 @@ messageRoutes.post("/messages/:ticketId", isAuth, upload.array("medias"), Messag
 messageRoutes.delete("/messages/:messageId", isAuth, MessageController.remove);
 messageRoutes.post("/api/messages/send", tokenAuth, upload.array("medias"), MessageController.send);
 
+// === ENDPOINT NÃO AUTENTICADO PARA CREWAI ===
+// Envia arquivo da File List para ticket
+messageRoutes.post("/messages/agent/send-file", MessageController.sendFileFromAgent);
+
 export default messageRoutes;

@@ -20,6 +20,7 @@ import CheckContactNumber from "../services/WbotServices/CheckNumber";
 import CheckIsValidContact from "../services/WbotServices/CheckIsValidContact";
 import GetProfilePicUrl from "../services/WbotServices/GetProfilePicUrl";
 import CreateOrUpdateContactService from "../services/ContactServices/CreateOrUpdateContactService";
+import SendFileFromListService from "../services/MessageServices/SendFileFromListService";
 type IndexQuery = {
   pageNumber: string;
 };
@@ -260,5 +261,56 @@ export const sendMessageFlow = async (
     } else {
       throw new AppError(err.message);
     }
+  }
+};
+
+// === ENDPOINT NÃO AUTENTICADO PARA CREWAI ===
+
+// POST /messages/agent/send-file - Envia arquivo da File List para ticket
+export const sendFileFromAgent = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { tenantId, ticketId, fileId } = req.body;
+
+  if (!tenantId) {
+    throw new AppError("ERR_INVALID_TENANT_ID", 400);
+  }
+
+  if (!ticketId) {
+    throw new AppError("ERR_TICKET_ID_REQUIRED", 400);
+  }
+
+  if (!fileId) {
+    throw new AppError("ERR_FILE_ID_REQUIRED", 400);
+  }
+
+  // Extrair companyId do tenantId (ex: "company_3" -> 3)
+  const companyId = parseInt(tenantId.replace("company_", ""));
+
+  if (!companyId) {
+    throw new AppError("ERR_INVALID_TENANT_ID", 400);
+  }
+
+  try {
+    const result = await SendFileFromListService({
+      ticketId: parseInt(ticketId),
+      fileId: parseInt(fileId),
+      companyId
+    });
+
+    return res.status(200).json({
+      success: true,
+      fileName: result.fileName,
+      message: result.message
+    });
+  } catch (error: any) {
+    console.error("❌ Erro ao enviar arquivo da File List:", error);
+
+    if (error instanceof AppError) {
+      throw error;
+    }
+
+    throw new AppError("ERR_SENDING_FILE_FROM_LIST", 500);
   }
 };

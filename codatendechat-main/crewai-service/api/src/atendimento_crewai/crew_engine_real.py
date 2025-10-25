@@ -26,7 +26,9 @@ from .tools import (
     _schedule_appointment_impl,
     _check_schedules_impl,
     _cancel_schedule_impl,
-    _update_schedule_impl
+    _update_schedule_impl,
+    _list_files_impl,
+    _send_file_impl
 )
 
 
@@ -382,6 +384,73 @@ class RealCrewEngine:
 
             tools.append(update_schedule)
             print("   ✅ update_schedule adicionada")
+
+        # 2.4. LIST_FILES (Listar arquivos da File List)
+        if 'list_files' in agent_tools or 'send_file' in agent_tools:
+            _tenant_id = tenant_id
+
+            @tool("list_files")
+            def list_files() -> str:
+                """
+                Lista todos os arquivos disponíveis na File List (galeria de arquivos).
+
+                Use esta ferramenta quando o cliente perguntar:
+                - "Quais arquivos vocês têm?"
+                - "Tem alguma foto/documento disponível?"
+                - "Pode me mostrar o catálogo?"
+                - "Que materiais vocês têm?"
+
+                Returns:
+                    Lista de arquivos com ID, nome e descrição
+                """
+                print(f"\n📁 EXECUTANDO list_files!")
+                print(f"   tenant_id: {_tenant_id}")
+
+                result = _list_files_impl(tenant_id=_tenant_id)
+
+                print(f"   Resultado: {result[:200]}...")
+                return result
+
+            tools.append(list_files)
+            print("   ✅ list_files adicionada")
+
+        # 2.5. SEND_FILE (Enviar arquivo da File List)
+        if 'send_file' in agent_tools:
+            _tenant_id = tenant_id
+            _ticket_id = ticket_id
+
+            @tool("send_file")
+            def send_file(file_id: int) -> str:
+                """
+                Envia um arquivo da File List (galeria de arquivos) para o cliente.
+
+                ⚠️ IMPORTANTE:
+                - Use a ferramenta list_files PRIMEIRO para saber quais arquivos existem
+                - Só envie arquivos que o cliente solicitou explicitamente
+                - Informe ao cliente qual arquivo você está enviando
+
+                Args:
+                    file_id: ID do arquivo (obtido com list_files)
+
+                Returns:
+                    Mensagem de sucesso ou erro do envio
+                """
+                print(f"\n📤 EXECUTANDO send_file!")
+                print(f"   tenant_id: {_tenant_id}")
+                print(f"   ticket_id: {_ticket_id}")
+                print(f"   file_id: {file_id}")
+
+                result = _send_file_impl(
+                    tenant_id=_tenant_id,
+                    ticket_id=_ticket_id or 0,
+                    file_id=file_id
+                )
+
+                print(f"   Resultado: {result}")
+                return result
+
+            tools.append(send_file)
+            print("   ✅ send_file adicionada")
 
         # 3. CADASTRAR CLIENTE EM PLANILHA (se configurado)
         if 'cadastrar_cliente_planilha' in agent_tools and 'googleSheets' in tool_configs:

@@ -1093,3 +1093,150 @@ def schedule_appointment(
         body=body,
         status=status
     )
+
+
+# === FERRAMENTAS DE FILE LIST ===
+
+def _list_files_impl(tenant_id: str) -> str:
+    """
+    Lista todos os arquivos disponíveis na File List da empresa.
+
+    Args:
+        tenant_id: ID do tenant (ex: "company_3")
+
+    Returns:
+        str: Lista formatada de arquivos disponíveis
+    """
+    import requests
+    import os
+
+    backend_url = os.getenv("BACKEND_URL", "http://localhost:3000")
+
+    # Endpoint NÃO AUTENTICADO para listar arquivos
+    endpoint = f"{backend_url}/files/agent"
+
+    # Query params para validação de tenant
+    params = {
+        "tenantId": tenant_id
+    }
+
+    try:
+        print(f"📁 EXECUTANDO list_files!")
+        print(f"   tenant_id: {tenant_id}")
+        print(f"📁 Listando arquivos via API: {endpoint}")
+        print(f"   Params: {params}")
+
+        response = requests.get(endpoint, params=params, timeout=10)
+
+        if response.status_code == 200:
+            data = response.json()
+            files = data.get('files', [])
+
+            if not files:
+                return "ℹ️ Não há arquivos disponíveis no momento."
+
+            # Formatar lista de arquivos
+            result = f"📁 Arquivos disponíveis ({len(files)}):\n\n"
+
+            for idx, file in enumerate(files, 1):
+                file_id = file.get('id', 'N/A')
+                name = file.get('name', 'Sem nome')
+                message = file.get('message', '')
+
+                result += f"{idx}. [ID: {file_id}] {name}\n"
+                if message:
+                    result += f"   Descrição: {message}\n"
+                result += "\n"
+
+            result += "💡 Para enviar um arquivo, use a ferramenta send_file com o ID do arquivo."
+
+            return result.strip()
+
+        else:
+            error_msg = response.text
+            print(f"❌ Erro ao listar arquivos: HTTP {response.status_code} - {error_msg}")
+            return "❌ Erro ao listar arquivos. Não foi possível acessar o sistema."
+
+    except requests.exceptions.Timeout:
+        print(f"⏱️ Timeout ao chamar API de arquivos")
+        return "❌ Erro: Timeout ao listar arquivos. Tente novamente."
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Erro de requisição: {e}")
+        return "❌ Erro ao conectar com o sistema de arquivos."
+    except Exception as e:
+        print(f"❌ Erro inesperado: {e}")
+        return "❌ Erro inesperado ao listar arquivos."
+
+
+def _send_file_impl(
+    tenant_id: str,
+    ticket_id: int,
+    file_id: int
+) -> str:
+    """
+    Envia um arquivo da File List para o cliente no ticket atual.
+
+    Args:
+        tenant_id: ID do tenant (ex: "company_3")
+        ticket_id: ID do ticket (conversa)
+        file_id: ID do arquivo na File List
+
+    Returns:
+        str: Mensagem de sucesso ou erro
+    """
+    import requests
+    import os
+
+    backend_url = os.getenv("BACKEND_URL", "http://localhost:3000")
+
+    # Endpoint NÃO AUTENTICADO para enviar arquivo
+    endpoint = f"{backend_url}/messages/agent/send-file"
+
+    payload = {
+        "tenantId": tenant_id,
+        "ticketId": ticket_id,
+        "fileId": file_id
+    }
+
+    try:
+        print(f"📤 EXECUTANDO send_file!")
+        print(f"   tenant_id: {tenant_id}")
+        print(f"   ticket_id: {ticket_id}")
+        print(f"   file_id: {file_id}")
+        print(f"📤 Enviando arquivo via API: {endpoint}")
+        print(f"   Payload: {payload}")
+
+        response = requests.post(endpoint, json=payload, timeout=15)
+
+        if response.status_code == 200:
+            data = response.json()
+            file_name = data.get('fileName', 'arquivo')
+            message = data.get('message', '')
+
+            result = f"✅ Arquivo '{file_name}' enviado com sucesso!"
+            if message:
+                result += f"\n\nMensagem enviada: {message}"
+
+            return result
+
+        else:
+            error_msg = response.text
+            print(f"❌ Erro ao enviar arquivo: HTTP {response.status_code} - {error_msg}")
+
+            # Mensagens de erro amigáveis
+            if response.status_code == 404:
+                return "❌ Arquivo não encontrado. Verifique se o ID está correto."
+            elif response.status_code == 403:
+                return "❌ Sem permissão para enviar este arquivo."
+            else:
+                return "❌ Não foi possível enviar o arquivo. Tente novamente."
+
+    except requests.exceptions.Timeout:
+        print(f"⏱️ Timeout ao chamar API de envio de arquivo")
+        return "❌ Erro: Timeout ao enviar arquivo. Tente novamente."
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Erro de requisição: {e}")
+        return "❌ Erro ao conectar com o sistema de arquivos."
+    except Exception as e:
+        print(f"❌ Erro inesperado: {e}")
+        return "❌ Erro inesperado ao enviar arquivo."

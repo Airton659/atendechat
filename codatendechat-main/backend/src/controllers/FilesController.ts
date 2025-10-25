@@ -151,3 +151,29 @@ export const list = async (req: Request, res: Response): Promise<Response> => {
 
   return res.json(ratings);
 };
+
+// === ENDPOINT NÃO AUTENTICADO PARA CREWAI ===
+
+// GET /files/agent - Lista arquivos da empresa (para IA)
+export const listFromAgent = async (req: Request, res: Response): Promise<Response> => {
+  const { tenantId } = req.query;
+
+  if (!tenantId) {
+    throw new AppError("ERR_INVALID_TENANT_ID", 400);
+  }
+
+  // Extrair companyId do tenantId (ex: "company_3" -> 3)
+  const companyId = parseInt(tenantId.toString().replace('company_', ''));
+
+  if (!companyId) {
+    throw new AppError("ERR_INVALID_TENANT_ID", 400);
+  }
+
+  const { files, count, hasMore } = await ListService({
+    searchParam: undefined,
+    pageNumber: 1,
+    companyId
+  });
+
+  return res.json({ files, count, hasMore });
+};
