@@ -47,13 +47,12 @@ export const index = async (req: Request, res: Response): Promise<Response> => {
 
 // Criar nova crew (manual)
 export const store = async (req: Request, res: Response): Promise<Response> => {
-  const { companyId, id: userId } = req.user;
+  const { companyId } = req.user;
   const tenantId = `company_${companyId}`;
 
   const payload = {
     ...req.body,
-    tenantId,
-    createdBy: userId
+    tenantId
   };
 
   console.log("[CrewController.store] Enviando para CrewAI Service:");
