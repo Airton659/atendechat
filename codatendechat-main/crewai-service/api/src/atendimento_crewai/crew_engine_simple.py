@@ -621,6 +621,46 @@ class SimpleCrewEngine:
 
         context_parts = []
 
+        # PILAR 2: TREINAMENTO DE COMPORTAMENTO (POR AGENTE)
+        agent_training = selected_agent.get('training', {})
+        agent_name = selected_agent.get('name', 'Agente')
+
+        # Log de debug do treinamento
+        print(f"\n🎭 TREINAMENTO DO AGENTE '{agent_name}':")
+        print(f"   Training data: {agent_training}")
+
+        # Guardrails (Regras de Comportamento) do Agente - PRIORIDADE MÁXIMA NO TOPO
+        guardrails = agent_training.get('guardrails', {})
+        do_rules = guardrails.get('do', [])
+        dont_rules = guardrails.get('dont', [])
+
+        print(f"   Guardrails DO: {do_rules}")
+        print(f"   Guardrails DON'T: {dont_rules}")
+
+        # ⚠️⚠️⚠️ GUARDRAILS NO TOPO - PRIORIDADE MÁXIMA ⚠️⚠️⚠️
+        if do_rules or dont_rules:
+            context_parts.append("⚠️⚠️⚠️ ATENÇÃO CRÍTICA - LEIA ISTO PRIMEIRO ⚠️⚠️⚠️")
+            context_parts.append("="*70)
+            context_parts.append("REGRAS CRÍTICAS (SIGA RIGOROSAMENTE):")
+            context_parts.append("="*70)
+
+            if dont_rules:
+                context_parts.append("\n🚫 PROIBIDO - Você NÃO DEVE JAMAIS:")
+                for rule in dont_rules:
+                    if rule and rule.strip():
+                        context_parts.append(f"  ✗ {rule}")
+
+            if do_rules:
+                context_parts.append("\n🔴 OBRIGATÓRIO - Você DEVE:")
+                for rule in do_rules:
+                    if rule and rule.strip():
+                        context_parts.append(f"  ✓ {rule}")
+
+            context_parts.append("\n" + "="*70)
+            context_parts.append("🚨 ANTES DE RESPONDER, RELEIA AS REGRAS PROIBIDAS ACIMA 🚨")
+            context_parts.append("QUALQUER VIOLAÇÃO DESSAS REGRAS RESULTARÁ EM RESPOSTA INCORRETA")
+            context_parts.append("="*70 + "\n")
+
         # Informações da empresa/equipe
         crew_name = crew_data.get('name', 'Equipe de Atendimento')
         crew_description = crew_data.get('description', 'Equipe especializada em atendimento ao cliente')
@@ -629,7 +669,6 @@ class SimpleCrewEngine:
         context_parts.append(f"DESCRIÇÃO: {crew_description}")
 
         # Informações do agente selecionado
-        agent_name = selected_agent.get('name', 'Agente')
         agent_role = selected_agent.get('role', 'Atendente')
         agent_goal = selected_agent.get('goal', 'Ajudar o cliente')
         agent_backstory = selected_agent.get('backstory', 'Sou um assistente especializado')
@@ -653,13 +692,6 @@ class SimpleCrewEngine:
                 context_parts.append(f"\n📋 INSTRUÇÕES PERSONALIZADAS:")
                 context_parts.append(custom_instructions)
 
-        # PILAR 2: TREINAMENTO DE COMPORTAMENTO (POR AGENTE)
-        agent_training = selected_agent.get('training', {})
-
-        # Log de debug do treinamento
-        print(f"\n🎭 TREINAMENTO DO AGENTE '{agent_name}':")
-        print(f"   Training data: {agent_training}")
-
         # Persona do Agente (específica)
         persona = agent_training.get('persona', '').strip()
         if persona:
@@ -668,26 +700,6 @@ class SimpleCrewEngine:
             context_parts.append(persona)
         else:
             print(f"   ⚠️ Nenhuma persona configurada")
-
-        # Guardrails (Regras de Comportamento) do Agente
-        guardrails = agent_training.get('guardrails', {})
-        do_rules = guardrails.get('do', [])
-        dont_rules = guardrails.get('dont', [])
-
-        print(f"   Guardrails DO: {do_rules}")
-        print(f"   Guardrails DON'T: {dont_rules}")
-
-        if do_rules:
-            context_parts.append("\nREGRAS - O QUE VOCÊ DEVE FAZER:")
-            for rule in do_rules:
-                if rule and rule.strip():
-                    context_parts.append(f"✓ {rule}")
-
-        if dont_rules:
-            context_parts.append("\nREGRAS - O QUE VOCÊ NÃO DEVE FAZER:")
-            for rule in dont_rules:
-                if rule and rule.strip():
-                    context_parts.append(f"✗ {rule}")
 
         # Exemplos de Interação (Few-shot Learning)
         # Combinar exemplos do agente específico + exemplos gerais da equipe
@@ -699,7 +711,12 @@ class SimpleCrewEngine:
         all_examples = agent_examples + team_examples
 
         if all_examples:
-            context_parts.append("\nEXEMPLOS DE COMO RESPONDER:")
+            context_parts.append("\n" + "="*70)
+            context_parts.append("🎯 EXEMPLOS DE RESPOSTAS CORRETAS - SIGA EXATAMENTE ESTE PADRÃO")
+            context_parts.append("="*70)
+            context_parts.append("\n⚠️  ATENÇÃO: Você DEVE replicar o estilo, formato e abordagem destes exemplos.")
+            context_parts.append("Estas são as ÚNICAS respostas corretas e aprovadas para situações similares.\n")
+
             # Pegar os 5 mais recentes (ou todos se forem menos que 5)
             recent_examples = all_examples[-5:] if len(all_examples) > 5 else all_examples
 
@@ -709,10 +726,12 @@ class SimpleCrewEngine:
                 bad = example.get('bad', '').strip()
 
                 if scenario and good:
-                    context_parts.append(f"\nExemplo {i} - Cenário: {scenario}")
-                    context_parts.append(f"✓ Resposta CORRETA: {good}")
-                    if bad:
-                        context_parts.append(f"✗ Resposta INCORRETA (evite): {bad}")
+                    context_parts.append(f"━━━ EXEMPLO {i} ━━━")
+                    context_parts.append(f"📋 SITUAÇÃO:\n{scenario}\n")
+                    context_parts.append(f"✅ RESPOSTA OBRIGATÓRIA (copie este padrão):")
+                    context_parts.append(f"「{good}」")
+                    context_parts.append(f"\n⚠️  Para situações similares, você DEVE responder seguindo EXATAMENTE este modelo acima.")
+                    context_parts.append("─"*70 + "\n")
 
             print(f"📚 {len(recent_examples)} exemplo(s) de treinamento carregado(s) ({len(agent_examples)} do agente, {len(team_examples)} da equipe)")
 
@@ -740,22 +759,30 @@ class SimpleCrewEngine:
             context_parts.append("="*50)
             context_parts.append(tools_context)
 
-        # Instruções finais - REFORÇAR REGRAS
-        context_parts.append("\n" + "="*50)
-        context_parts.append("INSTRUÇÕES CRÍTICAS (SIGA RIGOROSAMENTE):")
-        context_parts.append("="*50)
+        # Instruções finais - REFORÇAR REGRAS COM CHECKLIST
+        context_parts.append("\n" + "="*70)
+        context_parts.append("🎯 INSTRUÇÕES CRÍTICAS - REVISE ANTES DE RESPONDER:")
+        context_parts.append("="*70)
 
-        if do_rules:
-            context_parts.append("\n🔴 OBRIGATÓRIO - Você DEVE:")
-            for rule in do_rules:
-                if rule and rule.strip():
-                    context_parts.append(f"  • {rule}")
+        if dont_rules or do_rules:
+            context_parts.append("\n⚠️  PRIORIDADE MÁXIMA #1 - GUARDRAILS:")
+            context_parts.append("   • RELEIA as regras PROIBIDAS no topo deste prompt")
+            context_parts.append("   • Se sua resposta violar QUALQUER regra proibida, PARE e reformule")
+            context_parts.append("   • NUNCA cite, mencione ou ofereça algo que esteja nas regras PROIBIDAS")
+            context_parts.append("   • Mesmo que a base de conhecimento contenha, IGNORE se for proibido")
 
-        if dont_rules:
-            context_parts.append("\n🚫 PROIBIDO - Você NÃO DEVE:")
-            for rule in dont_rules:
-                if rule and rule.strip():
-                    context_parts.append(f"  • {rule}")
+        if all_examples:
+            context_parts.append("\n⚠️  PRIORIDADE MÁXIMA #2 - EXEMPLOS:")
+            context_parts.append("   • Se há EXEMPLOS DE RESPOSTAS CORRETAS acima, você DEVE:")
+            context_parts.append("   • Replicar EXATAMENTE o estilo, tom e formato mostrado nos exemplos")
+            context_parts.append("   • Usar a mesma estrutura de resposta dos exemplos")
+            context_parts.append("   • Os exemplos são OBRIGATÓRIOS - não são opcionais")
+
+        context_parts.append("\n📋 CHECKLIST ANTES DE RESPONDER:")
+        context_parts.append("1. ✅ Minha resposta viola alguma regra PROIBIDA? Se SIM, reformule!")
+        context_parts.append("2. ✅ Estou seguindo os exemplos fornecidos?")
+        context_parts.append("3. ✅ Estou mantendo o tom e personalidade definidos?")
+        context_parts.append("4. ✅ Estou sendo útil mas respeitando os limites?")
 
         if knowledge_context:
             context_parts.append("\n📚 IMPORTANTE: Use APENAS as informações da base de conhecimento fornecida acima")
@@ -766,8 +793,7 @@ class SimpleCrewEngine:
         context_parts.append("✓ Use o histórico da conversa para dar continuidade")
         context_parts.append("✓ NUNCA invente detalhes sobre fotos/imagens que você enviou - apenas confirme que foram enviadas")
 
-        if all_examples:
-            context_parts.append("✓ Use os exemplos como referência de qualidade nas respostas")
+        context_parts.append("\n⚠️  LEMBRE-SE: Se você mencionar algo PROIBIDO, sua resposta será REPROVADA.")
 
         final_context = "\n".join(context_parts)
 

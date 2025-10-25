@@ -386,6 +386,14 @@ class TrainingService:
 
             # Construir prompt específico para treinamento
             training_prompt = f"""
+            ⚠️⚠️⚠️ ATENÇÃO CRÍTICA - LEIA ISTO PRIMEIRO ⚠️⚠️⚠️
+            {guardrails_text}
+
+            ══════════════════════════════════════════════════════════════════
+            🚨 ANTES DE RESPONDER, RELEIA AS REGRAS PROIBIDAS ACIMA 🚨
+            QUALQUER VIOLAÇÃO DESSAS REGRAS RESULTARÁ EM RESPOSTA INCORRETA
+            ══════════════════════════════════════════════════════════════════
+
             Você está em uma sessão de TREINAMENTO INTERATIVO. O objetivo é fornecer a melhor resposta possível para que o usuário possa avaliar e melhorar sua performance.
 
             PAPEL: {agent_config['role']}
@@ -398,7 +406,7 @@ class TrainingService:
             - Tom: {agent_config.get('personality', {}).get('tone', 'friendly')}
             - Características: {', '.join(agent_config.get('personality', {}).get('traits', []))}
             - Instruções especiais: {agent_config.get('personality', {}).get('customInstructions', '')}
-            {guardrails_text}
+
             {examples_text}
             {context_text}
             {tools_context}
@@ -409,24 +417,27 @@ class TrainingService:
             {request.message}
             ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-            🎯 INSTRUÇÕES CRÍTICAS - LEIA COM ATENÇÃO:
+            🎯 INSTRUÇÕES CRÍTICAS - REVISE ANTES DE RESPONDER:
 
-            ⚠️  PRIORIDADE MÁXIMA: Se há EXEMPLOS DE RESPOSTAS CORRETAS acima, você DEVE:
+            ⚠️  PRIORIDADE MÁXIMA #1 - GUARDRAILS:
+               • RELEIA as regras PROIBIDAS no topo deste prompt
+               • Se sua resposta violar QUALQUER regra proibida, PARE e reformule
+               • NUNCA cite, mencione ou ofereça algo que esteja nas regras PROIBIDAS
+               • Mesmo que a base de conhecimento contenha, IGNORE se for proibido
+
+            ⚠️  PRIORIDADE MÁXIMA #2 - EXEMPLOS:
+               • Se há EXEMPLOS DE RESPOSTAS CORRETAS acima, você DEVE:
                • Replicar EXATAMENTE o estilo, tom e formato mostrado nos exemplos
                • Usar a mesma estrutura de resposta dos exemplos
-               • Manter o mesmo nível de detalhamento dos exemplos
-               • Os exemplos são OBRIGATÓRIOS - não são opcionais ou sugestões
+               • Os exemplos são OBRIGATÓRIOS - não são opcionais
 
-            📋 REGRAS OBRIGATÓRIAS:
-            1. ✅ SEMPRE siga o padrão dos exemplos quando fornecidos
-            2. ✅ Use o contexto da base de conhecimento quando relevante
-            3. ✅ Mantenha rigorosamente a personalidade e tom definidos
-            4. ✅ SIGA as regras de guardrails sem exceção
-            5. ✅ Seja honesto se não souber algo, mas sempre útil
-            6. ✅ Não mencione que está em treinamento
+            📋 CHECKLIST ANTES DE RESPONDER:
+            1. ✅ Minha resposta viola alguma regra PROIBIDA? Se SIM, reformule!
+            2. ✅ Estou seguindo os exemplos fornecidos?
+            3. ✅ Estou mantendo o tom e personalidade definidos?
+            4. ✅ Estou sendo útil mas respeitando os limites?
 
-            ⚠️  LEMBRE-SE: Esta é uma sessão de treinamento. A qualidade da sua resposta será avaliada.
-            Se você não seguir os exemplos fornecidos, sua resposta será marcada como INCORRETA.
+            ⚠️  LEMBRE-SE: Se você mencionar algo PROIBIDO, sua resposta será REPROVADA.
 
             RESPOSTA:
             """
