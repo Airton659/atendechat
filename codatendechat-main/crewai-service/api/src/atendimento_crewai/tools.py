@@ -751,8 +751,8 @@ def _schedule_appointment_impl(
     import requests
     import os
 
-    # URL do backend Node.js
-    backend_url = os.getenv("BACKEND_URL", "http://localhost:8080")
+    # URL do backend Node.js (Docker expõe na porta 3000)
+    backend_url = os.getenv("BACKEND_URL", "http://localhost:3000")
     endpoint = f"{backend_url}/schedules/agent"
 
     payload = {
