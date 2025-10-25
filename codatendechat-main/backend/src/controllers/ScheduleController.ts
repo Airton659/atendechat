@@ -44,6 +44,14 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
   } = req.body;
   const { companyId } = req.user;
 
+  // Validar data: NÃO pode ser no passado
+  const sendAtDate = new Date(sendAt);
+  const now = new Date();
+
+  if (sendAtDate < now) {
+    throw new AppError("ERR_PAST_DATE: Data do agendamento não pode ser no passado", 400);
+  }
+
   const schedule = await CreateService({
     body,
     sendAt,
@@ -77,6 +85,14 @@ export const storeFromAgent = async (req: Request, res: Response): Promise<Respo
 
   if (!companyId) {
     throw new AppError("ERR_INVALID_TENANT_ID", 400);
+  }
+
+  // Validar data: NÃO pode ser no passado
+  const sendAtDate = new Date(sendAt);
+  const now = new Date();
+
+  if (sendAtDate < now) {
+    throw new AppError("ERR_PAST_DATE: Data do agendamento não pode ser no passado", 400);
   }
 
   const schedule = await CreateService({
