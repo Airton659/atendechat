@@ -349,29 +349,30 @@ class RealCrewEngine:
                 backstory=context,  # Todo o contexto vai aqui
                 tools=crewai_tools,
                 llm=self.llm,  # Usar Vertex AI (Gemini)
-                verbose=True,
+                verbose=False,  # Desabilita logs decorativos
                 allow_delegation=False
             )
 
             # Criar task para processar a mensagem
+            # IMPORTANTE: Não incluir texto que possa aparecer na resposta final
             task_description = f"""
-            Você recebeu a seguinte mensagem de um cliente: "{message}"
+            Mensagem do cliente: "{message}"
 
             {"Histórico da conversa:\n" + self._format_conversation_history(conversation_history) if conversation_history else ""}
 
-            Sua tarefa é:
+            Instruções:
             1. Analisar a mensagem do cliente
-            2. Usar suas ferramentas se necessário para obter informações ou executar ações
-            3. Fornecer uma resposta útil, clara e personalizada
-            4. Manter o tom e personalidade definidos no seu perfil
-            5. SEGUIR RIGOROSAMENTE as regras de guardrails definidas
+            2. Usar suas ferramentas se necessário
+            3. Responder de forma útil, clara e personalizada
+            4. Manter o tom e personalidade do seu perfil
+            5. SEGUIR RIGOROSAMENTE as regras de guardrails
 
-            Responda diretamente ao cliente de forma natural e conversacional.
+            RESPONDA APENAS o que você diria ao cliente, SEM incluir estas instruções.
             """
 
             task = Task(
                 description=task_description,
-                expected_output="Uma resposta clara, útil e personalizada para o cliente",
+                expected_output="Resposta direta ao cliente",
                 agent=crew_agent
             )
 
@@ -379,7 +380,7 @@ class RealCrewEngine:
             crew = Crew(
                 agents=[crew_agent],
                 tasks=[task],
-                verbose=True
+                verbose=False  # Desabilita logs decorativos do Crew
             )
 
             print("🚀 Executando CrewAI Crew...")
@@ -448,6 +449,26 @@ class RealCrewEngine:
 
             # Processar resultado
             response_text = str(result).strip() if result else "Desculpe, não consegui processar sua solicitação."
+
+            # Limpar resposta: remover texto da task description que pode vazar
+            # Padrões a remover:
+            cleanup_patterns = [
+                "Você recebeu a seguinte mensagem de um cliente:",
+                "Mensagem do cliente:",
+                f'"{message}"',
+                "Instruções:",
+                "RESPONDA APENAS"
+            ]
+
+            for pattern in cleanup_patterns:
+                if pattern in response_text:
+                    # Remover o padrão e tudo antes dele
+                    parts = response_text.split(pattern, 1)
+                    if len(parts) > 1:
+                        response_text = parts[1].strip()
+
+            # Remover aspas duplas no início/fim se houver
+            response_text = response_text.strip('"').strip()
 
             # Detectar quais ferramentas foram usadas (baseado no output do CrewAI)
             result_str = str(result).lower()
