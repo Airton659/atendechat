@@ -2495,11 +2495,25 @@ const handleMessage = async (
     // ====================================================================
     // INTEGRAÇÃO CREWAI - Verificar se a conexão tem uma equipe associada
     // ====================================================================
+
+    // Verificar se tem crew mas está com humano atribuído (signed)
     if (
       !msg.key.fromMe &&
       !isGroup &&
       whatsapp.crewId &&
-      whatsapp.crewId.trim() !== ""
+      whatsapp.crewId.trim() !== "" &&
+      ticket.userId
+    ) {
+      console.log(
+        `[CrewAI] Ticket #${ticket.id} está com usuário ${ticket.userId} atribuído. IA não irá responder (modo humano ativo).`
+      );
+      // Não processar com CrewAI quando há atendente humano
+    } else if (
+      !msg.key.fromMe &&
+      !isGroup &&
+      whatsapp.crewId &&
+      whatsapp.crewId.trim() !== "" &&
+      !ticket.userId
     ) {
       console.log(
         `[CrewAI] Conexão ${whatsapp.name} tem crew associada: ${whatsapp.crewId}`
