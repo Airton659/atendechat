@@ -719,3 +719,142 @@ def enviar_imagem(
         return result['message']
 
     return f"{result['message']}\n\nIMPORTANTE: As imagens serão enviadas automaticamente ao cliente."
+
+
+# ===================================
+# FERRAMENTA DE AGENDAMENTO
+# ===================================
+
+def _schedule_appointment_impl(
+    tenant_id: str,
+    contact_id: int,
+    user_id: int,
+    date_time: str,
+    body: str,
+    status: str = "pending_confirmation"
+) -> str:
+    """
+    Implementação da ferramenta de agendamento.
+    Cria um agendamento no backend Node.js via API.
+
+    Args:
+        tenant_id: ID do tenant (ex: "company_3")
+        contact_id: ID do contato no sistema
+        user_id: ID do usuário responsável pelo agendamento
+        date_time: Data e hora do agendamento (ISO 8601 format: "2025-10-25T14:30:00")
+        body: Descrição do agendamento
+        status: Status do agendamento ("scheduled" ou "pending_confirmation")
+
+    Returns:
+        str: Mensagem de sucesso ou erro
+    """
+    import requests
+    import os
+
+    # URL do backend Node.js
+    backend_url = os.getenv("BACKEND_URL", "http://localhost:8080")
+    endpoint = f"{backend_url}/schedules/agent"
+
+    payload = {
+        "tenantId": tenant_id,
+        "contactId": contact_id,
+        "userId": user_id,
+        "sendAt": date_time,
+        "body": body,
+        "status": status
+    }
+
+    try:
+        print(f"📅 Criando agendamento via API: {endpoint}")
+        print(f"   Payload: {payload}")
+
+        response = requests.post(endpoint, json=payload, timeout=10)
+
+        if response.status_code == 200:
+            schedule_data = response.json()
+            schedule_id = schedule_data.get('id', 'N/A')
+
+            if status == "pending_confirmation":
+                return f"✅ Agendamento criado com sucesso (ID: {schedule_id})!\n" \
+                       f"Status: PENDENTE DE CONFIRMAÇÃO HUMANA\n" \
+                       f"Um atendente humano irá confirmar este agendamento em breve.\n" \
+                       f"Data/Hora: {date_time}\n" \
+                       f"Descrição: {body}"
+            else:
+                return f"✅ Agendamento CONFIRMADO com sucesso (ID: {schedule_id})!\n" \
+                       f"Data/Hora: {date_time}\n" \
+                       f"Descrição: {body}"
+        else:
+            error_msg = response.text
+            print(f"❌ Erro ao criar agendamento: HTTP {response.status_code} - {error_msg}")
+            return f"❌ Erro ao criar agendamento: {error_msg}"
+
+    except requests.exceptions.Timeout:
+        print(f"⏱️ Timeout ao chamar API de agendamento")
+        return "❌ Erro: Timeout ao criar agendamento. Tente novamente."
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Erro de requisição: {e}")
+        return f"❌ Erro ao conectar com o sistema de agendamentos: {str(e)}"
+    except Exception as e:
+        print(f"❌ Erro inesperado: {e}")
+        return f"❌ Erro inesperado ao criar agendamento: {str(e)}"
+
+
+@tool("schedule_appointment")
+def schedule_appointment(
+    tenant_id: str,
+    contact_id: int,
+    user_id: int,
+    date_time: str,
+    body: str,
+    status: str = "pending_confirmation"
+) -> str:
+    """
+    Agenda um compromisso para o cliente.
+
+    Use esta ferramenta quando tiver coletado TODAS as informações necessárias do cliente:
+    - Data e hora desejadas
+    - Tipo de serviço/motivo do agendamento
+    - Confirmação do cliente
+
+    IMPORTANTE - DECISÃO DE STATUS:
+    - Use status="scheduled" APENAS se:
+      * O cliente CONFIRMOU explicitamente o horário
+      * O cliente pediu para você agendar diretamente
+      * Você tem certeza absoluta da disponibilidade
+
+    - Use status="pending_confirmation" (padrão) se:
+      * O cliente apenas SUGERIU um horário
+      * Há incerteza sobre disponibilidade
+      * O horário precisa ser verificado
+      * Quando em dúvida
+
+    Args:
+        tenant_id: ID do tenant (ex: "company_3")
+        contact_id: ID do contato (número inteiro)
+        user_id: ID do usuário responsável (número inteiro)
+        date_time: Data/hora no formato ISO 8601 (ex: "2025-10-25T14:30:00")
+        body: Descrição detalhada do agendamento
+        status: "scheduled" (confirmado) ou "pending_confirmation" (padrão)
+
+    Returns:
+        str: Mensagem de confirmação ou erro
+
+    Exemplo de uso:
+        schedule_appointment(
+            tenant_id="company_3",
+            contact_id=123,
+            user_id=1,
+            date_time="2025-10-26T15:00:00",
+            body="Consulta de avaliação - Cliente João Silva",
+            status="pending_confirmation"
+        )
+    """
+    return _schedule_appointment_impl(
+        tenant_id=tenant_id,
+        contact_id=contact_id,
+        user_id=user_id,
+        date_time=date_time,
+        body=body,
+        status=status
+    )

@@ -61,6 +61,92 @@ export const store = async (req: Request, res: Response): Promise<Response> => {
   return res.status(200).json(schedule);
 };
 
+// Endpoint para agendamento criado por IA (CrewAI)
+export const storeFromAgent = async (req: Request, res: Response): Promise<Response> => {
+  const {
+    body,
+    sendAt,
+    contactId,
+    userId,
+    status,
+    tenantId
+  } = req.body;
+
+  // tenantId vem como "company_X" do CrewAI, extrair X
+  const companyId = tenantId ? parseInt(tenantId.replace('company_', '')) : null;
+
+  if (!companyId) {
+    throw new AppError("ERR_INVALID_TENANT_ID", 400);
+  }
+
+  const schedule = await CreateService({
+    body,
+    sendAt,
+    contactId,
+    companyId,
+    userId,
+    status: status || 'pending_confirmation' // Default para pending_confirmation
+  });
+
+  const io = getIO();
+
+  // Emitir evento específico para agendamento criado por IA
+  io.to(`company-${companyId}-mainchannel`).emit("schedule", {
+    action: "create",
+    schedule,
+    createdByAgent: true
+  });
+
+  // Se for pending_confirmation, emitir evento adicional para notificação
+  if (schedule.status === 'pending_confirmation') {
+    io.to(`company-${companyId}-mainchannel`).emit("schedule:pending_confirmation", {
+      schedule
+    });
+  }
+
+  return res.status(200).json(schedule);
+};
+
+// Endpoint para confirmar agendamento pendente
+export const confirm = async (req: Request, res: Response): Promise<Response> => {
+  const { scheduleId } = req.params;
+  const { companyId } = req.user;
+
+  const schedule = await UpdateService({
+    scheduleData: { status: 'scheduled' },
+    id: scheduleId,
+    companyId
+  });
+
+  const io = getIO();
+  io.to(`company-${companyId}-mainchannel`).emit("schedule", {
+    action: "update",
+    schedule
+  });
+
+  return res.status(200).json(schedule);
+};
+
+// Endpoint para rejeitar agendamento pendente
+export const reject = async (req: Request, res: Response): Promise<Response> => {
+  const { scheduleId } = req.params;
+  const { companyId } = req.user;
+
+  const schedule = await UpdateService({
+    scheduleData: { status: 'cancelled' },
+    id: scheduleId,
+    companyId
+  });
+
+  const io = getIO();
+  io.to(`company-${companyId}-mainchannel`).emit("schedule", {
+    action: "update",
+    schedule
+  });
+
+  return res.status(200).json(schedule);
+};
+
 export const show = async (req: Request, res: Response): Promise<Response> => {
   const { scheduleId } = req.params;
   const { companyId } = req.user;

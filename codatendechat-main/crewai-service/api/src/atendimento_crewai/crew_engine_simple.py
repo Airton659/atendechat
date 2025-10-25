@@ -18,7 +18,8 @@ from .tools import (
     _cadastrar_cliente_planilha_impl,
     _coletar_info_agendamento_impl,
     _buscar_cliente_planilha_impl,
-    _enviar_imagem_impl
+    _enviar_imagem_impl,
+    schedule_appointment
 )
 
 
