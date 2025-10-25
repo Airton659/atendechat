@@ -157,7 +157,9 @@ class SimpleCrewEngine:
         message: str,
         conversation_history: List[Dict[str, Any]] = None,
         agent_override: str = None,
-        remote_jid: str = None
+        remote_jid: str = None,
+        contact_id: int = None,
+        ticket_id: int = None
     ) -> Dict[str, Any]:
         """Processa mensagem de forma simples e funcional"""
 
@@ -427,6 +429,33 @@ class SimpleCrewEngine:
                         error_msg = f"Erro ao coletar agendamento: {str(e)}"
                         tools_context += f"\n\nERRO NO AGENDAMENTO:\n{error_msg}"
                         print(f"   ❌ Erro ao coletar agendamento: {e}")
+
+            # 2B. NOVA FERRAMENTA DE AGENDAMENTO COM CRIAÇÃO AUTOMÁTICA
+            if 'schedule_appointment' in agent_tools:
+                print(f"\n📅 Agente tem ferramenta schedule_appointment configurada")
+
+                # Esta ferramenta detecta quando o cliente forneceu todos os dados e está confirmando
+                # Palavras de confirmação indicam que devemos executar o agendamento
+                confirmation_keywords = ['sim', 'confirmar', 'confirme', 'pode agendar', 'agende', 'ok', 'tudo certo']
+                is_confirming = any(keyword in message_lower for keyword in confirmation_keywords)
+
+                # Também verificar se há informação de data/hora na mensagem
+                has_datetime_info = any(word in message_lower for word in ['às', 'as', 'dia', 'hora', 'manhã', 'tarde', 'noite', 'amanhã', 'hoje'])
+
+                if is_confirming or (is_agendamento and has_datetime_info):
+                    print(f"   🎯 Contexto de agendamento detectado - preparando para executar schedule_appointment")
+
+                    # Adicionar informação ao contexto para que a IA use a ferramenta
+                    tools_context += f"\n\n📅 FERRAMENTA DISPONÍVEL: schedule_appointment"
+                    tools_context += f"\n   Use esta ferramenta para criar o agendamento agora."
+                    tools_context += f"\n   Parâmetros necessários:"
+                    tools_context += f"\n   - tenant_id: {tenant_id}"
+                    tools_context += f"\n   - contact_id: {contact_id or 0}"
+                    tools_context += f"\n   - user_id: 1 (ou ID do responsável)"
+                    tools_context += f"\n   - date_time: formato ISO 8601 (ex: '2025-10-27T08:00:00')"
+                    tools_context += f"\n   - body: descrição da consulta"
+                    tools_context += f"\n   - status: 'scheduled' se cliente confirmou explicitamente, 'pending_confirmation' se sugeriu"
+                    tools_context += f"\n\n   IMPORTANTE: Extraia a data e hora da conversa e chame schedule_appointment."
 
             # 3. FERRAMENTA DE ENVIO DE IMAGENS
             media_to_send = []

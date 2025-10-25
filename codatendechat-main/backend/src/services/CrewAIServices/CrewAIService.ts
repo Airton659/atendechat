@@ -72,7 +72,9 @@ export const sendMessageToCrewAI = async (
       crewId: crewId,
       message,
       conversationHistory,
-      remoteJid: ticket.contact?.number || ticket.contact?.id || null
+      remoteJid: ticket.contact?.number || ticket.contact?.id || null,
+      contactId: ticket.contactId || null,
+      ticketId: ticket.id || null
     };
 
     console.log(`[CrewAI] Payload:`, JSON.stringify(payload, null, 2));

@@ -30,6 +30,8 @@ class ProcessMessageRequest(BaseModel):
     conversationHistory: Optional[List[Dict[str, Any]]] = []
     agentOverride: Optional[str] = None
     remoteJid: Optional[str] = None  # Número do WhatsApp do cliente
+    contactId: Optional[int] = None  # ID do contato
+    ticketId: Optional[int] = None  # ID do ticket
 
 class ValidateCrewRequest(BaseModel):
     crewBlueprint: Dict[str, Any]
@@ -65,7 +67,9 @@ async def process_message(request: ProcessMessageRequest = Body(...)):
             message=request.message,
             conversation_history=request.conversationHistory,
             agent_override=request.agentOverride,
-            remote_jid=request.remoteJid
+            remote_jid=request.remoteJid,
+            contact_id=request.contactId,
+            ticket_id=request.ticketId
         )
 
         # Adicionar métricas
