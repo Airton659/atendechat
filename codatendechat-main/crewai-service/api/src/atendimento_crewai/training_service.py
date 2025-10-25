@@ -306,14 +306,53 @@ class TrainingService:
                         tools_context += f"\n\nERRO NO AGENDAMENTO:\n{error_msg}\n"
                         print(f"   ❌ Erro ao coletar agendamento: {e}")
 
-            # Preparar contexto do conhecimento
+            # PRÉ-FILTRAR contexto do conhecimento baseado em guardrails
+            # Obter guardrails do agente ANTES de processar conhecimento
+            agent_training = agent_config.get('training', {})
+            guardrails = agent_training.get('guardrails', {})
+            dont_rules = guardrails.get('dont', [])
+
+            # Palavras-chave proibidas extraídas das regras "don't"
+            forbidden_keywords = []
+            for rule in dont_rules:
+                rule_lower = rule.lower()
+                # Extrair palavras-chave importantes das regras
+                if 'compra' in rule_lower or 'comprar' in rule_lower:
+                    forbidden_keywords.extend(['compra', 'comprar', 'venda'])
+                if 'vend' in rule_lower:
+                    forbidden_keywords.extend(['venda', 'vender'])
+
+            print(f"🔍 Palavras-chave proibidas detectadas: {forbidden_keywords}")
+
+            # Preparar contexto do conhecimento COM FILTRO
             context_text = ""
             if knowledge_context:
-                context_text = "Contexto relevante da base de conhecimento:\n"
-                for i, ctx in enumerate(knowledge_context, 1):
-                    source = ctx.get('metadata', {}).get('source', 'documento')
-                    context_text += f"{i}. [{source.upper()}] {ctx['content']}\n"
-                context_text += "\n"
+                filtered_context = []
+                for ctx in knowledge_context:
+                    content_lower = ctx['content'].lower()
+
+                    # Verificar se o conteúdo contém palavras proibidas
+                    is_forbidden = False
+                    for keyword in forbidden_keywords:
+                        if keyword in content_lower:
+                            is_forbidden = True
+                            print(f"   ⛔ Filtrado: contém palavra proibida '{keyword}'")
+                            break
+
+                    if not is_forbidden:
+                        filtered_context.append(ctx)
+
+                print(f"📊 Contexto filtrado: {len(knowledge_context)} → {len(filtered_context)} itens")
+
+                if filtered_context:
+                    context_text = "Contexto relevante da base de conhecimento:\n"
+                    for i, ctx in enumerate(filtered_context, 1):
+                        source = ctx.get('metadata', {}).get('source', 'documento')
+                        context_text += f"{i}. [{source.upper()}] {ctx['content']}\n"
+                    context_text += "\n"
+                else:
+                    print("⚠️ Todos os resultados foram filtrados por violar guardrails")
+
 
             # Construir histórico da conversa
             conversation_context = ""
@@ -324,12 +363,9 @@ class TrainingService:
                     conversation_context += f"{role}: {msg['content']}\n"
                 conversation_context += "\n"
 
-            # PILAR 2: Obter treinamento do agente
-            agent_training = agent_config.get('training', {})
+            # PILAR 2: Obter treinamento do agente (agent_training já foi obtido acima para filtro)
             persona = agent_training.get('persona', '').strip()
-            guardrails = agent_training.get('guardrails', {})
             do_rules = guardrails.get('do', [])
-            dont_rules = guardrails.get('dont', [])
 
             # Construir seção de guardrails
             guardrails_text = ""
@@ -425,7 +461,15 @@ class TrainingService:
                • NUNCA cite, mencione ou ofereça algo que esteja nas regras PROIBIDAS
                • Mesmo que a base de conhecimento contenha, IGNORE se for proibido
 
-            ⚠️  PRIORIDADE MÁXIMA #2 - EXEMPLOS:
+            ⚠️  PRIORIDADE MÁXIMA #2 - FILTRO DE CONHECIMENTO:
+               • A base de conhecimento acima pode conter informações PROIBIDAS
+               • Você DEVE FILTRAR e mostrar APENAS o que está permitido pelas regras
+               • Exemplo: Se a base tem 10 imóveis mas 5 são para COMPRA (proibido), mostre APENAS os 5 permitidos
+               • NUNCA mencione que existem opções filtradas ou proibidas
+               • Se TODOS os resultados forem proibidos, informe que não há opções disponíveis no momento
+               • Seja PRECISO: se o cliente pede "casa em Curitiba", mostre apenas casas em Curitiba (não Londrina, não São Paulo)
+
+            ⚠️  PRIORIDADE MÁXIMA #3 - EXEMPLOS:
                • Se há EXEMPLOS DE RESPOSTAS CORRETAS acima, você DEVE:
                • Replicar EXATAMENTE o estilo, tom e formato mostrado nos exemplos
                • Usar a mesma estrutura de resposta dos exemplos
@@ -433,11 +477,12 @@ class TrainingService:
 
             📋 CHECKLIST ANTES DE RESPONDER:
             1. ✅ Minha resposta viola alguma regra PROIBIDA? Se SIM, reformule!
-            2. ✅ Estou seguindo os exemplos fornecidos?
-            3. ✅ Estou mantendo o tom e personalidade definidos?
-            4. ✅ Estou sendo útil mas respeitando os limites?
+            2. ✅ Filtrei TODOS os itens proibidos da base de conhecimento?
+            3. ✅ Minha resposta é PRECISA (cidade, tipo, características corretas)?
+            4. ✅ Estou seguindo os exemplos fornecidos?
+            5. ✅ Estou mantendo o tom e personalidade definidos?
 
-            ⚠️  LEMBRE-SE: Se você mencionar algo PROIBIDO, sua resposta será REPROVADA.
+            ⚠️  LEMBRE-SE: Se você mencionar algo PROIBIDO ou impreciso, sua resposta será REPROVADA.
 
             RESPOSTA:
             """
@@ -450,11 +495,19 @@ class TrainingService:
             print("="*80 + "\n")
 
             # Gerar resposta usando Vertex AI com retry para 429
-            from vertexai.generative_models import GenerativeModel
+            from vertexai.generative_models import GenerativeModel, GenerationConfig
             import os
 
             model_name = os.getenv("VERTEX_MODEL", "gemini-2.5-flash-lite")
             model = GenerativeModel(model_name)
+
+            # Configuração de geração: temperatura baixa para respostas mais precisas e determinísticas
+            generation_config = GenerationConfig(
+                temperature=0.2,  # Baixa temperatura = mais focado, menos criativo, mais determinístico
+                top_p=0.8,       # Amostragem nucleus: considera tokens com probabilidade acumulada de 80%
+                top_k=40,        # Considera os 40 tokens mais prováveis
+                max_output_tokens=2048
+            )
 
             # Tentar até 3 vezes com backoff exponencial em caso de erro 429
             max_retries = 3
@@ -463,7 +516,10 @@ class TrainingService:
 
             for attempt in range(max_retries):
                 try:
-                    response = model.generate_content(training_prompt)
+                    response = model.generate_content(
+                        training_prompt,
+                        generation_config=generation_config
+                    )
                     ai_response = response.text.strip()
                     break  # Sucesso, sair do loop
                 except Exception as e:

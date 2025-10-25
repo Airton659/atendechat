@@ -61,8 +61,8 @@ class SimpleCrewEngine:
             def __init__(self, db):
                 self.db = db
 
-            def _run(self, query: str, crew_id: str, max_results: int = 3, document_ids: List[str] = None) -> str:
-                """Busca por palavra-chave nos vetores"""
+            def _run(self, query: str, crew_id: str, max_results: int = 3, document_ids: List[str] = None, forbidden_keywords: List[str] = None) -> str:
+                """Busca por palavra-chave nos vetores com filtro de guardrails"""
                 try:
                     results = []
                     vectors_ref = self.db.collection('vectors').where('crewId', '==', crew_id)
@@ -73,9 +73,12 @@ class SimpleCrewEngine:
                     print(f"🔍 Buscando por palavra-chave: '{query}' (crew: {crew_id})")
                     if document_ids:
                         print(f"   Filtrando por {len(document_ids)} documento(s) específico(s): {document_ids}")
+                    if forbidden_keywords:
+                        print(f"   🔍 Palavras-chave proibidas: {forbidden_keywords}")
 
                     total_docs = 0
                     filtered_docs = 0
+                    forbidden_filtered = 0
 
                     for doc in vectors_ref.stream():
                         data = doc.to_dict()
@@ -90,6 +93,20 @@ class SimpleCrewEngine:
                         filtered_docs += 1
 
                         content = data.get('content', '').lower()
+
+                        # PRÉ-FILTRO: Verificar se contém palavras proibidas
+                        is_forbidden = False
+                        if forbidden_keywords:
+                            for keyword in forbidden_keywords:
+                                if keyword in content:
+                                    is_forbidden = True
+                                    forbidden_filtered += 1
+                                    if forbidden_filtered <= 3:  # Só mostrar os primeiros 3
+                                        print(f"   ⛔ Filtrado por guardrail: contém '{keyword}'")
+                                    break
+
+                        if is_forbidden:
+                            continue
 
                         # Calcular score baseado em palavras encontradas
                         score = 0
@@ -106,6 +123,8 @@ class SimpleCrewEngine:
 
                     print(f"   📊 Total de chunks encontrados na crew: {total_docs}")
                     print(f"   📊 Chunks após filtrar por documentId: {filtered_docs}")
+                    if forbidden_keywords:
+                        print(f"   📊 Chunks filtrados por guardrails: {forbidden_filtered}")
                     print(f"   📊 Chunks com score > 0: {len(results)}")
 
                     # Ordenar por score
@@ -221,11 +240,25 @@ class SimpleCrewEngine:
                     else:
                         print(f"   Agente usará toda a base de conhecimento do tenant")
 
+                    # Extrair palavras-chave proibidas dos guardrails para pré-filtrar conhecimento
+                    agent_training = selected_agent.get('training', {})
+                    guardrails = agent_training.get('guardrails', {})
+                    dont_rules = guardrails.get('dont', [])
+
+                    forbidden_keywords = []
+                    for rule in dont_rules:
+                        rule_lower = rule.lower()
+                        if 'compra' in rule_lower or 'comprar' in rule_lower:
+                            forbidden_keywords.extend(['compra', 'comprar', 'venda'])
+                        if 'vend' in rule_lower:
+                            forbidden_keywords.extend(['venda', 'vender'])
+
                     knowledge_result = self.knowledge_tool._run(
                         query=message,
                         crew_id=crew_id,
                         max_results=3,
-                        document_ids=agent_document_ids if agent_document_ids else None
+                        document_ids=agent_document_ids if agent_document_ids else None,
+                        forbidden_keywords=forbidden_keywords if forbidden_keywords else None
                     )
                     if knowledge_result and "Não foram encontradas" not in knowledge_result:
                         knowledge_context = f"\n\nINFORMAÇÕES DA BASE DE CONHECIMENTO:\n{knowledge_result}"
@@ -771,8 +804,16 @@ class SimpleCrewEngine:
             context_parts.append("   • NUNCA cite, mencione ou ofereça algo que esteja nas regras PROIBIDAS")
             context_parts.append("   • Mesmo que a base de conhecimento contenha, IGNORE se for proibido")
 
+        context_parts.append("\n⚠️  PRIORIDADE MÁXIMA #2 - FILTRO DE CONHECIMENTO:")
+        context_parts.append("   • A base de conhecimento acima pode conter informações PROIBIDAS")
+        context_parts.append("   • Você DEVE FILTRAR e mostrar APENAS o que está permitido pelas regras")
+        context_parts.append("   • Exemplo: Se a base tem 10 imóveis mas 5 são para COMPRA (proibido), mostre APENAS os 5 permitidos")
+        context_parts.append("   • NUNCA mencione que existem opções filtradas ou proibidas")
+        context_parts.append("   • Se TODOS os resultados forem proibidos, informe que não há opções disponíveis no momento")
+        context_parts.append("   • Seja PRECISO: se o cliente pede 'casa em Curitiba', mostre apenas casas em Curitiba (não Londrina, não São Paulo)")
+
         if all_examples:
-            context_parts.append("\n⚠️  PRIORIDADE MÁXIMA #2 - EXEMPLOS:")
+            context_parts.append("\n⚠️  PRIORIDADE MÁXIMA #3 - EXEMPLOS:")
             context_parts.append("   • Se há EXEMPLOS DE RESPOSTAS CORRETAS acima, você DEVE:")
             context_parts.append("   • Replicar EXATAMENTE o estilo, tom e formato mostrado nos exemplos")
             context_parts.append("   • Usar a mesma estrutura de resposta dos exemplos")
@@ -780,9 +821,10 @@ class SimpleCrewEngine:
 
         context_parts.append("\n📋 CHECKLIST ANTES DE RESPONDER:")
         context_parts.append("1. ✅ Minha resposta viola alguma regra PROIBIDA? Se SIM, reformule!")
-        context_parts.append("2. ✅ Estou seguindo os exemplos fornecidos?")
-        context_parts.append("3. ✅ Estou mantendo o tom e personalidade definidos?")
-        context_parts.append("4. ✅ Estou sendo útil mas respeitando os limites?")
+        context_parts.append("2. ✅ Filtrei TODOS os itens proibidos da base de conhecimento?")
+        context_parts.append("3. ✅ Minha resposta é PRECISA (cidade, tipo, características corretas)?")
+        context_parts.append("4. ✅ Estou seguindo os exemplos fornecidos?")
+        context_parts.append("5. ✅ Estou mantendo o tom e personalidade definidos?")
 
         if knowledge_context:
             context_parts.append("\n📚 IMPORTANTE: Use APENAS as informações da base de conhecimento fornecida acima")
@@ -793,7 +835,7 @@ class SimpleCrewEngine:
         context_parts.append("✓ Use o histórico da conversa para dar continuidade")
         context_parts.append("✓ NUNCA invente detalhes sobre fotos/imagens que você enviou - apenas confirme que foram enviadas")
 
-        context_parts.append("\n⚠️  LEMBRE-SE: Se você mencionar algo PROIBIDO, sua resposta será REPROVADA.")
+        context_parts.append("\n⚠️  LEMBRE-SE: Se você mencionar algo PROIBIDO ou impreciso, sua resposta será REPROVADA.")
 
         final_context = "\n".join(context_parts)
 
@@ -820,7 +862,20 @@ MENSAGEM DO CLIENTE: {message}
 RESPOSTA:"""
 
         try:
-            response = self.model.generate_content(full_prompt)
+            # Configuração de geração: temperatura baixa para respostas mais precisas e determinísticas
+            from vertexai.generative_models import GenerationConfig
+
+            generation_config = GenerationConfig(
+                temperature=0.2,  # Baixa temperatura = mais focado, menos criativo, mais determinístico
+                top_p=0.8,       # Amostragem nucleus: considera tokens com probabilidade acumulada de 80%
+                top_k=40,        # Considera os 40 tokens mais prováveis
+                max_output_tokens=2048
+            )
+
+            response = self.model.generate_content(
+                full_prompt,
+                generation_config=generation_config
+            )
 
             if response and response.text:
                 return response.text.strip()
