@@ -254,3 +254,130 @@ export const deleteMedia = async (
       throw new AppError(err.message);
   }
 };
+
+// === ENDPOINTS NÃO AUTENTICADOS PARA CREWAI ===
+
+// GET /schedules/agent/:contactId - Lista agendamentos do contato
+export const listFromAgent = async (req: Request, res: Response): Promise<Response> => {
+  const { contactId } = req.params;
+  const { tenantId } = req.query;
+
+  if (!tenantId) {
+    throw new AppError("ERR_INVALID_TENANT_ID", 400);
+  }
+
+  // tenantId vem como "company_X" do CrewAI, extrair X
+  const companyId = parseInt(tenantId.toString().replace('company_', ''));
+
+  if (!companyId) {
+    throw new AppError("ERR_INVALID_TENANT_ID", 400);
+  }
+
+  const { schedules, count, hasMore } = await ListService({
+    contactId: parseInt(contactId),
+    pageNumber: 1,
+    companyId
+  });
+
+  return res.json({ schedules, count, hasMore });
+};
+
+// DELETE /schedules/agent/:scheduleId - Cancela agendamento
+export const cancelFromAgent = async (req: Request, res: Response): Promise<Response> => {
+  const { scheduleId } = req.params;
+  const { tenantId } = req.query;
+
+  if (!tenantId) {
+    throw new AppError("ERR_INVALID_TENANT_ID", 400);
+  }
+
+  // tenantId vem como "company_X" do CrewAI, extrair X
+  const companyId = parseInt(tenantId.toString().replace('company_', ''));
+
+  if (!companyId) {
+    throw new AppError("ERR_INVALID_TENANT_ID", 400);
+  }
+
+  // Verificar se o agendamento pertence à empresa correta
+  const schedule = await ShowService(scheduleId, companyId);
+
+  if (!schedule) {
+    throw new AppError("ERR_SCHEDULE_NOT_FOUND", 404);
+  }
+
+  // Cancelar (atualizar status para cancelled)
+  const cancelledSchedule = await UpdateService({
+    scheduleData: { status: 'cancelled' },
+    id: scheduleId,
+    companyId
+  });
+
+  const io = getIO();
+  io.to(`company-${companyId}-mainchannel`).emit("schedule", {
+    action: "update",
+    schedule: cancelledSchedule
+  });
+
+  return res.status(200).json(cancelledSchedule);
+};
+
+// PUT /schedules/agent/:scheduleId - Atualiza agendamento
+export const updateFromAgent = async (req: Request, res: Response): Promise<Response> => {
+  const { scheduleId } = req.params;
+  const { tenantId, sendAt, body, status } = req.body;
+
+  if (!tenantId) {
+    throw new AppError("ERR_INVALID_TENANT_ID", 400);
+  }
+
+  // tenantId vem como "company_X" do CrewAI, extrair X
+  const companyId = parseInt(tenantId.replace('company_', ''));
+
+  if (!companyId) {
+    throw new AppError("ERR_INVALID_TENANT_ID", 400);
+  }
+
+  // Verificar se o agendamento pertence à empresa correta
+  const schedule = await ShowService(scheduleId, companyId);
+
+  if (!schedule) {
+    throw new AppError("ERR_SCHEDULE_NOT_FOUND", 404);
+  }
+
+  // Montar dados de atualização
+  const scheduleData: any = {};
+
+  if (sendAt) {
+    // Validar data: NÃO pode ser no passado
+    const sendAtDate = new Date(sendAt);
+    const now = new Date();
+
+    if (sendAtDate < now) {
+      throw new AppError("ERR_PAST_DATE: Data do agendamento não pode ser no passado", 400);
+    }
+
+    scheduleData.sendAt = sendAt;
+  }
+
+  if (body) {
+    scheduleData.body = body;
+  }
+
+  if (status) {
+    scheduleData.status = status;
+  }
+
+  const updatedSchedule = await UpdateService({
+    scheduleData,
+    id: scheduleId,
+    companyId
+  });
+
+  const io = getIO();
+  io.to(`company-${companyId}-mainchannel`).emit("schedule", {
+    action: "update",
+    schedule: updatedSchedule
+  });
+
+  return res.status(200).json(updatedSchedule);
+};

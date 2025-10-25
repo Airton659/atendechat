@@ -826,23 +826,21 @@ def _check_schedules_impl(
     # URL do backend Node.js (Docker expõe na porta 3000)
     backend_url = os.getenv("BACKEND_URL", "http://localhost:3000")
 
-    # Extrair companyId do tenant_id (ex: "company_3" -> 3)
-    company_id = tenant_id.replace("company_", "")
+    # Endpoint NÃO AUTENTICADO para CrewAI listar agendamentos
+    endpoint = f"{backend_url}/schedules/agent/{contact_id}"
 
-    # Endpoint do backend para listar agendamentos
-    endpoint = f"{backend_url}/schedules"
-
-    # Parâmetros de consulta
+    # Parâmetros de consulta (tenantId para validação no backend)
     params = {
-        "contactId": contact_id
+        "tenantId": tenant_id
     }
 
     try:
+        print(f"📋 EXECUTANDO check_schedules!")
+        print(f"   tenant_id: {tenant_id}")
+        print(f"   contact_id: {contact_id}")
         print(f"📅 Consultando agendamentos via API: {endpoint}")
         print(f"   Params: {params}")
 
-        # Header com companyId (simula autenticação - ajustar conforme seu sistema)
-        # NOTA: Você pode precisar ajustar isso dependendo de como seu backend autentica
         response = requests.get(endpoint, params=params, timeout=10)
 
         if response.status_code == 200:
@@ -919,13 +917,22 @@ def _cancel_schedule_impl(
     # URL do backend Node.js (Docker expõe na porta 3000)
     backend_url = os.getenv("BACKEND_URL", "http://localhost:3000")
 
-    # Endpoint do backend para deletar agendamento
-    endpoint = f"{backend_url}/schedules/{schedule_id}"
+    # Endpoint NÃO AUTENTICADO para CrewAI cancelar agendamento
+    endpoint = f"{backend_url}/schedules/agent/{schedule_id}"
+
+    # Query params para validação de tenant
+    params = {
+        "tenantId": tenant_id
+    }
 
     try:
+        print(f"🗑️ EXECUTANDO cancel_schedule!")
+        print(f"   tenant_id: {tenant_id}")
+        print(f"   schedule_id: {schedule_id}")
         print(f"🗑️ Cancelando agendamento via API: {endpoint}")
+        print(f"   Params: {params}")
 
-        response = requests.delete(endpoint, timeout=10)
+        response = requests.delete(endpoint, params=params, timeout=10)
 
         if response.status_code == 200:
             return f"✅ Agendamento #{schedule_id} cancelado com sucesso!\n" \
@@ -973,11 +980,14 @@ def _update_schedule_impl(
     # URL do backend Node.js (Docker expõe na porta 3000)
     backend_url = os.getenv("BACKEND_URL", "http://localhost:3000")
 
-    # Endpoint do backend para atualizar agendamento
-    endpoint = f"{backend_url}/schedules/{schedule_id}"
+    # Endpoint NÃO AUTENTICADO para CrewAI atualizar agendamento
+    endpoint = f"{backend_url}/schedules/agent/{schedule_id}"
 
-    # Montar payload com apenas os campos fornecidos
-    payload = {}
+    # Montar payload com tenantId e campos fornecidos
+    payload = {
+        "tenantId": tenant_id
+    }
+
     if new_date_time:
         payload["sendAt"] = new_date_time
     if new_body:
@@ -985,10 +995,14 @@ def _update_schedule_impl(
     if new_status:
         payload["status"] = new_status
 
-    if not payload:
+    # Verificar se há alguma alteração além do tenantId
+    if len(payload) == 1:  # Só tem tenantId
         return "❌ Erro: Nenhuma alteração foi especificada. Forneça nova data/hora, descrição ou status."
 
     try:
+        print(f"✏️ EXECUTANDO update_schedule!")
+        print(f"   tenant_id: {tenant_id}")
+        print(f"   schedule_id: {schedule_id}")
         print(f"✏️ Atualizando agendamento via API: {endpoint}")
         print(f"   Payload: {payload}")
 

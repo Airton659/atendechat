@@ -13,8 +13,18 @@ scheduleRoutes.get("/schedules", isAuth, ScheduleController.index);
 
 scheduleRoutes.post("/schedules", isAuth, ScheduleController.store);
 
+// === ENDPOINTS NÃO AUTENTICADOS PARA CREWAI ===
 // Endpoint para agendamento criado por IA (sem autenticação pois vem do serviço Python)
 scheduleRoutes.post("/schedules/agent", ScheduleController.storeFromAgent);
+
+// Listar agendamentos do contato (para IA consultar status)
+scheduleRoutes.get("/schedules/agent/:contactId", ScheduleController.listFromAgent);
+
+// Cancelar agendamento (para IA cancelar se cliente solicitar)
+scheduleRoutes.delete("/schedules/agent/:scheduleId", ScheduleController.cancelFromAgent);
+
+// Atualizar agendamento (para IA alterar data/hora/descrição)
+scheduleRoutes.put("/schedules/agent/:scheduleId", ScheduleController.updateFromAgent);
 
 // Endpoints para confirmação/rejeição de agendamentos pendentes
 scheduleRoutes.put("/schedules/:scheduleId/confirm", isAuth, ScheduleController.confirm);
