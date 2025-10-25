@@ -181,10 +181,11 @@ const CrewTraining = () => {
     }
   };
 
-  const loadAgentMetrics = (agentId) => {
-    if (!crew || !agentId) return;
+  const loadAgentMetrics = (agentId, crewData = null) => {
+    const dataToUse = crewData || crew;
+    if (!dataToUse || !agentId) return;
 
-    const agents = crew.agents || {};
+    const agents = dataToUse.agents || {};
     const agentTraining = agents[agentId]?.training || {};
     const savedMetrics = agentTraining.metrics || {};
 
@@ -227,7 +228,7 @@ const CrewTraining = () => {
         if (activeAgents.length > 0) {
           const firstAgentId = activeAgents[0][0];
           setSelectedAgent(firstAgentId);
-          loadAgentMetrics(firstAgentId);
+          loadAgentMetrics(firstAgentId, data);
         }
       } catch (err) {
         toastError(err);
