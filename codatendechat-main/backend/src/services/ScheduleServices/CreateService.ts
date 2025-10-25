@@ -42,7 +42,9 @@ const CreateService = async ({
     }
   );
 
-  await schedule.reload();
+  await schedule.reload({
+    include: ["contact", "user"]
+  });
 
   return schedule;
 };
