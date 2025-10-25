@@ -755,14 +755,18 @@ def _schedule_appointment_impl(
     backend_url = os.getenv("BACKEND_URL", "http://localhost:3000")
     endpoint = f"{backend_url}/schedules/agent"
 
+    # Montar payload - userId é opcional (null se não fornecido)
     payload = {
         "tenantId": tenant_id,
         "contactId": contact_id,
-        "userId": user_id,
         "sendAt": date_time,
         "body": body,
         "status": status
     }
+
+    # Só incluir userId se for fornecido (não null)
+    if user_id is not None:
+        payload["userId"] = user_id
 
     try:
         print(f"📅 Criando agendamento via API: {endpoint}")

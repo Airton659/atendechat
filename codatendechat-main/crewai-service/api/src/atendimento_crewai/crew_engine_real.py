@@ -196,8 +196,7 @@ class RealCrewEngine:
             def schedule_appointment(
                 date_time: str,
                 body: str,
-                status: str = "pending_confirmation",
-                user_id: int = 1
+                status: str = "pending_confirmation"
             ) -> str:
                 """
                 Agenda um compromisso para o cliente.
@@ -208,7 +207,6 @@ class RealCrewEngine:
                     date_time: Data e hora no formato ISO 8601 (ex: '2025-10-27T08:00:00')
                     body: Descrição do agendamento (ex: 'Consulta de Cardiologia')
                     status: 'scheduled' (confirmado) ou 'pending_confirmation' (pendente)
-                    user_id: ID do usuário responsável (padrão: 1)
 
                 Returns:
                     Mensagem de sucesso ou erro do agendamento
@@ -219,12 +217,11 @@ class RealCrewEngine:
                 print(f"   date_time: {date_time}")
                 print(f"   body: {body}")
                 print(f"   status: {status}")
-                print(f"   user_id: {user_id}")
 
                 result = _schedule_appointment_impl(
                     tenant_id=_tenant_id,
                     contact_id=_contact_id or 0,
-                    user_id=user_id,
+                    user_id=None,  # Deixar null - será atribuído manualmente depois
                     date_time=date_time,
                     body=body,
                     status=status
