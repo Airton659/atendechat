@@ -99,7 +99,7 @@ export const storeFromAgent = async (req: Request, res: Response): Promise<Respo
 
   // Se for pending_confirmation, emitir evento adicional para notificação
   if (schedule.status === 'pending_confirmation') {
-    io.to(`company-${companyId}-mainchannel`).emit("schedule:pending_confirmation", {
+    io.to(`company-${companyId}-mainchannel`).emit(`company${companyId}-schedule:pending_confirmation`, {
       schedule
     });
   }

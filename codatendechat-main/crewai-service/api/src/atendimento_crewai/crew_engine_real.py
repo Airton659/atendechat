@@ -200,13 +200,27 @@ class RealCrewEngine:
                 status: str = "pending_confirmation"
             ) -> str:
                 """
-                Agenda um compromisso para o cliente.
+                Agenda um compromisso/horário para o cliente.
+
+                ⚠️ CRITÉRIOS OBRIGATÓRIOS PARA USO:
+                SOMENTE use esta ferramenta quando TODAS as condições forem atendidas:
+                1. Cliente EXPLICITAMENTE solicita um agendamento/horário/reserva
+                2. Cliente fornece DATA e HORÁRIO específicos
+                3. Cliente fornece MOTIVO/SERVIÇO do agendamento
+
+                NÃO USE esta ferramenta para:
+                - Cumprimentos ou despedidas
+                - Agradecimentos
+                - Confirmações genéricas sem data/hora/motivo
+                - Perguntas sobre disponibilidade
+                - Mensagens que não contêm os 3 elementos obrigatórios acima
+
                 Use status='scheduled' se cliente confirmou explicitamente.
                 Use status='pending_confirmation' se cliente apenas sugeriu horário.
 
                 Args:
                     date_time: Data e hora no formato ISO 8601 (ex: '2025-10-27T08:00:00')
-                    body: Descrição do agendamento (ex: 'Consulta de Cardiologia')
+                    body: Descrição completa do agendamento
                     status: 'scheduled' (confirmado) ou 'pending_confirmation' (pendente)
 
                 Returns:
