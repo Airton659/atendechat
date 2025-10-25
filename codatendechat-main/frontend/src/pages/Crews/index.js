@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useReducer, useContext } from "react";
+import { useHistory } from "react-router-dom";
 import { toast } from "react-toastify";
 import { makeStyles } from "@material-ui/core/styles";
 import {
@@ -31,7 +32,6 @@ import TableRowSkeleton from "../../components/TableRowSkeleton";
 import ConfirmationModal from "../../components/ConfirmationModal";
 import CrewModal from "../../components/CrewModal";
 import CrewArchitectModal from "../../components/CrewArchitectModal";
-import CrewTrainingModal from "../../components/CrewTrainingModal";
 
 import api from "../../services/api";
 import { i18n } from "../../translate/i18n";
@@ -104,13 +104,13 @@ const useStyles = makeStyles((theme) => ({
 
 const Crews = () => {
   const classes = useStyles();
+  const history = useHistory();
 
   const [loading, setLoading] = useState(false);
   const [crews, dispatch] = useReducer(reducer, []);
   const [selectedCrew, setSelectedCrew] = useState(null);
   const [crewModalOpen, setCrewModalOpen] = useState(false);
   const [architectModalOpen, setArchitectModalOpen] = useState(false);
-  const [trainingModalOpen, setTrainingModalOpen] = useState(false);
   const [deletingCrew, setDeletingCrew] = useState(null);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [searchParam, setSearchParam] = useState("");
@@ -183,27 +183,8 @@ const Crews = () => {
     setCrewModalOpen(true);
   };
 
-  const handleTrainCrew = async (crew) => {
-    try {
-      // Recarregar dados da crew para pegar exemplos e métricas atualizadas
-      const { data } = await api.get(`/crews/${crew.id}`);
-      setSelectedCrew(data);
-      setTrainingModalOpen(true);
-    } catch (err) {
-      toastError(err);
-    }
-  };
-
-  const handleCloseTrainingModal = async () => {
-    setSelectedCrew(null);
-    setTrainingModalOpen(false);
-    // Recarregar lista de crews para atualizar com novos exemplos/métricas
-    try {
-      const { data } = await api.get("/crews");
-      dispatch({ type: "LOAD_CREWS", payload: data });
-    } catch (err) {
-      toastError(err);
-    }
+  const handleTrainCrew = (crew) => {
+    history.push(`/crews/${crew.id}/training`);
   };
 
   const handleDeleteCrew = async (crewId) => {
@@ -275,12 +256,6 @@ const Crews = () => {
           };
           fetchCrews();
         }}
-      />
-
-      <CrewTrainingModal
-        open={trainingModalOpen}
-        onClose={handleCloseTrainingModal}
-        crew={selectedCrew}
       />
 
       <MainHeader>
