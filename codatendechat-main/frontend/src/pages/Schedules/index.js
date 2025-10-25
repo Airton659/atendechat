@@ -175,6 +175,25 @@ const Schedules = () => {
       }
     });
 
+    // Listener para agendamentos pendentes de confirmação criados pela IA
+    socket.on(`company${user.companyId}-schedule:pending_confirmation`, (data) => {
+      const { schedule } = data;
+      dispatch({ type: "UPDATE_SCHEDULES", payload: schedule });
+
+      // Notificação visual com toast
+      toast.warning(
+        `⏳ Novo agendamento pendente de confirmação!\n${schedule.contact?.name || 'Cliente'} - ${moment(schedule.sendAt).format('DD/MM/YYYY HH:mm')}`,
+        {
+          position: "top-right",
+          autoClose: 8000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        }
+      );
+    });
+
     return () => {
       socket.disconnect();
     };
@@ -201,6 +220,26 @@ const Schedules = () => {
   const handleEditSchedule = (schedule) => {
     setSelectedSchedule(schedule);
     setScheduleModalOpen(true);
+  };
+
+  const handleConfirmSchedule = async (scheduleId) => {
+    try {
+      await api.put(`/schedules/${scheduleId}/confirm`);
+      toast.success("Agendamento confirmado com sucesso!");
+      await fetchSchedules();
+    } catch (err) {
+      toastError(err);
+    }
+  };
+
+  const handleRejectSchedule = async (scheduleId) => {
+    try {
+      await api.put(`/schedules/${scheduleId}/reject`);
+      toast.success("Agendamento rejeitado com sucesso!");
+      await fetchSchedules();
+    } catch (err) {
+      toastError(err);
+    }
   };
 
   const handleDeleteSchedule = async (scheduleId) => {
@@ -296,7 +335,60 @@ const Schedules = () => {
           events={schedules.map((schedule) => ({
             title: (
               <div className="event-container">
+                {schedule.status === 'pending_confirmation' && (
+                  <span style={{
+                    backgroundColor: '#ff9800',
+                    color: 'white',
+                    padding: '2px 6px',
+                    borderRadius: '3px',
+                    fontSize: '10px',
+                    marginRight: '4px',
+                    fontWeight: 'bold'
+                  }}>
+                    ⏳ PENDENTE
+                  </span>
+                )}
                 <div style={eventTitleStyle}>{schedule.contact.name}</div>
+                {schedule.status === 'pending_confirmation' && (
+                  <>
+                    <Button
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleConfirmSchedule(schedule.id);
+                      }}
+                      style={{
+                        minWidth: '30px',
+                        padding: '2px 6px',
+                        fontSize: '11px',
+                        backgroundColor: '#4caf50',
+                        color: 'white',
+                        marginRight: '4px'
+                      }}
+                      title="Confirmar agendamento"
+                    >
+                      ✓
+                    </Button>
+                    <Button
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRejectSchedule(schedule.id);
+                      }}
+                      style={{
+                        minWidth: '30px',
+                        padding: '2px 6px',
+                        fontSize: '11px',
+                        backgroundColor: '#f44336',
+                        color: 'white',
+                        marginRight: '4px'
+                      }}
+                      title="Rejeitar agendamento"
+                    >
+                      ✗
+                    </Button>
+                  </>
+                )}
                 <DeleteOutlineIcon
                   onClick={() => handleDeleteSchedule(schedule.id)}
                   className="delete-icon"
@@ -312,6 +404,7 @@ const Schedules = () => {
             ),
             start: new Date(schedule.sendAt),
             end: new Date(schedule.sendAt),
+            resource: schedule, // Adicionar schedule completo para acessar dados no eventStyleGetter
           }))}
           startAccessor="start"
           endAccessor="end"

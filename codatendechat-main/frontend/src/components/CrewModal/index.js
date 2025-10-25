@@ -113,6 +113,7 @@ const AgentSchema = Yup.object().shape({
   goal: Yup.string().required("Objetivo é obrigatório"),
   backstory: Yup.string().required("História é obrigatória"),
   useKnowledge: Yup.boolean(),
+  useScheduling: Yup.boolean(),
   keywords: Yup.string(),
   customInstructions: Yup.string(),
   persona: Yup.string(),
@@ -162,6 +163,7 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
         goal: "",
         backstory: "",
         useKnowledge: false,
+        useScheduling: false,
         knowledgeDocuments: [],
         keywords: "",
         customInstructions: "",
@@ -185,6 +187,7 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
               goal: "",
               backstory: "",
               useKnowledge: false,
+        useScheduling: false,
               knowledgeDocuments: [],
               keywords: "",
               customInstructions: "",
@@ -211,6 +214,7 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
                 goal: agent.goal || "",
                 backstory: agent.backstory || "",
                 useKnowledge: agent.knowledgeDocuments?.length > 0 || false,
+                useScheduling: agent.tools?.includes('schedule_appointment') || false,
                 knowledgeDocuments: agent.knowledgeDocuments || [],
                 keywords: (agent.keywords || []).join("\n"),
                 customInstructions: agent.personality?.customInstructions || "",
@@ -224,6 +228,7 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
               goal: "",
               backstory: "",
               useKnowledge: false,
+        useScheduling: false,
               knowledgeDocuments: [],
               keywords: "",
               customInstructions: "",
@@ -294,7 +299,10 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
             traits: [],
             customInstructions: agent.customInstructions || "",
           },
-          tools: agent.useKnowledge ? ['consultar_base_conhecimento'] : [],
+          tools: [
+            ...(agent.useKnowledge ? ['consultar_base_conhecimento'] : []),
+            ...(agent.useScheduling ? ['schedule_appointment'] : []),
+          ],
           toolConfigs: {},
           knowledgeDocuments: agent.useKnowledge ? (agent.knowledgeDocuments || []) : [],
           training: {
@@ -656,6 +664,21 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
                                 )}
                               </Field>
 
+                              <Field name={`agents.${index}.useScheduling`}>
+                                {({ field }) => (
+                                  <FormControlLabel
+                                    control={
+                                      <Checkbox
+                                        {...field}
+                                        checked={field.value}
+                                        color="primary"
+                                      />
+                                    }
+                                    label="📅 Pode agendar compromissos"
+                                  />
+                                )}
+                              </Field>
+
                               {/* Mostrar documentos disponíveis quando useKnowledge está marcado */}
                               {values.agents[index]?.useKnowledge && knowledgeFiles.length > 0 && (
                                 <Box mt={2} p={2} style={{ background: '#f5f5f5', borderRadius: 4 }}>
@@ -718,6 +741,7 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
                             goal: "",
                             backstory: "",
                             useKnowledge: false,
+        useScheduling: false,
                             knowledgeDocuments: [],
                             keywords: "",
                             customInstructions: "",
