@@ -7,7 +7,7 @@ import json
 import time
 from datetime import datetime
 
-from .crew_engine_simple import SimpleCrewEngine
+from .crew_engine_real import RealCrewEngine
 from .architect_service import router as architect_router
 from .knowledge_service import router as knowledge_router
 from .training_service import router as training_router
@@ -15,8 +15,8 @@ from .training_service import router as training_router
 # Router principal
 router = APIRouter()
 
-# Instância do motor CrewAI simplificado
-crew_engine = SimpleCrewEngine()
+# Instância do motor CrewAI REAL (framework completo)
+crew_engine = RealCrewEngine()
 
 # Incluir sub-routers
 router.include_router(architect_router)
@@ -136,7 +136,9 @@ async def get_capabilities():
             "multi_tenant": True
         },
         "supported_tools": [
-            "consultar_base_conhecimento"
+            "consultar_base_conhecimento",
+            "schedule_appointment",
+            "cadastrar_cliente"
         ],
         "supported_file_types": [
             "pdf", "docx", "txt", "xlsx", "csv"
