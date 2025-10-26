@@ -148,7 +148,7 @@ class RealCrewEngine:
 
         return KeywordSearchTool(self.db) if self.db else None
 
-    def _create_crewai_tools(self, agent_config: Dict[str, Any], tenant_id: str, crew_id: str, contact_id: int = None, agent_document_ids: List[str] = None) -> List:
+    def _create_crewai_tools(self, agent_config: Dict[str, Any], tenant_id: str, crew_id: str, contact_id: int = None, ticket_id: int = None, agent_document_ids: List[str] = None) -> List:
         """Cria ferramentas do CrewAI (@tool decorated functions)"""
         tools = []
         agent_tools = agent_config.get('tools', [])
@@ -529,6 +529,7 @@ class RealCrewEngine:
                 tenant_id=tenant_id,
                 crew_id=crew_id,
                 contact_id=contact_id,
+                ticket_id=ticket_id,
                 agent_document_ids=agent_document_ids if agent_document_ids else None
             )
 
@@ -787,8 +788,8 @@ class RealCrewEngine:
                 print(f"      ✅ Keywords matched: {matched_keywords}")
                 print(f"      Score de keywords: +{len(matched_keywords) * 3}")
 
-            # Palavras do role/goal
-            role_goal_words = role.split() + goal.split()
+            # Palavras do role/goal (ignorar palavras de 1-2 letras - vogais soltas)
+            role_goal_words = [word for word in (role.split() + goal.split()) if len(word) > 2]
             matched_role_goal = [word for word in role_goal_words if word in message_lower]
             if matched_role_goal:
                 score += 1
