@@ -78,8 +78,12 @@ export const uploadMedias = async (req: Request, res: Response): Promise<Respons
           }
         });
 
+        // Extrair path relativo à pasta public
+        const publicFolder = require('path').resolve(__dirname, "..", "..", "public");
+        const relativePath = file.path.replace(publicFolder + require('path').sep, '');
+
         fileOpt.update({
-          path: file.filename.replace('/','-'),
+          path: relativePath.replace(/\\/g, '/'),  // Normalizar separadores para /
           mediaType: Array.isArray(mediaType)? mediaType[index] : mediaType
         }) ;
       }
