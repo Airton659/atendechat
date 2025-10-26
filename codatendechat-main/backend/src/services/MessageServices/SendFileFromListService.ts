@@ -40,6 +40,11 @@ const SendFileFromListService = async ({
   // 3. Pegar a primeira opção de arquivo (pode ser adaptado para enviar múltiplos)
   const fileOption = fileList.options[0] as FilesOptions;
 
+  console.log(`📄 Arquivo encontrado: ${fileList.name}`);
+  console.log(`   Options: ${fileList.options.length}`);
+  console.log(`   Path: ${fileOption.path}`);
+  console.log(`   MediaType: ${fileOption.mediaType}`);
+
   if (!fileOption.path) {
     throw new AppError("ERR_FILE_PATH_NOT_FOUND", 404);
   }
@@ -74,12 +79,18 @@ const SendFileFromListService = async ({
   const publicFolder = path.resolve(__dirname, "..", "..", "..", "public");
   const filePath = path.join(publicFolder, fileOption.path);
 
+  console.log(`📁 Public folder: ${publicFolder}`);
+  console.log(`📁 File path: ${filePath}`);
+  console.log(`📁 File exists: ${require('fs').existsSync(filePath)}`);
+
   // 7. Preparar opções de mensagem usando a função do SendWhatsAppMedia
   const messageOptions = await getMessageOptions(
     fileOption.name,
     filePath,
     fileList.message || undefined  // Mensagem/caption configurada no File List
   );
+
+  console.log(`📤 MessageOptions: ${messageOptions ? 'OK' : 'NULL'}`);
 
   if (!messageOptions) {
     throw new AppError("ERR_INVALID_MEDIA_TYPE", 400);
