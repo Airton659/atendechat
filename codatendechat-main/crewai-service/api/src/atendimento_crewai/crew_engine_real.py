@@ -536,6 +536,8 @@ class RealCrewEngine:
             # Construir contexto (guardrails, persona, examples)
             context = self._build_context(conversation_history, crew_data, selected_agent)
 
+            print(f"📝 Tamanho do contexto: {len(context)} caracteres ({len(context.split())} palavras)")
+
             # Criar agente CrewAI
             agent_role = selected_agent.get('role', 'Atendente')
             agent_goal = selected_agent.get('goal', 'Ajudar o cliente')
