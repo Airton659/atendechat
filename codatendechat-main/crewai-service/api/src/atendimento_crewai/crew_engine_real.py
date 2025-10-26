@@ -777,12 +777,15 @@ class RealCrewEngine:
             # Palavras-chave do agente
             keywords = agent_data.get('keywords', [])
             print(f"      Keywords configuradas: {len(keywords)}")
+            if keywords:
+                print(f"      Keywords: {keywords[:3]}...")  # Mostrar primeiras 3
 
             matched_keywords = []
             for keyword in keywords:
-                if keyword.lower() in message_lower:
+                keyword_clean = keyword.strip()  # Remove espaços extras
+                if keyword_clean.lower() in message_lower:
                     score += 3
-                    matched_keywords.append(keyword)
+                    matched_keywords.append(keyword_clean)
 
             if matched_keywords:
                 print(f"      ✅ Keywords matched: {matched_keywords}")
