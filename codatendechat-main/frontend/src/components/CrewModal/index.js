@@ -215,6 +215,7 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
                 backstory: agent.backstory || "",
                 useKnowledge: agent.knowledgeDocuments?.length > 0 || false,
                 useScheduling: agent.tools?.includes('schedule_appointment') || false,
+                useFileList: agent.tools?.includes('send_file') || false,
                 knowledgeDocuments: agent.knowledgeDocuments || [],
                 keywords: (agent.keywords || []).join("\n"),
                 customInstructions: agent.personality?.customInstructions || "",
@@ -228,7 +229,8 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
               goal: "",
               backstory: "",
               useKnowledge: false,
-        useScheduling: false,
+              useScheduling: false,
+              useFileList: false,
               knowledgeDocuments: [],
               keywords: "",
               customInstructions: "",
@@ -302,6 +304,7 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
           tools: [
             ...(agent.useKnowledge ? ['consultar_base_conhecimento'] : []),
             ...(agent.useScheduling ? ['schedule_appointment'] : []),
+            ...(agent.useFileList ? ['send_file'] : []),
           ],
           toolConfigs: {},
           knowledgeDocuments: agent.useKnowledge ? (agent.knowledgeDocuments || []) : [],
@@ -675,6 +678,21 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
                                       />
                                     }
                                     label="📅 Pode agendar compromissos"
+                                  />
+                                )}
+                              </Field>
+
+                              <Field name={`agents.${index}.useFileList`}>
+                                {({ field }) => (
+                                  <FormControlLabel
+                                    control={
+                                      <Checkbox
+                                        {...field}
+                                        checked={field.value}
+                                        color="primary"
+                                      />
+                                    }
+                                    label="📁 Pode enviar arquivos (File List)"
                                   />
                                 )}
                               </Field>
