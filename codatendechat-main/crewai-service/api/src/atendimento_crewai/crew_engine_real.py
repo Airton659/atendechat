@@ -753,36 +753,64 @@ class RealCrewEngine:
 
         message_lower = message.lower()
 
+        print(f"\n🔍 SELEÇÃO DE AGENTE:")
+        print(f"   Mensagem: '{message}'")
+        print(f"   Total de agentes: {len(agents)}")
+
         # Roteamento baseado em palavras-chave
         best_match = None
         best_score = 0
 
         for agent_key, agent_data in agents.items():
             if not agent_data.get('isActive', True):
+                print(f"   ⏭️ {agent_key} - INATIVO")
                 continue
 
             score = 0
             role = agent_data.get('role', '').lower()
             goal = agent_data.get('goal', '').lower()
+            agent_name = agent_data.get('name', agent_key)
+
+            print(f"\n   🤖 Avaliando: {agent_name} ({agent_key})")
 
             # Palavras-chave do agente
             keywords = agent_data.get('keywords', [])
+            print(f"      Keywords configuradas: {len(keywords)}")
+
+            matched_keywords = []
             for keyword in keywords:
                 if keyword.lower() in message_lower:
                     score += 3
+                    matched_keywords.append(keyword)
+
+            if matched_keywords:
+                print(f"      ✅ Keywords matched: {matched_keywords}")
+                print(f"      Score de keywords: +{len(matched_keywords) * 3}")
 
             # Palavras do role/goal
-            if any(word in message_lower for word in role.split() + goal.split()):
+            role_goal_words = role.split() + goal.split()
+            matched_role_goal = [word for word in role_goal_words if word in message_lower]
+            if matched_role_goal:
                 score += 1
+                print(f"      ✅ Role/Goal matched: {matched_role_goal}")
+                print(f"      Score de role/goal: +1")
+
+            print(f"      📊 Score total: {score}")
 
             if score > best_score:
                 best_score = score
                 best_match = agent_data
                 best_match["key"] = agent_key
+                print(f"      🏆 NOVO MELHOR! (score: {score})")
+
+        print(f"\n   🎯 Melhor match: {best_match.get('name') if best_match else 'Nenhum'} (score: {best_score})")
 
         # Se encontrou com score bom, usar
         if best_match and best_score >= 2:
+            print(f"   ✅ Score suficiente (>= 2), usando agente selecionado")
             return best_match
+
+        print(f"   ⚠️ Score insuficiente (< 2), tentando fallback...")
 
         # Fallback: workflow entry point
         workflow = crew_data.get('workflow', {})
