@@ -146,8 +146,8 @@ echo "Descartando alterações locais e pegando código mais recente..."
 git fetch origin main
 git reset --hard origin/main
 
-# NÃO apagar venv e __pycache__ (são gerados automaticamente)
-git clean -fd -e "codatendechat-main/crewai-service/venv/" -e "**/__pycache__/"
+# NÃO apagar venv (preservar dependências instaladas)
+git clean -fd -e "codatendechat-main/crewai-service/venv/"
 
 echo "✓ Código atualizado com sucesso!"
 ENDSSH
@@ -270,6 +270,13 @@ fi
 
 deactivate
 echo "✓ Dependências instaladas!"
+
+# LIMPAR CACHE PYTHON (forçar recompilação com código novo)
+echo ""
+echo "Limpando cache Python (.pyc e __pycache__)..."
+find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+find . -type f -name "*.pyc" -delete 2>/dev/null || true
+echo "✓ Cache Python limpo!"
 
 # MATAR PORTA 8000 NOVAMENTE LOGO ANTES DE SUBIR SERVIÇO
 echo ""
