@@ -259,24 +259,51 @@ echo "Habilitando e iniciando CrewAI service..."
 echo "$SUDO_PASSWORD" | sudo -S systemctl enable crewai.service
 echo "$SUDO_PASSWORD" | sudo -S systemctl start crewai.service
 
-# Aguardar 3 segundos para o service iniciar
-sleep 3
+# Aguardar o service iniciar (com múltiplas tentativas)
+echo "Aguardando CrewAI service iniciar..."
+MAX_ATTEMPTS=12  # 12 tentativas x 5 segundos = 60 segundos
+ATTEMPT=0
+SERVICE_RUNNING=false
 
-# Verificar status
+while [ \$ATTEMPT -lt \$MAX_ATTEMPTS ]; do
+    ATTEMPT=\$((ATTEMPT + 1))
+    echo "Tentativa \$ATTEMPT/\$MAX_ATTEMPTS..."
+
+    # Verificar se porta 8000 está aberta
+    if echo "$SUDO_PASSWORD" | sudo -S lsof -ti :8000 > /dev/null 2>&1; then
+        echo "✅ Porta 8000 aberta!"
+
+        # Verificar se o log tem "Uvicorn running"
+        if echo "$SUDO_PASSWORD" | sudo -S journalctl -u crewai.service -n 20 --no-pager | grep -q "Uvicorn running"; then
+            echo "✅ CrewAI service RODANDO e pronto!"
+            SERVICE_RUNNING=true
+            break
+        else
+            echo "⏳ Porta aberta, mas ainda inicializando..."
+        fi
+    else
+        echo "⏳ Aguardando porta 8000 abrir..."
+    fi
+
+    sleep 5
+done
+
+# Verificar resultado final
 echo ""
 echo "Status do CrewAI service:"
 echo "$SUDO_PASSWORD" | sudo -S systemctl status crewai.service --no-pager | head -20
 
-# Verificar se está realmente rodando
-sleep 2
-if echo "$SUDO_PASSWORD" | sudo -S lsof -ti :8000 > /dev/null 2>&1; then
+if [ "\$SERVICE_RUNNING" = true ]; then
+    echo ""
     echo "✅ CrewAI service RODANDO na porta 8000!"
     echo "Processo:"
     echo "$SUDO_PASSWORD" | sudo -S lsof -i :8000
 else
-    echo "❌ ERRO: CrewAI service NÃO está rodando na porta 8000!"
-    echo "Últimos logs do serviço:"
-    echo "$SUDO_PASSWORD" | sudo -S journalctl -u crewai.service -n 50 --no-pager
+    echo ""
+    echo "❌ ERRO: CrewAI service NÃO iniciou corretamente após 60 segundos!"
+    echo ""
+    echo "Últimos 100 logs do serviço:"
+    echo "$SUDO_PASSWORD" | sudo -S journalctl -u crewai.service -n 100 --no-pager
     exit 1
 fi
 
