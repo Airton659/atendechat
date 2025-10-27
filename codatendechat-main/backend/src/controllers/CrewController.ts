@@ -407,3 +407,175 @@ export const saveTrainingMetrics = async (
     );
   }
 };
+
+// ============================================================================
+// VALIDATION ENDPOINTS - Proxy para CrewAI service
+// ============================================================================
+
+// Listar regras de validação
+export const getValidationRules = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { companyId } = req.user;
+  const tenantId = `company_${companyId}`;
+
+  try {
+    const { data } = await axios.get(
+      `${crewaiUrl}/api/v2/training/validation-rules`,
+      {
+        params: {
+          ...req.query,
+          tenantId
+        }
+      }
+    );
+
+    return res.status(200).json(data);
+  } catch (error: any) {
+    console.error("Erro ao listar regras de validação:", error);
+    throw new AppError(
+      error.response?.data?.message || "ERR_LISTING_VALIDATION_RULES",
+      error.response?.status || 500
+    );
+  }
+};
+
+// Criar regra de validação
+export const createValidationRule = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { companyId } = req.user;
+  const tenantId = `company_${companyId}`;
+
+  try {
+    const { data } = await axios.post(
+      `${crewaiUrl}/api/v2/training/validation-rules`,
+      {
+        ...req.body,
+        tenantId
+      }
+    );
+
+    return res.status(200).json(data);
+  } catch (error: any) {
+    console.error("Erro ao criar regra de validação:", error);
+    throw new AppError(
+      error.response?.data?.message || "ERR_CREATING_VALIDATION_RULE",
+      error.response?.status || 500
+    );
+  }
+};
+
+// Atualizar regra de validação
+export const updateValidationRule = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { companyId } = req.user;
+  const tenantId = `company_${companyId}`;
+  const { ruleId } = req.params;
+
+  try {
+    const { data } = await axios.put(
+      `${crewaiUrl}/api/v2/training/validation-rules/${ruleId}`,
+      {
+        ...req.body,
+        tenantId
+      }
+    );
+
+    return res.status(200).json(data);
+  } catch (error: any) {
+    console.error("Erro ao atualizar regra de validação:", error);
+    throw new AppError(
+      error.response?.data?.message || "ERR_UPDATING_VALIDATION_RULE",
+      error.response?.status || 500
+    );
+  }
+};
+
+// Deletar regra de validação
+export const deleteValidationRule = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { companyId } = req.user;
+  const tenantId = `company_${companyId}`;
+  const { ruleId } = req.params;
+
+  try {
+    const { data } = await axios.delete(
+      `${crewaiUrl}/api/v2/training/validation-rules/${ruleId}`,
+      {
+        params: {
+          ...req.query,
+          tenantId
+        }
+      }
+    );
+
+    return res.status(200).json(data);
+  } catch (error: any) {
+    console.error("Erro ao deletar regra de validação:", error);
+    throw new AppError(
+      error.response?.data?.message || "ERR_DELETING_VALIDATION_RULE",
+      error.response?.status || 500
+    );
+  }
+};
+
+// Toggle sistema de validação
+export const toggleValidationSystem = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { companyId } = req.user;
+  const tenantId = `company_${companyId}`;
+
+  try {
+    const { data } = await axios.put(
+      `${crewaiUrl}/api/v2/training/validation-rules/toggle`,
+      {
+        ...req.body,
+        tenantId
+      }
+    );
+
+    return res.status(200).json(data);
+  } catch (error: any) {
+    console.error("Erro ao alternar sistema de validação:", error);
+    throw new AppError(
+      error.response?.data?.message || "ERR_TOGGLING_VALIDATION_SYSTEM",
+      error.response?.status || 500
+    );
+  }
+};
+
+// Salvar sugestão de comportamento
+export const saveSuggestion = async (
+  req: Request,
+  res: Response
+): Promise<Response> => {
+  const { companyId } = req.user;
+  const tenantId = `company_${companyId}`;
+
+  try {
+    const { data } = await axios.post(
+      `${crewaiUrl}/api/v2/training/save-suggestion`,
+      {
+        ...req.body,
+        tenantId
+      }
+    );
+
+    return res.status(200).json(data);
+  } catch (error: any) {
+    console.error("Erro ao salvar sugestão:", error);
+    throw new AppError(
+      error.response?.data?.message || "ERR_SAVING_SUGGESTION",
+      error.response?.status || 500
+    );
+  }
+};

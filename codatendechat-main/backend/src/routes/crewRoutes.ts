@@ -45,4 +45,12 @@ crewRoutes.post("/training/generate-response", isAuth, CrewController.generateTr
 crewRoutes.post("/training/save-correction", isAuth, CrewController.saveCorrection);
 crewRoutes.post("/training/save-metrics", isAuth, CrewController.saveTrainingMetrics);
 
+// Validation endpoints - proxy direto para CrewAI service
+crewRoutes.get("/training/validation-rules", isAuth, CrewController.getValidationRules);
+crewRoutes.post("/training/validation-rules", isAuth, CrewController.createValidationRule);
+crewRoutes.put("/training/validation-rules/:ruleId", isAuth, CrewController.updateValidationRule);
+crewRoutes.delete("/training/validation-rules/:ruleId", isAuth, CrewController.deleteValidationRule);
+crewRoutes.put("/training/validation-rules/toggle", isAuth, CrewController.toggleValidationSystem);
+crewRoutes.post("/training/save-suggestion", isAuth, CrewController.saveSuggestion);
+
 export default crewRoutes;
