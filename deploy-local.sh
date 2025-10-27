@@ -164,84 +164,25 @@ pip install -r requirements.txt
 deactivate
 echo "✓ Dependências instaladas!"
 
-# MATANÇA TOTAL DE PROCESSOS NA PORTA 8000 - SEM PIEDADE
+# MATANÇA TOTAL DE PROCESSOS NA PORTA 8000 - USANDO SCRIPT DEDICADO
 echo "============================================"
 echo "INICIANDO LIMPEZA BRUTAL DA PORTA 8000..."
 echo "============================================"
 
-# RODADA 1: Para o serviço e mata processos
-echo "Rodada 1: Parando serviço e matando processos..."
-echo "$SUDO_PASSWORD" | sudo -S bash -c '
-    systemctl stop crewai.service 2>/dev/null || true
-    systemctl disable crewai.service 2>/dev/null || true
-    systemctl reset-failed crewai.service 2>/dev/null || true
-    sleep 2
-    pkill -9 -f "python.*8000" 2>/dev/null || true
-    pkill -9 -f "uvicorn.*8000" 2>/dev/null || true
-    pkill -9 uvicorn 2>/dev/null || true
-    pkill -9 -f "python.*crewai" 2>/dev/null || true
-    pkill -9 -f "main:app" 2>/dev/null || true
-    fuser -k -9 8000/tcp 2>/dev/null || true
-    lsof -ti :8000 | xargs -r kill -9 2>/dev/null || true
-    sleep 3
-    fuser -k -9 8000/tcp 2>/dev/null || true
-    sleep 2
-' || true
+# Executar script de limpeza como root
+echo "$SUDO_PASSWORD" | sudo -S bash /home/airton/atendechat/codatendechat-main/crewai-service/kill-port-8000.sh
 
-# RODADA 2: Verificação e limpeza adicional
-echo "Rodada 2: Verificação e limpeza adicional..."
+# Verificar se realmente liberou
 REMAINING=\$(echo "$SUDO_PASSWORD" | sudo -S lsof -ti :8000 2>/dev/null || true)
 if [ ! -z "\$REMAINING" ]; then
-    echo "⚠️  Ainda há processos na porta 8000: \$REMAINING"
-    echo "Matando com força total..."
-    for pid in \$REMAINING; do
-        echo "$SUDO_PASSWORD" | sudo -S kill -9 \$pid 2>/dev/null || true
-    done
-    echo "$SUDO_PASSWORD" | sudo -S fuser -k -9 8000/tcp 2>/dev/null || true
-    sleep 3
-    echo "$SUDO_PASSWORD" | sudo -S fuser -k -9 8000/tcp 2>/dev/null || true
-    sleep 2
-fi
-
-# RODADA 3: Verificação final e mata qualquer coisa restante
-echo "Rodada 3: Verificação final..."
-sleep 2
-FINAL_CHECK=\$(echo "$SUDO_PASSWORD" | sudo -S lsof -ti :8000 2>/dev/null || true)
-if [ ! -z "\$FINAL_CHECK" ]; then
-    echo "⚠️  PROCESSOS TEIMOSOS DETECTADOS: \$FINAL_CHECK"
-    echo "Aplicando força nuclear..."
-    for pid in \$FINAL_CHECK; do
-        echo "$SUDO_PASSWORD" | sudo -S kill -9 \$pid 2>/dev/null || true
-    done
-    echo "$SUDO_PASSWORD" | sudo -S pkill -9 -f "python3.*8000" 2>/dev/null || true
-    echo "$SUDO_PASSWORD" | sudo -S fuser -k -9 8000/tcp 2>/dev/null || true
-    sleep 3
-    echo "$SUDO_PASSWORD" | sudo -S fuser -k -9 8000/tcp 2>/dev/null || true
-    sleep 2
-
-    # Verificação DEFINITIVA
-    ULTRA_FINAL=\$(echo "$SUDO_PASSWORD" | sudo -S lsof -ti :8000 2>/dev/null || true)
-    if [ ! -z "\$ULTRA_FINAL" ]; then
-        echo ""
-        echo "❌❌❌ FALHA CRÍTICA ❌❌❌"
-        echo "Processos ainda ativos na porta 8000: \$ULTRA_FINAL"
-        echo ""
-        echo "Matando com força EXTREMA..."
-        for pid in \$ULTRA_FINAL; do
-            echo "$SUDO_PASSWORD" | sudo -S kill -9 \$pid 2>/dev/null || true
-        done
-        echo "$SUDO_PASSWORD" | sudo -S fuser -k -9 8000/tcp 2>/dev/null || true
-        sleep 3
-
-        # ÚLTIMA VERIFICAÇÃO
-        LAST_CHECK=\$(echo "$SUDO_PASSWORD" | sudo -S lsof -ti :8000 2>/dev/null || true)
-        if [ ! -z "\$LAST_CHECK" ]; then
-            echo "❌ IMPOSSÍVEL matar processos na porta 8000!"
-            echo "Processos: \$LAST_CHECK"
-            echo "Abortando deploy."
-            exit 1
-        fi
-    fi
+    echo ""
+    echo "❌ FALHA CRÍTICA: Script não conseguiu liberar porta 8000!"
+    echo "Processos restantes:"
+    echo "$SUDO_PASSWORD" | sudo -S lsof -i :8000
+    echo "$SUDO_PASSWORD" | sudo -S ps aux | grep -E "\$REMAINING"
+    echo ""
+    echo "Abortando deploy. Sugestão: reinicie a VM manualmente."
+    exit 1
 fi
 
 echo "============================================"
