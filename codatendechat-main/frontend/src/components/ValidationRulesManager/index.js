@@ -111,7 +111,7 @@ const ValidationRulesManager = ({ teamId, agentId, agentName }) => {
   const loadValidationRules = async () => {
     try {
       setLoading(true);
-      const { data } = await api.get('/training/validation-rules', {
+      const { data } = await api.get('/api/v2/training/validation-rules', {
         params: { teamId, tenantId, agentId }
       });
       setSystemEnabled(data.enabled || false);
@@ -129,7 +129,7 @@ const ValidationRulesManager = ({ teamId, agentId, agentName }) => {
     const enabled = event.target.checked;
 
     try {
-      await api.put('/training/validation-rules/toggle', {
+      await api.put('/api/v2/training/validation-rules/toggle', {
         teamId,
         tenantId,
         agentId,
@@ -164,7 +164,7 @@ const ValidationRulesManager = ({ teamId, agentId, agentName }) => {
     }
 
     try {
-      await api.delete(`/training/validation-rules/${ruleId}`, {
+      await api.delete(`/api/v2/training/validation-rules/${ruleId}`, {
         data: { teamId, tenantId, agentId }
       });
 
@@ -180,7 +180,7 @@ const ValidationRulesManager = ({ teamId, agentId, agentName }) => {
     try {
       if (editingRule) {
         // Atualizar regra existente
-        await api.put(`/training/validation-rules/${editingRule.id}`, {
+        await api.put(`/api/v2/training/validation-rules/${editingRule.id}`, {
           teamId,
           tenantId,
           agentId,
@@ -189,7 +189,7 @@ const ValidationRulesManager = ({ teamId, agentId, agentName }) => {
         toast.success('Regra atualizada com sucesso');
       } else {
         // Criar nova regra
-        await api.post('/training/validation-rules', {
+        await api.post('/api/v2/training/validation-rules', {
           teamId,
           tenantId,
           agentId,
