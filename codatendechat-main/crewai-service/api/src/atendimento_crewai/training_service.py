@@ -1353,12 +1353,7 @@ async def delete_validation_rule(
 
 
 @router.put("/validation-rules/toggle")
-async def toggle_validation_system(
-    teamId: str = Body(...),
-    tenantId: str = Body(...),
-    agentId: str = Body(...),
-    enabled: bool = Body(...)
-):
+async def toggle_validation_system(request: dict = Body(...)):
     """
     Ativa ou desativa todo o sistema de validação para um agente.
 
@@ -1375,6 +1370,19 @@ async def toggle_validation_system(
             "message": "Sistema de validação ativado"
         }
     """
+    # Extrair campos do request
+    teamId = request.get('teamId')
+    tenantId = request.get('tenantId')
+    agentId = request.get('agentId')
+    enabled = request.get('enabled')
+
+    # Validar campos obrigatórios
+    if not teamId or not tenantId or not agentId or enabled is None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Campos obrigatórios faltando. Recebido: {request}"
+        )
+
     try:
         from firebase_admin import firestore
         db = firestore.client()
