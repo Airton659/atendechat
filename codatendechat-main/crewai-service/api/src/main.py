@@ -56,12 +56,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Incluir routers
-app.include_router(main_router, prefix="/api/v2")
-app.include_router(architect_router, prefix="/api/v2")
-app.include_router(training_router, prefix="/api/v2")
-app.include_router(crews_router, prefix="/api/v2")
-app.include_router(knowledge_router, prefix="/api/v2")
+# Incluir routers (SEM prefixo - Nginx já roteia)
+app.include_router(main_router)
+app.include_router(architect_router)
+app.include_router(training_router)
+app.include_router(crews_router)
+app.include_router(knowledge_router)
 
 @app.get("/")
 def read_root():
