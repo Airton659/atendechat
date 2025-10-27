@@ -18,6 +18,10 @@ import {
   Divider,
   Checkbox,
   FormControlLabel,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
   Accordion,
   AccordionSummary,
   AccordionDetails,
@@ -41,6 +45,7 @@ import {
 import { i18n } from "../../translate/i18n";
 import api from "../../services/api";
 import toastError from "../../errors/toastError";
+import ValidationRulesManager from "../ValidationRulesManager";
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -172,6 +177,7 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
         guardrailsDont: "",
       },
     ],
+    selectedAgentForValidation: 0,
   });
 
   useEffect(() => {
@@ -418,6 +424,7 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
                 <Tab label="Geral" />
                 <Tab label="Agentes" />
                 <Tab label="Base de Conhecimento" disabled={!crewId} />
+                <Tab label="Validações" disabled={!crewId} />
               </Tabs>
 
               <DialogContent dividers style={{ minHeight: 500 }}>
@@ -743,6 +750,33 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
                                   </Typography>
                                 </Box>
                               )}
+
+                              {/* Seção de Validações Programáticas */}
+                              <Divider style={{ margin: '24px 0' }} />
+                              <Typography className={classes.sectionTitle}>
+                                ✅ Validações Programáticas
+                              </Typography>
+                              <Typography variant="caption" color="textSecondary" display="block" gutterBottom>
+                                Configure regras automáticas para validar se o agente está consultando corretamente a base de conhecimento.
+                              </Typography>
+
+                              {crewId && (
+                                <Box mt={2}>
+                                  <ValidationRulesManager
+                                    teamId={crewId}
+                                    agentId={`agent_${index + 1}`}
+                                    agentName={agent.name || `Agente ${index + 1}`}
+                                  />
+                                </Box>
+                              )}
+
+                              {!crewId && (
+                                <Box mt={2} p={2} style={{ background: '#fff3cd', borderRadius: 4 }}>
+                                  <Typography variant="caption" color="textSecondary">
+                                    ⚠️ Salve a equipe primeiro para configurar validações.
+                                  </Typography>
+                                </Box>
+                              )}
                             </Box>
                           </AccordionDetails>
                         </Accordion>
@@ -838,6 +872,54 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
                         </List>
                       </Box>
                     )}
+                </TabPanel>
+
+                {/* Tab 3 - Validações */}
+                <TabPanel value={tabValue} index={3}>
+                  <Typography variant="h6" gutterBottom>
+                    ✅ Validações Programáticas
+                  </Typography>
+                  <Typography variant="body2" color="textSecondary" paragraph>
+                    Configure regras de validação automática para garantir que os agentes consultem corretamente a base de conhecimento.
+                  </Typography>
+
+                  {values.agents && values.agents.length > 0 ? (
+                    <>
+                      <FormControl variant="outlined" fullWidth style={{ marginBottom: 24 }}>
+                        <InputLabel>Selecione o Agente</InputLabel>
+                        <Field name="selectedAgentForValidation">
+                          {({ field, form }) => (
+                            <Select
+                              {...field}
+                              label="Selecione o Agente"
+                              value={field.value || 0}
+                              onChange={(e) => form.setFieldValue('selectedAgentForValidation', e.target.value)}
+                            >
+                              {values.agents.map((agent, idx) => (
+                                <MenuItem key={idx} value={idx}>
+                                  {agent.name || `Agente ${idx + 1}`}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          )}
+                        </Field>
+                      </FormControl>
+
+                      {values.selectedAgentForValidation !== undefined && (
+                        <ValidationRulesManager
+                          teamId={crewId}
+                          agentId={`agent_${values.selectedAgentForValidation + 1}`}
+                          agentName={values.agents[values.selectedAgentForValidation]?.name || `Agente ${values.selectedAgentForValidation + 1}`}
+                        />
+                      )}
+                    </>
+                  ) : (
+                    <Box p={4} textAlign="center">
+                      <Typography variant="body2" color="textSecondary">
+                        ⚠️ Crie pelo menos um agente na aba "Agentes" antes de configurar validações.
+                      </Typography>
+                    </Box>
+                  )}
                 </TabPanel>
               </DialogContent>
               <DialogActions>

@@ -115,7 +115,13 @@ export const storeFromAgent = async (req: Request, res: Response): Promise<Respo
 
   // Se for pending_confirmation, emitir evento adicional para notificação
   if (schedule.status === 'pending_confirmation') {
-    io.to(`company-${companyId}-mainchannel`).emit(`company${companyId}-schedule:pending_confirmation`, {
+    const eventName = `company${companyId}-schedule:pending_confirmation`;
+    console.log(`📢 Emitindo evento de notificação: ${eventName}`);
+    console.log(`   Schedule ID: ${schedule.id}`);
+    console.log(`   Contact: ${schedule.contact?.name || 'N/A'}`);
+    console.log(`   SendAt: ${schedule.sendAt}`);
+
+    io.to(`company-${companyId}-mainchannel`).emit(eventName, {
       schedule
     });
   }
@@ -275,6 +281,30 @@ export const listFromAgent = async (req: Request, res: Response): Promise<Respon
 
   const { schedules, count, hasMore } = await ListService({
     contactId: parseInt(contactId),
+    pageNumber: 1,
+    companyId
+  });
+
+  return res.json({ schedules, count, hasMore });
+};
+
+// GET /schedules/agent/company/all - Lista TODOS agendamentos da empresa (para verificar conflitos)
+export const listAllFromAgent = async (req: Request, res: Response): Promise<Response> => {
+  const { tenantId } = req.query;
+
+  if (!tenantId) {
+    throw new AppError("ERR_INVALID_TENANT_ID", 400);
+  }
+
+  // tenantId vem como "company_X" do CrewAI, extrair X
+  const companyId = parseInt(tenantId.toString().replace('company_', ''));
+
+  if (!companyId) {
+    throw new AppError("ERR_INVALID_TENANT_ID", 400);
+  }
+
+  // Buscar TODOS os agendamentos da empresa (sem filtrar por contactId)
+  const { schedules, count, hasMore } = await ListService({
     pageNumber: 1,
     companyId
   });

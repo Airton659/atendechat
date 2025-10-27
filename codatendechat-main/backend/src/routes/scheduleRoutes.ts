@@ -17,6 +17,9 @@ scheduleRoutes.post("/schedules", isAuth, ScheduleController.store);
 // Endpoint para agendamento criado por IA (sem autenticação pois vem do serviço Python)
 scheduleRoutes.post("/schedules/agent", ScheduleController.storeFromAgent);
 
+// Listar TODOS agendamentos da empresa (para verificar conflitos de horário)
+scheduleRoutes.get("/schedules/agent/company/all", ScheduleController.listAllFromAgent);
+
 // Listar agendamentos do contato (para IA consultar status)
 scheduleRoutes.get("/schedules/agent/:contactId", ScheduleController.listFromAgent);
 

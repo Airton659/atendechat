@@ -750,6 +750,7 @@ def _schedule_appointment_impl(
     """
     import requests
     import os
+    from datetime import datetime, timedelta
 
     # URL do backend Node.js (Docker expõe na porta 3000)
     backend_url = os.getenv("BACKEND_URL", "http://localhost:3000")
@@ -778,30 +779,25 @@ def _schedule_appointment_impl(
             schedule_data = response.json()
             schedule_id = schedule_data.get('id', 'N/A')
 
+            # Retorno SIMPLES - deixar o agente formular a própria resposta
             if status == "pending_confirmation":
-                return f"✅ Agendamento criado com sucesso (ID: {schedule_id})!\n" \
-                       f"Status: PENDENTE DE CONFIRMAÇÃO HUMANA\n" \
-                       f"Um atendente humano irá confirmar este agendamento em breve.\n" \
-                       f"Data/Hora: {date_time}\n" \
-                       f"Descrição: {body}"
+                return f"AGENDAMENTO_CRIADO|id={schedule_id}|status=pending|datetime={date_time}|body={body}"
             else:
-                return f"✅ Agendamento CONFIRMADO com sucesso (ID: {schedule_id})!\n" \
-                       f"Data/Hora: {date_time}\n" \
-                       f"Descrição: {body}"
+                return f"AGENDAMENTO_CONFIRMADO|id={schedule_id}|status=confirmed|datetime={date_time}|body={body}"
         else:
             error_msg = response.text
             print(f"❌ Erro ao criar agendamento: HTTP {response.status_code} - {error_msg}")
-            return f"❌ Erro ao criar agendamento: {error_msg}"
+            return f"ERRO_AGENDAMENTO|{error_msg}"
 
     except requests.exceptions.Timeout:
         print(f"⏱️ Timeout ao chamar API de agendamento")
-        return "❌ Erro: Timeout ao criar agendamento. Tente novamente."
+        return "ERRO_TIMEOUT|Timeout ao criar agendamento"
     except requests.exceptions.RequestException as e:
         print(f"❌ Erro de requisição: {e}")
-        return f"❌ Erro ao conectar com o sistema de agendamentos: {str(e)}"
+        return f"ERRO_CONEXAO|{str(e)}"
     except Exception as e:
         print(f"❌ Erro inesperado: {e}")
-        return f"❌ Erro inesperado ao criar agendamento: {str(e)}"
+        return f"ERRO_INESPERADO|{str(e)}"
 
 
 def _check_schedules_impl(
@@ -853,6 +849,8 @@ def _check_schedules_impl(
             # Formatar lista de agendamentos
             result = f"📋 Agendamentos encontrados ({len(schedules)}):\n\n"
 
+            has_pending = False
+
             for idx, schedule in enumerate(schedules, 1):
                 schedule_id = schedule.get('id', 'N/A')
                 send_at = schedule.get('sendAt', '')
@@ -874,9 +872,18 @@ def _check_schedules_impl(
                 }
                 status_text = status_map.get(status, status.upper())
 
+                if status == 'pending_confirmation':
+                    has_pending = True
+
                 result += f"{idx}. [ID: {schedule_id}] {formatted_date}\n"
                 result += f"   Descrição: {body}\n"
                 result += f"   Status: {status_text}\n\n"
+
+            # IMPORTANTE: Se tiver pendente e cliente pediu confirmação, instruir uso de confirm_schedule
+            if has_pending:
+                result += "\n⚠️ ATENÇÃO: Há agendamentos PENDENTES.\n"
+                result += "Se o cliente pediu para CONFIRMAR, você DEVE usar a ferramenta confirm_schedule(schedule_id).\n"
+                result += "NUNCA diga que confirmou sem usar confirm_schedule!\n"
 
             return result.strip()
 

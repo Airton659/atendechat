@@ -999,3 +999,515 @@ async def save_metrics(
     except Exception as e:
         print(f"Erro ao salvar métricas: {e}")
         raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+
+
+# ============================================================================
+# ENDPOINTS DE VALIDAÇÃO PROGRAMÁTICA
+# ============================================================================
+
+@router.get("/validation-rules")
+async def get_validation_rules(
+    teamId: str,
+    tenantId: str,
+    agentId: str
+):
+    """
+    Retorna todas as regras de validação configuradas para um agente.
+
+    Args:
+        teamId: ID da equipe/crew
+        tenantId: ID do tenant (validação)
+        agentId: ID do agente
+
+    Returns:
+        {
+            "enabled": true,
+            "rules": [
+                {
+                    "id": "rule_123",
+                    "name": "Validar agendamentos",
+                    "description": "...",
+                    "trigger_keywords": [...],
+                    "entity_extraction": {...},
+                    "strictness": "high",
+                    "auto_correct": false,
+                    "enabled": true,
+                    "createdAt": "...",
+                    "updatedAt": "..."
+                }
+            ]
+        }
+    """
+    try:
+        from firebase_admin import firestore
+        db = firestore.client()
+
+        # Buscar equipe
+        team_ref = db.collection('crews').document(teamId)
+        team_doc = team_ref.get()
+
+        if not team_doc.exists:
+            raise HTTPException(status_code=404, detail="Equipe não encontrada")
+
+        team_data = team_doc.to_dict()
+
+        # Verificar se pertence ao tenant
+        if team_data.get('tenantId') != tenantId:
+            raise HTTPException(status_code=403, detail="Acesso negado")
+
+        # Obter configuração de validação do agente
+        agents = team_data.get('agents', {})
+        if agentId not in agents:
+            raise HTTPException(status_code=404, detail=f"Agente '{agentId}' não encontrado")
+
+        agent = agents[agentId]
+        validation_config = agent.get('validation_config', {
+            "enabled": False,
+            "rules": []
+        })
+
+        print(f"✅ Regras de validação obtidas para agente '{agentId}': {len(validation_config.get('rules', []))} regras")
+
+        return validation_config
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Erro ao obter regras de validação: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+
+
+@router.post("/validation-rules")
+async def create_validation_rule(
+    teamId: str = Body(...),
+    tenantId: str = Body(...),
+    agentId: str = Body(...),
+    rule: Dict[str, Any] = Body(...)
+):
+    """
+    Cria uma nova regra de validação para um agente.
+
+    Args:
+        teamId: ID da equipe/crew
+        tenantId: ID do tenant (validação)
+        agentId: ID do agente
+        rule: Configuração da regra (sem ID, será auto-gerado)
+            {
+                "name": "Validar agendamentos",
+                "description": "...",
+                "trigger_keywords": ["agendar", "marcar"],
+                "entity_extraction": {
+                    "service_type": {
+                        "method": "regex",
+                        "pattern": "consulta\\s+(?:de\\s+)?(\\w+)",
+                        "description": "Tipo de consulta"
+                    }
+                },
+                "strictness": "high",
+                "auto_correct": false,
+                "enabled": true
+            }
+
+    Returns:
+        {
+            "success": true,
+            "ruleId": "rule_abc123",
+            "message": "Regra criada com sucesso"
+        }
+    """
+    try:
+        from firebase_admin import firestore
+        import uuid
+
+        db = firestore.client()
+
+        # Buscar equipe
+        team_ref = db.collection('crews').document(teamId)
+        team_doc = team_ref.get()
+
+        if not team_doc.exists:
+            raise HTTPException(status_code=404, detail="Equipe não encontrada")
+
+        team_data = team_doc.to_dict()
+
+        # Verificar se pertence ao tenant
+        if team_data.get('tenantId') != tenantId:
+            raise HTTPException(status_code=403, detail="Acesso negado")
+
+        # Verificar se agente existe
+        agents = team_data.get('agents', {})
+        if agentId not in agents:
+            raise HTTPException(status_code=404, detail=f"Agente '{agentId}' não encontrado")
+
+        # Gerar ID único para a regra
+        rule_id = f"rule_{uuid.uuid4().hex[:8]}"
+
+        # Adicionar metadados à regra
+        new_rule = {
+            "id": rule_id,
+            **rule,
+            "createdAt": datetime.now().isoformat(),
+            "updatedAt": datetime.now().isoformat()
+        }
+
+        # Obter ou inicializar validation_config
+        agent_path = f'agents.{agentId}.validation_config'
+        validation_config = agents[agentId].get('validation_config', {
+            "enabled": False,
+            "rules": []
+        })
+
+        # Adicionar nova regra
+        validation_config['rules'].append(new_rule)
+
+        # Atualizar no Firestore
+        team_ref.update({
+            f'{agent_path}.rules': validation_config['rules']
+        })
+
+        print(f"✅ Regra de validação '{rule.get('name')}' (ID: {rule_id}) criada para agente '{agentId}'")
+
+        return {
+            "success": True,
+            "ruleId": rule_id,
+            "message": f"Regra '{rule.get('name')}' criada com sucesso",
+            "rule": new_rule
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Erro ao criar regra de validação: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+
+
+@router.put("/validation-rules/{ruleId}")
+async def update_validation_rule(
+    ruleId: str,
+    teamId: str = Body(...),
+    tenantId: str = Body(...),
+    agentId: str = Body(...),
+    updates: Dict[str, Any] = Body(...)
+):
+    """
+    Atualiza uma regra de validação existente.
+
+    Args:
+        ruleId: ID da regra a ser atualizada
+        teamId: ID da equipe/crew
+        tenantId: ID do tenant (validação)
+        agentId: ID do agente
+        updates: Campos a serem atualizados
+
+    Returns:
+        {
+            "success": true,
+            "message": "Regra atualizada com sucesso"
+        }
+    """
+    try:
+        from firebase_admin import firestore
+        db = firestore.client()
+
+        # Buscar equipe
+        team_ref = db.collection('crews').document(teamId)
+        team_doc = team_ref.get()
+
+        if not team_doc.exists:
+            raise HTTPException(status_code=404, detail="Equipe não encontrada")
+
+        team_data = team_doc.to_dict()
+
+        # Verificar se pertence ao tenant
+        if team_data.get('tenantId') != tenantId:
+            raise HTTPException(status_code=403, detail="Acesso negado")
+
+        # Verificar se agente existe
+        agents = team_data.get('agents', {})
+        if agentId not in agents:
+            raise HTTPException(status_code=404, detail=f"Agente '{agentId}' não encontrado")
+
+        # Obter validation_config
+        validation_config = agents[agentId].get('validation_config', {
+            "enabled": False,
+            "rules": []
+        })
+
+        # Encontrar regra a ser atualizada
+        rules = validation_config.get('rules', [])
+        rule_index = None
+
+        for i, r in enumerate(rules):
+            if r.get('id') == ruleId:
+                rule_index = i
+                break
+
+        if rule_index is None:
+            raise HTTPException(status_code=404, detail=f"Regra '{ruleId}' não encontrada")
+
+        # Atualizar campos
+        updated_rule = {**rules[rule_index], **updates}
+        updated_rule['updatedAt'] = datetime.now().isoformat()
+
+        # Substituir regra antiga pela atualizada
+        rules[rule_index] = updated_rule
+
+        # Atualizar no Firestore
+        agent_path = f'agents.{agentId}.validation_config'
+        team_ref.update({
+            f'{agent_path}.rules': rules
+        })
+
+        print(f"✅ Regra de validação '{ruleId}' atualizada para agente '{agentId}'")
+
+        return {
+            "success": True,
+            "message": f"Regra '{updated_rule.get('name')}' atualizada com sucesso",
+            "rule": updated_rule
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Erro ao atualizar regra de validação: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+
+
+@router.delete("/validation-rules/{ruleId}")
+async def delete_validation_rule(
+    ruleId: str,
+    teamId: str = Body(...),
+    tenantId: str = Body(...),
+    agentId: str = Body(...)
+):
+    """
+    Remove uma regra de validação.
+
+    Args:
+        ruleId: ID da regra a ser removida
+        teamId: ID da equipe/crew
+        tenantId: ID do tenant (validação)
+        agentId: ID do agente
+
+    Returns:
+        {
+            "success": true,
+            "message": "Regra removida com sucesso"
+        }
+    """
+    try:
+        from firebase_admin import firestore
+        db = firestore.client()
+
+        # Buscar equipe
+        team_ref = db.collection('crews').document(teamId)
+        team_doc = team_ref.get()
+
+        if not team_doc.exists:
+            raise HTTPException(status_code=404, detail="Equipe não encontrada")
+
+        team_data = team_doc.to_dict()
+
+        # Verificar se pertence ao tenant
+        if team_data.get('tenantId') != tenantId:
+            raise HTTPException(status_code=403, detail="Acesso negado")
+
+        # Verificar se agente existe
+        agents = team_data.get('agents', {})
+        if agentId not in agents:
+            raise HTTPException(status_code=404, detail=f"Agente '{agentId}' não encontrado")
+
+        # Obter validation_config
+        validation_config = agents[agentId].get('validation_config', {
+            "enabled": False,
+            "rules": []
+        })
+
+        # Filtrar regras (remover a que tem o ID especificado)
+        rules = validation_config.get('rules', [])
+        original_count = len(rules)
+        rules = [r for r in rules if r.get('id') != ruleId]
+
+        if len(rules) == original_count:
+            raise HTTPException(status_code=404, detail=f"Regra '{ruleId}' não encontrada")
+
+        # Atualizar no Firestore
+        agent_path = f'agents.{agentId}.validation_config'
+        team_ref.update({
+            f'{agent_path}.rules': rules
+        })
+
+        print(f"✅ Regra de validação '{ruleId}' removida do agente '{agentId}'")
+
+        return {
+            "success": True,
+            "message": f"Regra removida com sucesso",
+            "remainingRules": len(rules)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Erro ao remover regra de validação: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+
+
+@router.put("/validation-rules/toggle")
+async def toggle_validation_system(
+    teamId: str = Body(...),
+    tenantId: str = Body(...),
+    agentId: str = Body(...),
+    enabled: bool = Body(...)
+):
+    """
+    Ativa ou desativa todo o sistema de validação para um agente.
+
+    Args:
+        teamId: ID da equipe/crew
+        tenantId: ID do tenant (validação)
+        agentId: ID do agente
+        enabled: True para ativar, False para desativar
+
+    Returns:
+        {
+            "success": true,
+            "enabled": true,
+            "message": "Sistema de validação ativado"
+        }
+    """
+    try:
+        from firebase_admin import firestore
+        db = firestore.client()
+
+        # Buscar equipe
+        team_ref = db.collection('crews').document(teamId)
+        team_doc = team_ref.get()
+
+        if not team_doc.exists:
+            raise HTTPException(status_code=404, detail="Equipe não encontrada")
+
+        team_data = team_doc.to_dict()
+
+        # Verificar se pertence ao tenant
+        if team_data.get('tenantId') != tenantId:
+            raise HTTPException(status_code=403, detail="Acesso negado")
+
+        # Verificar se agente existe
+        agents = team_data.get('agents', {})
+        if agentId not in agents:
+            raise HTTPException(status_code=404, detail=f"Agente '{agentId}' não encontrado")
+
+        # Atualizar estado do sistema de validação
+        agent_path = f'agents.{agentId}.validation_config'
+        team_ref.update({
+            f'{agent_path}.enabled': enabled
+        })
+
+        status_msg = "ativado" if enabled else "desativado"
+        print(f"✅ Sistema de validação {status_msg} para agente '{agentId}'")
+
+        return {
+            "success": True,
+            "enabled": enabled,
+            "message": f"Sistema de validação {status_msg} com sucesso"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Erro ao alternar sistema de validação: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+
+
+@router.post("/save-suggestion")
+async def save_suggestion(
+    teamId: str = Body(...),
+    tenantId: str = Body(...),
+    agentId: str = Body(...),
+    suggestion: Dict[str, Any] = Body(...)
+):
+    """
+    Salva uma SUGESTÃO de comportamento (regra de IA) para o agente.
+
+    Diferente de save-correction (exemplos de few-shot), suggestions são regras
+    comportamentais que influenciam QUANDO e COMO o agente deve agir.
+
+    Args:
+        teamId: ID da equipe/crew
+        tenantId: ID do tenant (validação)
+        agentId: ID do agente
+        suggestion: Configuração da sugestão
+            {
+                "trigger": "Cliente pede agendamento sem fornecer data",
+                "behavior": "SEMPRE pergunte a data/hora desejada ANTES de consultar a base de conhecimento",
+                "category": "validation",
+                "priority": "critical"  # critical | high | medium | low
+            }
+
+    Returns:
+        {
+            "success": true,
+            "message": "Sugestão salva com sucesso",
+            "totalSuggestions": 5
+        }
+    """
+    try:
+        from firebase_admin import firestore
+        db = firestore.client()
+
+        # Buscar equipe
+        team_ref = db.collection('crews').document(teamId)
+        team_doc = team_ref.get()
+
+        if not team_doc.exists:
+            raise HTTPException(status_code=404, detail="Equipe não encontrada")
+
+        team_data = team_doc.to_dict()
+
+        # Verificar se pertence ao tenant
+        if team_data.get('tenantId') != tenantId:
+            raise HTTPException(status_code=403, detail="Acesso negado")
+
+        # Verificar se agente existe
+        agents = team_data.get('agents', {})
+        if agentId not in agents:
+            raise HTTPException(status_code=404, detail=f"Agente '{agentId}' não encontrado")
+
+        # Adicionar metadados à sugestão
+        new_suggestion = {
+            **suggestion,
+            "addedAt": datetime.now().isoformat(),
+            "source": "manual"  # manual | auto_learned
+        }
+
+        # Obter ou inicializar training.suggestions
+        agent = agents[agentId]
+        if 'training' not in agent:
+            agent['training'] = {}
+        if 'suggestions' not in agent['training']:
+            agent['training']['suggestions'] = []
+
+        agent['training']['suggestions'].append(new_suggestion)
+
+        # Atualizar no Firestore
+        agent_path = f'agents.{agentId}.training.suggestions'
+        team_ref.update({
+            agent_path: agent['training']['suggestions']
+        })
+
+        print(f"✅ Sugestão de comportamento salva para agente '{agentId}':")
+        print(f"   Trigger: {suggestion.get('trigger')}")
+        print(f"   Priority: {suggestion.get('priority')}")
+
+        return {
+            "success": True,
+            "message": "Sugestão salva com sucesso",
+            "totalSuggestions": len(agent['training']['suggestions']),
+            "suggestion": new_suggestion
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Erro ao salvar sugestão: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")

@@ -231,13 +231,31 @@ class RealCrewEngine:
                 Use status='scheduled' se cliente confirmou explicitamente.
                 Use status='pending_confirmation' se cliente apenas sugeriu horário.
 
+                🚨 IMPORTANTE - AÇÃO OBRIGATÓRIA APÓS USAR ESTA FERRAMENTA:
+                Depois de chamar esta ferramenta, você DEVE SEMPRE:
+                1. Informar ao cliente que o agendamento foi registrado (use suas próprias palavras!)
+                2. PERGUNTAR AO CLIENTE: "Prefere que EU confirme agora ou aguarda confirmação humana?"
+                3. Aguardar a resposta do cliente antes de confirmar
+
+                NUNCA finalize a conversa sem fazer essa pergunta!
+
+                ⚠️ FORMATO DO RETORNO:
+                Esta ferramenta retorna dados estruturados. Você DEVE interpretar e responder com suas próprias palavras:
+
+                - "AGENDAMENTO_CRIADO|..." = Agendamento criado com sucesso (pendente)
+                - "AGENDAMENTO_CONFIRMADO|..." = Agendamento confirmado com sucesso
+                - "⚠️ CONFLITO DE HORÁRIO..." = Já existe agendamento neste horário - sugira outro
+                - "ERRO_..." = Erro ao criar agendamento
+
+                NÃO copie o retorno literal! Use suas palavras baseado na sua personalidade/role.
+
                 Args:
                     date_time: Data e hora no formato ISO 8601 (ex: '2025-10-27T08:00:00')
                     body: Descrição completa do agendamento
                     status: 'scheduled' (confirmado) ou 'pending_confirmation' (pendente)
 
                 Returns:
-                    Mensagem de sucesso ou erro do agendamento
+                    Dados estruturados sobre o resultado (você deve interpretar e responder naturalmente)
                 """
                 print(f"\n📅 EXECUTANDO schedule_appointment!")
                 print(f"   tenant_id: {_tenant_id}")
@@ -260,6 +278,46 @@ class RealCrewEngine:
 
             tools.append(schedule_appointment)
             print("   ✅ schedule_appointment adicionada")
+
+            # confirm_schedule - Auto-ativado com schedule_appointment
+            @tool("confirm_schedule")
+            def confirm_schedule(schedule_id: int) -> str:
+                """
+                Confirma um agendamento que está PENDENTE DE CONFIRMAÇÃO.
+
+                Use esta ferramenta quando o cliente solicitar confirmação:
+                - "Pode confirmar"
+                - "Confirma agora"
+                - "Eu confirmo"
+                - "Confirme por favor"
+                - Cliente responde que prefere que VOCÊ confirme (não humano)
+
+                IMPORTANTE:
+                1. Use check_schedules ANTES para ver agendamentos pendentes
+                2. Confirme APENAS agendamentos com status PENDENTE
+                3. Após confirmar, informe o cliente que foi confirmado
+
+                Args:
+                    schedule_id: ID do agendamento a ser confirmado (obtido via check_schedules)
+
+                Returns:
+                    Mensagem de sucesso ou erro
+                """
+                print(f"\n✅ EXECUTANDO confirm_schedule!")
+                print(f"   tenant_id: {_tenant_id}")
+                print(f"   schedule_id: {schedule_id}")
+
+                result = _update_schedule_impl(
+                    tenant_id=_tenant_id,
+                    schedule_id=schedule_id,
+                    new_status="scheduled"
+                )
+
+                print(f"   Resultado: {result}")
+                return result
+
+            tools.append(confirm_schedule)
+            print("   ✅ confirm_schedule adicionada")
 
         # 2.1. CHECK_SCHEDULES (Consultar agendamentos)
         if 'check_schedules' in agent_tools or 'schedule_appointment' in agent_tools:
@@ -523,6 +581,64 @@ class RealCrewEngine:
             # Verificar documentos específicos do agente
             agent_document_ids = selected_agent.get('knowledgeDocuments', [])
 
+            # ============================================================================
+            # VALIDAÇÕES PROGRAMÁTICAS (100% GENÉRICAS)
+            # ============================================================================
+            validation_message = ""
+            validation_config = selected_agent.get('validation_config', {})
+
+            if validation_config.get('enabled', False):
+                print("🔍 Sistema de validação ATIVADO para este agente")
+
+                try:
+                    from .validation_hooks import GenericValidationHooks
+
+                    # Wrapper para kb_search compatível com validation_hooks
+                    async def kb_search_wrapper(query: str, crew_id: str, doc_ids: List[str]) -> List[Dict[str, Any]]:
+                        """Wrapper para compatibilizar _search_knowledge com GenericValidationHooks"""
+                        return await self._search_knowledge(
+                            query=query,
+                            crew_id=crew_id,
+                            document_ids=doc_ids,
+                            max_results=5
+                        )
+
+                    validator = GenericValidationHooks(kb_search_func=kb_search_wrapper)
+
+                    # Executar cada regra de validação
+                    rules = validation_config.get('rules', [])
+                    print(f"   📋 {len(rules)} regra(s) de validação configurada(s)")
+
+                    for rule in rules:
+                        if not rule.get('enabled', True):
+                            print(f"   ⏭️ Regra '{rule.get('name')}' desabilitada, pulando")
+                            continue
+
+                        print(f"   🎯 Executando regra: '{rule.get('name')}'")
+
+                        validation_result = await validator.run_validation(
+                            message=message,
+                            crew_id=crew_id,
+                            doc_ids=agent_document_ids if agent_document_ids else [],
+                            rule_config=rule
+                        )
+
+                        if validation_result and not validation_result.get('valid', True):
+                            # CONFLITO DETECTADO!
+                            conflict = validation_result['conflict']
+                            print(f"   ❌ CONFLITO: {conflict['correction_message'][:100]}...")
+
+                            validation_message += f"\n\n⚠️ VALIDAÇÃO DETECTOU PROBLEMA:\n"
+                            validation_message += f"{conflict['correction_message']}\n"
+                            validation_message += f"\nEvidência da base de conhecimento:\n{conflict['kb_evidence'][:300]}...\n"
+
+                except Exception as e:
+                    print(f"⚠️ Erro ao executar validações: {e}")
+                    import traceback
+                    traceback.print_exc()
+            else:
+                print("⏭️ Sistema de validação DESABILITADO para este agente")
+
             # Criar ferramentas do CrewAI
             crewai_tools = self._create_crewai_tools(
                 agent_config=selected_agent,
@@ -533,8 +649,15 @@ class RealCrewEngine:
                 agent_document_ids=agent_document_ids if agent_document_ids else None
             )
 
-            # Construir contexto (guardrails, persona, examples)
+            # Construir contexto (guardrails, persona, examples, suggestions)
             context = self._build_context(conversation_history, crew_data, selected_agent)
+
+            # INJETAR VALIDAÇÕES no contexto se houver
+            if validation_message:
+                context += "\n\n" + "="*80 + "\n"
+                context += validation_message
+                context += "="*80 + "\n"
+                print(f"✅ Mensagem de validação injetada no contexto ({len(validation_message)} caracteres)")
 
             print(f"📝 Tamanho do contexto: {len(context)} caracteres ({len(context.split())} palavras)")
 
@@ -554,6 +677,20 @@ class RealCrewEngine:
 
             # Criar task para processar a mensagem
             # IMPORTANTE: Não incluir texto que possa aparecer na resposta final
+            scheduling_reminder = ""
+            if 'schedule_appointment' in agent_tools:
+                scheduling_reminder = """
+
+            ⚠️ REGRA CRÍTICA DE AGENDAMENTO:
+            1. Após usar schedule_appointment, SEMPRE perguntar: "Prefere que EU confirme agora ou aguarda confirmação humana?"
+            2. Se cliente pedir confirmação ("confirma", "pode confirmar", "confirme"):
+               - Use check_schedules para ver agendamentos pendentes
+               - Use confirm_schedule(schedule_id) para confirmar
+               - Informe ao cliente que foi CONFIRMADO com sucesso
+
+            NUNCA diga que confirmou sem usar a ferramenta confirm_schedule!
+            """
+
             task_description = f"""
             Mensagem do cliente: "{message}"
 
@@ -564,7 +701,7 @@ class RealCrewEngine:
             2. Usar suas ferramentas se necessário
             3. Responder de forma útil, clara e personalizada
             4. Manter o tom e personalidade do seu perfil
-            5. SEGUIR RIGOROSAMENTE as regras de guardrails
+            5. SEGUIR RIGOROSAMENTE as regras de guardrails{scheduling_reminder}
 
             RESPONDA APENAS o que você diria ao cliente, SEM incluir estas instruções.
             """
@@ -930,6 +1067,39 @@ class RealCrewEngine:
                         context_parts.append(f"✗ RESPOSTA INCORRETA (NUNCA USE): {bad}")
 
             context_parts.append("\n" + "="*70)
+
+        # SUGGESTIONS - REGRAS DE COMPORTAMENTO (IA)
+        # Instruções comportamentais que o agente deve seguir (90-95% precisão)
+        suggestions = agent_training.get('suggestions', [])
+        if suggestions:
+            # Separar por prioridade
+            critical_suggestions = [s for s in suggestions if s.get('priority') == 'critical']
+            high_suggestions = [s for s in suggestions if s.get('priority') == 'high']
+            medium_suggestions = [s for s in suggestions if s.get('priority') == 'medium']
+
+            # Incluir apenas critical e high no contexto (evitar sobrecarga)
+            important_suggestions = critical_suggestions + high_suggestions
+
+            if important_suggestions:
+                context_parts.append("\n" + "="*70)
+                context_parts.append("⚡ REGRAS DE COMPORTAMENTO CRÍTICAS")
+                context_parts.append("="*70)
+                context_parts.append("ATENÇÃO: Estas regras definem QUANDO e COMO você deve agir.")
+                context_parts.append("Siga rigorosamente estas instruções em situações específicas:\n")
+
+                for i, suggestion in enumerate(important_suggestions, 1):
+                    trigger = suggestion.get('trigger', '')
+                    behavior = suggestion.get('behavior', '')
+                    priority_icon = "🔴" if suggestion.get('priority') == 'critical' else "🟠"
+
+                    if trigger and behavior:
+                        context_parts.append(f"{priority_icon} REGRA {i}:")
+                        context_parts.append(f"   QUANDO: {trigger}")
+                        context_parts.append(f"   VOCÊ DEVE: {behavior}\n")
+
+                context_parts.append("="*70 + "\n")
+
+                print(f"   📌 {len(important_suggestions)} sugestão(ões) de comportamento adicionadas ao contexto")
 
         return "\n".join(context_parts)
 
