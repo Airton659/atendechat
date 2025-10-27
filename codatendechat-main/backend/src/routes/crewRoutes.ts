@@ -48,9 +48,10 @@ crewRoutes.post("/training/save-metrics", isAuth, CrewController.saveTrainingMet
 // Validation endpoints - proxy direto para CrewAI service
 crewRoutes.get("/training/validation-rules", isAuth, CrewController.getValidationRules);
 crewRoutes.post("/training/validation-rules", isAuth, CrewController.createValidationRule);
+// IMPORTANTE: Rota específica /toggle TEM QUE VIR ANTES da rota genérica /:ruleId
+crewRoutes.put("/training/validation-rules/toggle", isAuth, CrewController.toggleValidationSystem);
 crewRoutes.put("/training/validation-rules/:ruleId", isAuth, CrewController.updateValidationRule);
 crewRoutes.delete("/training/validation-rules/:ruleId", isAuth, CrewController.deleteValidationRule);
-crewRoutes.put("/training/validation-rules/toggle", isAuth, CrewController.toggleValidationSystem);
 crewRoutes.post("/training/save-suggestion", isAuth, CrewController.saveSuggestion);
 
 export default crewRoutes;
