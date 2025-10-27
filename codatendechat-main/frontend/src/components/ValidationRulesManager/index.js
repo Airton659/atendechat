@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { AuthContext } from "../../context/Auth/AuthContext";
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -93,8 +92,6 @@ const useStyles = makeStyles((theme) => ({
 
 const ValidationRulesManager = ({ teamId, agentId, agentName }) => {
   const classes = useStyles();
-  const { user } = useContext(AuthContext);
-  const tenantId = user?.companyId?.toString() || '';
 
   const [systemEnabled, setSystemEnabled] = useState(false);
   const [rules, setRules] = useState([]);
@@ -112,7 +109,7 @@ const ValidationRulesManager = ({ teamId, agentId, agentName }) => {
     try {
       setLoading(true);
       const { data } = await api.get('/training/validation-rules', {
-        params: { teamId, tenantId, agentId }
+        params: { teamId, agentId }
       });
       setSystemEnabled(data.enabled || false);
       setRules(data.rules || []);
@@ -131,7 +128,6 @@ const ValidationRulesManager = ({ teamId, agentId, agentName }) => {
     try {
       await api.put('/training/validation-rules/toggle', {
         teamId,
-        tenantId,
         agentId,
         enabled
       });
@@ -165,7 +161,7 @@ const ValidationRulesManager = ({ teamId, agentId, agentName }) => {
 
     try {
       await api.delete(`/training/validation-rules/${ruleId}`, {
-        data: { teamId, tenantId, agentId }
+        params: { teamId, agentId }
       });
 
       toast.success('Regra removida com sucesso');
@@ -182,7 +178,6 @@ const ValidationRulesManager = ({ teamId, agentId, agentName }) => {
         // Atualizar regra existente
         await api.put(`/training/validation-rules/${editingRule.id}`, {
           teamId,
-          tenantId,
           agentId,
           updates: ruleData
         });
@@ -191,7 +186,6 @@ const ValidationRulesManager = ({ teamId, agentId, agentName }) => {
         // Criar nova regra
         await api.post('/training/validation-rules', {
           teamId,
-          tenantId,
           agentId,
           rule: ruleData
         });

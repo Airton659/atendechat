@@ -751,32 +751,6 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
                                 </Box>
                               )}
 
-                              {/* Seção de Validações Programáticas */}
-                              <Divider style={{ margin: '24px 0' }} />
-                              <Typography className={classes.sectionTitle}>
-                                ✅ Validações Programáticas
-                              </Typography>
-                              <Typography variant="caption" color="textSecondary" display="block" gutterBottom>
-                                Configure regras automáticas para validar se o agente está consultando corretamente a base de conhecimento.
-                              </Typography>
-
-                              {crewId && (
-                                <Box mt={2}>
-                                  <ValidationRulesManager
-                                    teamId={crewId}
-                                    agentId={`agent_${index + 1}`}
-                                    agentName={agent.name || `Agente ${index + 1}`}
-                                  />
-                                </Box>
-                              )}
-
-                              {!crewId && (
-                                <Box mt={2} p={2} style={{ background: '#fff3cd', borderRadius: 4 }}>
-                                  <Typography variant="caption" color="textSecondary">
-                                    ⚠️ Salve a equipe primeiro para configurar validações.
-                                  </Typography>
-                                </Box>
-                              )}
                             </Box>
                           </AccordionDetails>
                         </Accordion>
