@@ -11,12 +11,15 @@ WorkingDirectory=/home/airton/atendechat/codatendechat-main/crewai-service/api/s
 Environment="PATH=/home/airton/atendechat/codatendechat-main/crewai-service/venv/bin:/usr/bin:/usr/local/bin"
 Environment="PYTHONPATH=/home/airton/atendechat/codatendechat-main/crewai-service/api/src"
 EnvironmentFile=/home/airton/atendechat/codatendechat-main/crewai-service/.env
-ExecStart=/home/airton/atendechat/codatendechat-main/crewai-service/venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8000
+ExecStart=/home/airton/atendechat/codatendechat-main/crewai-service/venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8000 --log-level debug
 Restart=on-failure
 RestartSec=10
 KillMode=mixed
 KillSignal=SIGTERM
 TimeoutStopSec=10
+TimeoutStartSec=60
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
