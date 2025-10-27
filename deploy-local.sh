@@ -267,6 +267,25 @@ echo ""
 echo "Status do CrewAI service:"
 echo "$SUDO_PASSWORD" | sudo -S systemctl status crewai.service --no-pager | head -20
 
+# Verificar se está realmente rodando
+sleep 2
+if echo "$SUDO_PASSWORD" | sudo -S lsof -ti :8000 > /dev/null 2>&1; then
+    echo "✅ CrewAI service RODANDO na porta 8000!"
+    echo "Processo:"
+    echo "$SUDO_PASSWORD" | sudo -S lsof -i :8000
+else
+    echo "❌ ERRO: CrewAI service NÃO está rodando na porta 8000!"
+    echo "Últimos logs do serviço:"
+    echo "$SUDO_PASSWORD" | sudo -S journalctl -u crewai.service -n 50 --no-pager
+    exit 1
+fi
+
+# Verificar se o código foi atualizado (check na data de modificação do arquivo)
+echo ""
+echo "Verificando versão do código Python..."
+MOD_TIME=\$(stat -c %Y /home/airton/atendechat/codatendechat-main/crewai-service/api/src/atendimento_crewai/training_service.py 2>/dev/null || stat -f %m /home/airton/atendechat/codatendechat-main/crewai-service/api/src/atendimento_crewai/training_service.py)
+echo "Última modificação do training_service.py: \$(date -d @\$MOD_TIME 2>/dev/null || date -r \$MOD_TIME)"
+
 echo "✓ CrewAI service atualizado e reiniciado!"
 ENDSSH
 
