@@ -18,6 +18,12 @@ class GenerateResponseRequest(BaseModel):
     message: str
     conversationHistory: List[Dict[str, Any]] = []
 
+class ToggleValidationRequest(BaseModel):
+    teamId: str
+    tenantId: str
+    agentId: str
+    enabled: bool
+
 class TrainingService:
     def __init__(self):
         self.db = firestore.client()
@@ -1353,7 +1359,7 @@ async def delete_validation_rule(
 
 
 @router.put("/validation-rules/toggle")
-async def toggle_validation_system(request: dict = Body(...)):
+async def toggle_validation_system(request: ToggleValidationRequest):
     """
     Ativa ou desativa todo o sistema de validação para um agente.
 
@@ -1370,18 +1376,11 @@ async def toggle_validation_system(request: dict = Body(...)):
             "message": "Sistema de validação ativado"
         }
     """
-    # Extrair campos do request
-    teamId = request.get('teamId')
-    tenantId = request.get('tenantId')
-    agentId = request.get('agentId')
-    enabled = request.get('enabled')
-
-    # Validar campos obrigatórios
-    if not teamId or not tenantId or not agentId or enabled is None:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Campos obrigatórios faltando. Recebido: {request}"
-        )
+    # Extrair campos do request Pydantic
+    teamId = request.teamId
+    tenantId = request.tenantId
+    agentId = request.agentId
+    enabled = request.enabled
 
     try:
         from firebase_admin import firestore
