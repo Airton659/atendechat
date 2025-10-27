@@ -271,9 +271,47 @@ fi
 deactivate
 echo "✓ Dependências instaladas!"
 
-# Porta 8000 já foi limpa no início do script
+# MATAR PORTA 8000 NOVAMENTE LOGO ANTES DE SUBIR SERVIÇO
 echo ""
-echo "✓ Porta 8000 já foi garantida livre no início do deploy"
+echo "============================================"
+echo "MATANDO PORTA 8000 NOVAMENTE (pré-start)"
+echo "============================================"
+
+# Matar tudo novamente
+echo "$SUDO_PASSWORD" | sudo -S pkill -9 -f "python.*8000" 2>/dev/null || true
+echo "$SUDO_PASSWORD" | sudo -S pkill -9 -f "uvicorn" 2>/dev/null || true
+echo "$SUDO_PASSWORD" | sudo -S pkill -9 -f "python.*crewai" 2>/dev/null || true
+sleep 2
+
+# Fuser 5 vezes
+for i in 1 2 3 4 5; do
+    echo "$SUDO_PASSWORD" | sudo -S fuser -k -9 8000/tcp 2>/dev/null || true
+    sleep 0.5
+done
+
+# Matar por PID
+PIDS_FINAL=\$(echo "$SUDO_PASSWORD" | sudo -S lsof -ti :8000 2>/dev/null || true)
+if [ ! -z "\$PIDS_FINAL" ]; then
+    echo "Matando PIDs restantes: \$PIDS_FINAL"
+    for pid in \$PIDS_FINAL; do
+        echo "$SUDO_PASSWORD" | sudo -S kill -9 \$pid 2>/dev/null || true
+    done
+fi
+sleep 3
+
+# VERIFICAÇÃO OBRIGATÓRIA
+CHECK_FINAL=\$(echo "$SUDO_PASSWORD" | sudo -S lsof -ti :8000 2>/dev/null || true)
+if [ ! -z "\$CHECK_FINAL" ]; then
+    echo ""
+    echo "❌ PORTA 8000 AINDA OCUPADA APÓS SEGUNDA MATANÇA!"
+    echo "$SUDO_PASSWORD" | sudo -S lsof -i :8000
+    echo "$SUDO_PASSWORD" | sudo -S ps aux | grep -E "\$CHECK_FINAL"
+    echo ""
+    echo "ABORTANDO DEPLOY!"
+    exit 1
+fi
+
+echo "✅ Porta 8000 confirmada livre (segunda verificação)"
 echo ""
 
 # Copiar arquivo de service atualizado
