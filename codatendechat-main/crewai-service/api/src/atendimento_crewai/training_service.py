@@ -1187,6 +1187,74 @@ async def create_validation_rule(
         raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
 
 
+@router.put("/validation-rules/toggle")
+async def toggle_validation_system(request: ToggleValidationRequest):
+    """
+    Ativa ou desativa todo o sistema de validação para um agente.
+
+    Args:
+        teamId: ID da equipe/crew
+        tenantId: ID do tenant (validação)
+        agentId: ID do agente
+        enabled: True para ativar, False para desativar
+
+    Returns:
+        {
+            "success": true,
+            "enabled": true,
+            "message": "Sistema de validação ativado"
+        }
+    """
+    # Extrair campos do request Pydantic
+    teamId = request.teamId
+    tenantId = request.tenantId
+    agentId = request.agentId
+    enabled = request.enabled
+
+    try:
+        from firebase_admin import firestore
+        db = firestore.client()
+
+        # Buscar equipe
+        team_ref = db.collection('crews').document(teamId)
+        team_doc = team_ref.get()
+
+        if not team_doc.exists:
+            raise HTTPException(status_code=404, detail="Equipe não encontrada")
+
+        team_data = team_doc.to_dict()
+
+        # Verificar se pertence ao tenant
+        if team_data.get('tenantId') != tenantId:
+            raise HTTPException(status_code=403, detail="Acesso negado")
+
+        # Verificar se agente existe
+        agents = team_data.get('agents', {})
+        if agentId not in agents:
+            raise HTTPException(status_code=404, detail=f"Agente '{agentId}' não encontrado")
+
+        # Atualizar estado do sistema de validação
+        agent_path = f'agents.{agentId}.validation_config'
+        team_ref.update({
+            f'{agent_path}.enabled': enabled
+        })
+
+        status_msg = "ativado" if enabled else "desativado"
+        print(f"✅ Sistema de validação {status_msg} para agente '{agentId}'")
+
+        return {
+            "success": True,
+            "enabled": enabled,
+            "message": f"Sistema de validação {status_msg} com sucesso"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Erro ao alternar sistema de validação: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+
+
 @router.put("/validation-rules/{ruleId}")
 async def update_validation_rule(
     ruleId: str,
@@ -1355,74 +1423,6 @@ async def delete_validation_rule(
         raise
     except Exception as e:
         print(f"Erro ao remover regra de validação: {e}")
-        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
-
-
-@router.put("/validation-rules/toggle")
-async def toggle_validation_system(request: ToggleValidationRequest):
-    """
-    Ativa ou desativa todo o sistema de validação para um agente.
-
-    Args:
-        teamId: ID da equipe/crew
-        tenantId: ID do tenant (validação)
-        agentId: ID do agente
-        enabled: True para ativar, False para desativar
-
-    Returns:
-        {
-            "success": true,
-            "enabled": true,
-            "message": "Sistema de validação ativado"
-        }
-    """
-    # Extrair campos do request Pydantic
-    teamId = request.teamId
-    tenantId = request.tenantId
-    agentId = request.agentId
-    enabled = request.enabled
-
-    try:
-        from firebase_admin import firestore
-        db = firestore.client()
-
-        # Buscar equipe
-        team_ref = db.collection('crews').document(teamId)
-        team_doc = team_ref.get()
-
-        if not team_doc.exists:
-            raise HTTPException(status_code=404, detail="Equipe não encontrada")
-
-        team_data = team_doc.to_dict()
-
-        # Verificar se pertence ao tenant
-        if team_data.get('tenantId') != tenantId:
-            raise HTTPException(status_code=403, detail="Acesso negado")
-
-        # Verificar se agente existe
-        agents = team_data.get('agents', {})
-        if agentId not in agents:
-            raise HTTPException(status_code=404, detail=f"Agente '{agentId}' não encontrado")
-
-        # Atualizar estado do sistema de validação
-        agent_path = f'agents.{agentId}.validation_config'
-        team_ref.update({
-            f'{agent_path}.enabled': enabled
-        })
-
-        status_msg = "ativado" if enabled else "desativado"
-        print(f"✅ Sistema de validação {status_msg} para agente '{agentId}'")
-
-        return {
-            "success": True,
-            "enabled": enabled,
-            "message": f"Sistema de validação {status_msg} com sucesso"
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Erro ao alternar sistema de validação: {e}")
         raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
 
 
