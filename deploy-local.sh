@@ -110,31 +110,53 @@ cd ../..
 ###############################################################################
 echo -e "\n${YELLOW}[6/7] Rebuild backend e restart containers...${NC}"
 
-# Backend rebuild completo
-sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no $VM_SSH "cd /home/airton/atendechat/codatendechat-main && docker-compose build --no-cache backend && docker-compose up -d --force-recreate backend"
-
-# Frontend rebuild completo
-ssh $VM_SSH bash << 'ENDSSH'
+# Backend + Frontend rebuild completo (TUDO EM UM BLOCO)
+sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no $VM_SSH bash << 'ENDSSH'
 set -e
 set -x
 cd /home/airton/atendechat/codatendechat-main
 
-echo "Parando e removendo container frontend..."
-docker-compose stop frontend
-docker-compose rm -f frontend
+echo "===== BACKEND REBUILD ====="
+echo "Parando backend..."
+docker-compose stop backend
 
-echo "Removendo imagem antiga do frontend..."
+echo "Removendo container e imagem antiga do backend..."
+docker-compose rm -f backend
+docker rmi -f codatendechat-main-backend 2>/dev/null || true
+
+echo "Rebuiltando backend SEM CACHE..."
+docker-compose build --no-cache backend
+
+echo "Subindo backend..."
+docker-compose up -d backend
+
+echo "Aguardando backend iniciar (10s)..."
+sleep 10
+
+echo "Status do backend:"
+docker-compose ps backend
+docker-compose logs --tail=20 backend
+
+echo ""
+echo "===== FRONTEND REBUILD ====="
+echo "Parando frontend..."
+docker-compose stop frontend
+
+echo "Removendo container e imagem antiga do frontend..."
+docker-compose rm -f frontend
 docker rmi -f codatendechat-main-frontend 2>/dev/null || true
 docker image prune -f
 
-echo "Rebuildando frontend com Dockerfile.production..."
+echo "Rebuiltando frontend com Dockerfile.production..."
 docker build --no-cache -f frontend/Dockerfile.production -t codatendechat-main-frontend /home/airton/atendechat/codatendechat-main
 
-echo "Subindo containers..."
-docker-compose up -d --force-recreate frontend
-docker-compose up -d backend
+echo "Subindo frontend..."
+docker-compose up -d frontend
 
-echo "✓ Frontend e Backend atualizados!"
+echo ""
+echo "✓ Backend e Frontend rebuiltados e rodando!"
+echo "Status final dos containers:"
+docker-compose ps
 ENDSSH
 
 ###############################################################################
@@ -188,6 +210,22 @@ fi
 echo "============================================"
 echo "✓ PORTA 8000 GARANTIDAMENTE LIBERADA!"
 echo "============================================"
+
+# AGUARDAR 10 SEGUNDOS para garantir que kernel liberou TUDO
+echo ""
+echo "Aguardando 10 segundos para kernel liberar completamente..."
+sleep 10
+
+# Verificação extra antes de subir serviço
+DOUBLE_CHECK=\$(echo "$SUDO_PASSWORD" | sudo -S lsof -ti :8000 2>/dev/null || true)
+if [ ! -z "\$DOUBLE_CHECK" ]; then
+    echo "❌ PORTA 8000 VOLTOU A SER OCUPADA!"
+    echo "$SUDO_PASSWORD" | sudo -S lsof -i :8000
+    exit 1
+fi
+
+echo "✓ Porta 8000 confirmada livre!"
+echo ""
 
 # Copiar arquivo de service atualizado
 echo "$SUDO_PASSWORD" | sudo -S cp /home/airton/atendechat/codatendechat-main/crewai-service/crewai-service.service /etc/systemd/system/crewai.service
