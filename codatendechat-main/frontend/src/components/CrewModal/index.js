@@ -860,18 +860,18 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
                   {values.agents && values.agents.length > 0 ? (
                     <>
                       <FormControl variant="outlined" fullWidth style={{ marginBottom: 24 }}>
-                        <InputLabel>Selecione o Agente</InputLabel>
+                        <InputLabel id="agent-select-label">Selecione o Agente</InputLabel>
                         <Field name="selectedAgentForValidation">
                           {({ field, form }) => (
                             <Select
                               {...field}
+                              labelId="agent-select-label"
                               label="Selecione o Agente"
-                              value={field.value !== undefined ? field.value : ''}
+                              value={field.value !== undefined && field.value !== '' ? field.value : ''}
                               onChange={(e) => form.setFieldValue('selectedAgentForValidation', e.target.value)}
-                              displayEmpty
                             >
                               <MenuItem value="" disabled>
-                                Selecione um agente
+                                <em>Selecione um agente</em>
                               </MenuItem>
                               {values.agents.map((agent, idx) => (
                                 <MenuItem key={idx} value={idx}>

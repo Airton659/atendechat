@@ -535,28 +535,45 @@ export const toggleValidationSystem = async (
   const tenantId = `company_${companyId}`;
   const { teamId, agentId, enabled } = req.body;
 
+  // Log completo para debug
+  console.log("=== TOGGLE VALIDATION DEBUG ===");
+  console.log("Raw req.body:", JSON.stringify(req.body));
+  console.log("Extracted fields:", { teamId, agentId, enabled, tenantId });
+  console.log("Types:", {
+    teamId: typeof teamId,
+    agentId: typeof agentId,
+    enabled: typeof enabled,
+    tenantId: typeof tenantId
+  });
+
   // Validar campos obrigatórios
   if (!teamId || !agentId || enabled === undefined) {
+    console.error("MISSING FIELDS:", { teamId, agentId, enabled });
     throw new AppError("ERR_MISSING_REQUIRED_FIELDS", 400);
   }
+
+  const payload = {
+    teamId,
+    tenantId,
+    agentId,
+    enabled
+  };
+
+  console.log("Sending to CrewAI:", JSON.stringify(payload));
 
   try {
     const { data } = await axios.put(
       `${crewaiUrl}/api/v2/training/validation-rules/toggle`,
-      {
-        teamId,
-        tenantId,
-        agentId,
-        enabled
-      }
+      payload
     );
 
+    console.log("CrewAI response:", data);
     return res.status(200).json(data);
   } catch (error: any) {
-    console.error("Erro ao alternar sistema de validação:", error);
-    console.error("Request body:", { teamId, tenantId, agentId, enabled });
+    console.error("Erro ao alternar sistema de validação:", error.response?.data || error.message);
+    console.error("Payload que causou erro:", payload);
     throw new AppError(
-      error.response?.data?.message || "ERR_TOGGLING_VALIDATION_SYSTEM",
+      error.response?.data?.detail || error.response?.data?.message || "ERR_TOGGLING_VALIDATION_SYSTEM",
       error.response?.status || 500
     );
   }
