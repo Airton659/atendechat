@@ -177,7 +177,7 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
         guardrailsDont: "",
       },
     ],
-    selectedAgentForValidation: 0,
+    selectedAgentForValidation: undefined,
   });
 
   useEffect(() => {
@@ -866,9 +866,13 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
                             <Select
                               {...field}
                               label="Selecione o Agente"
-                              value={field.value || 0}
+                              value={field.value !== undefined ? field.value : ''}
                               onChange={(e) => form.setFieldValue('selectedAgentForValidation', e.target.value)}
+                              displayEmpty
                             >
+                              <MenuItem value="" disabled>
+                                Selecione um agente
+                              </MenuItem>
                               {values.agents.map((agent, idx) => (
                                 <MenuItem key={idx} value={idx}>
                                   {agent.name || `Agente ${idx + 1}`}
@@ -879,7 +883,7 @@ const CrewModal = ({ open, onClose, crewId, onSave }) => {
                         </Field>
                       </FormControl>
 
-                      {values.selectedAgentForValidation !== undefined && (
+                      {values.selectedAgentForValidation !== undefined && values.selectedAgentForValidation !== '' && (
                         <ValidationRulesManager
                           teamId={crewId}
                           agentId={`agent_${values.selectedAgentForValidation + 1}`}

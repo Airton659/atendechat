@@ -533,19 +533,28 @@ export const toggleValidationSystem = async (
 ): Promise<Response> => {
   const { companyId } = req.user;
   const tenantId = `company_${companyId}`;
+  const { teamId, agentId, enabled } = req.body;
+
+  // Validar campos obrigatórios
+  if (!teamId || !agentId || enabled === undefined) {
+    throw new AppError("ERR_MISSING_REQUIRED_FIELDS", 400);
+  }
 
   try {
     const { data } = await axios.put(
       `${crewaiUrl}/api/v2/training/validation-rules/toggle`,
       {
-        ...req.body,
-        tenantId
+        teamId,
+        tenantId,
+        agentId,
+        enabled
       }
     );
 
     return res.status(200).json(data);
   } catch (error: any) {
     console.error("Erro ao alternar sistema de validação:", error);
+    console.error("Request body:", { teamId, tenantId, agentId, enabled });
     throw new AppError(
       error.response?.data?.message || "ERR_TOGGLING_VALIDATION_SYSTEM",
       error.response?.status || 500
