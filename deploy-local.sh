@@ -186,13 +186,54 @@ pip install -r requirements.txt
 deactivate
 echo "✓ Dependências instaladas!"
 
-# MATANÇA TOTAL DE PROCESSOS NA PORTA 8000 - USANDO SCRIPT DEDICADO
+# MATANÇA TOTAL DE PROCESSOS NA PORTA 8000
 echo "============================================"
 echo "INICIANDO LIMPEZA BRUTAL DA PORTA 8000..."
 echo "============================================"
 
-# Executar script de limpeza como root
-echo "$SUDO_PASSWORD" | sudo -S bash /home/airton/atendechat/codatendechat-main/crewai-service/kill-port-8000.sh
+# PASSO 0: MASCARAR o serviço para IMPEDIR auto-restart
+echo "0. MASCARANDO serviço crewai (IMPEDE auto-restart do systemd)..."
+echo "$SUDO_PASSWORD" | sudo -S systemctl mask crewai.service 2>/dev/null || true
+echo "$SUDO_PASSWORD" | sudo -S systemctl stop crewai.service 2>/dev/null || true
+echo "$SUDO_PASSWORD" | sudo -S systemctl kill --signal=SIGKILL crewai.service 2>/dev/null || true
+echo "$SUDO_PASSWORD" | sudo -S systemctl disable crewai.service 2>/dev/null || true
+echo "$SUDO_PASSWORD" | sudo -S systemctl reset-failed crewai.service 2>/dev/null || true
+sleep 5
+
+# PASSO 1: Matar processos por nome
+echo "1. Matando processos por nome..."
+echo "$SUDO_PASSWORD" | sudo -S pkill -9 -f "python.*8000" 2>/dev/null || true
+echo "$SUDO_PASSWORD" | sudo -S pkill -9 -f "uvicorn.*8000" 2>/dev/null || true
+echo "$SUDO_PASSWORD" | sudo -S pkill -9 uvicorn 2>/dev/null || true
+echo "$SUDO_PASSWORD" | sudo -S pkill -9 -f "python.*crewai" 2>/dev/null || true
+echo "$SUDO_PASSWORD" | sudo -S pkill -9 -f "main:app" 2>/dev/null || true
+echo "$SUDO_PASSWORD" | sudo -S pkill -9 -f "python.*main.py" 2>/dev/null || true
+sleep 3
+
+# PASSO 2: Matar por porta (força total)
+echo "2. Matando por porta (3 rounds com fuser)..."
+for i in 1 2 3; do
+    echo "   Round \$i de fuser..."
+    echo "$SUDO_PASSWORD" | sudo -S fuser -k -9 8000/tcp 2>/dev/null || true
+    sleep 1
+done
+sleep 3
+
+# PASSO 3: Matar por PID direto
+echo "3. Matando processos por PID..."
+PIDS=\$(echo "$SUDO_PASSWORD" | sudo -S lsof -ti :8000 2>/dev/null || true)
+if [ ! -z "\$PIDS" ]; then
+    echo "   PIDs encontrados: \$PIDS"
+    for pid in \$PIDS; do
+        echo "   Matando PID \$pid..."
+        echo "$SUDO_PASSWORD" | sudo -S kill -9 \$pid 2>/dev/null || true
+    done
+    sleep 3
+fi
+
+# PASSO 4: Aguardar kernel liberar
+echo "4. Aguardando 5s para kernel liberar porta..."
+sleep 5
 
 # Verificar se realmente liberou
 REMAINING=\$(echo "$SUDO_PASSWORD" | sudo -S lsof -ti :8000 2>/dev/null || true)
@@ -211,24 +252,51 @@ echo "============================================"
 echo "✓ PORTA 8000 GARANTIDAMENTE LIBERADA!"
 echo "============================================"
 
-# AGUARDAR 10 SEGUNDOS para garantir que kernel liberou TUDO
+# AGUARDAR 15 SEGUNDOS MONITORANDO SE ALGO VOLTA
 echo ""
-echo "Aguardando 10 segundos para kernel liberar completamente..."
-sleep 10
+echo "Aguardando 15 segundos e MONITORANDO se algo tenta ocupar a porta..."
+for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+    sleep 1
+    CHECK=\$(echo "$SUDO_PASSWORD" | sudo -S lsof -ti :8000 2>/dev/null || true)
+    if [ ! -z "\$CHECK" ]; then
+        echo ""
+        echo "❌ ALERTA: Processo apareceu novamente no segundo \$i!"
+        echo "$SUDO_PASSWORD" | sudo -S lsof -i :8000
+        echo ""
+        echo "Matando novamente..."
+        echo "$SUDO_PASSWORD" | sudo -S kill -9 \$CHECK 2>/dev/null || true
+        echo "$SUDO_PASSWORD" | sudo -S fuser -k -9 8000/tcp 2>/dev/null || true
+        sleep 2
+    fi
+done
 
 # Verificação extra antes de subir serviço
 DOUBLE_CHECK=\$(echo "$SUDO_PASSWORD" | sudo -S lsof -ti :8000 2>/dev/null || true)
 if [ ! -z "\$DOUBLE_CHECK" ]; then
-    echo "❌ PORTA 8000 VOLTOU A SER OCUPADA!"
+    echo ""
+    echo "❌ PORTA 8000 CONTINUA SENDO REOCUPADA!"
     echo "$SUDO_PASSWORD" | sudo -S lsof -i :8000
+    echo ""
+    echo "Verificando quem está iniciando o processo:"
+    echo "$SUDO_PASSWORD" | sudo -S ps aux | grep -E "(\$DOUBLE_CHECK|python|uvicorn)" | grep -v grep
+    echo ""
+    echo "Verificando serviços do systemd:"
+    echo "$SUDO_PASSWORD" | sudo -S systemctl list-units --state=running | grep -i crew
+    echo ""
+    echo "ABORTANDO. Algo está respawnando o processo!"
     exit 1
 fi
 
-echo "✓ Porta 8000 confirmada livre!"
+echo ""
+echo "✓ Porta 8000 confirmada livre (monitorada por 15s sem reocupação)!"
 echo ""
 
 # Copiar arquivo de service atualizado
 echo "$SUDO_PASSWORD" | sudo -S cp /home/airton/atendechat/codatendechat-main/crewai-service/crewai-service.service /etc/systemd/system/crewai.service
+
+# DESMASCARAR o serviço (reverter o mask)
+echo "DESMASCANDO serviço crewai (permitir rodar novamente)..."
+echo "$SUDO_PASSWORD" | sudo -S systemctl unmask crewai.service
 
 # Reload systemd daemon
 echo "$SUDO_PASSWORD" | sudo -S systemctl daemon-reload
