@@ -1163,6 +1163,10 @@ async def create_validation_rule(
             "rules": []
         })
 
+        # Garantir que 'rules' existe (caso validation_config exista mas não tenha 'rules')
+        if 'rules' not in validation_config:
+            validation_config['rules'] = []
+
         # Adicionar nova regra
         validation_config['rules'].append(new_rule)
 
