@@ -37,11 +37,26 @@ fi
 echo -e "${GREEN}✓ Credenciais encontradas!${NC}"
 
 ###############################################################################
-# 2. PEDIR SENHA SUDO UMA VEZ
+# 2. PEDIR SENHAS UMA VEZ SÓ
 ###############################################################################
-echo -e "\n${YELLOW}[2/6] Digite a senha do sudo da VM:${NC}"
+echo -e "\n${YELLOW}[2/6] Digite a senha SSH da VM (airton@46.62.147.212):${NC}"
+read -s SSH_PASSWORD
+echo ""
+
+echo -e "\n${YELLOW}Digite a senha do SUDO da VM (pode ser a mesma):${NC}"
 read -s SUDO_PASSWORD
 echo ""
+
+# Verificar se sshpass está instalado
+if ! command -v sshpass &> /dev/null; then
+    echo -e "${RED}ERRO: sshpass não está instalado!${NC}"
+    echo "Instalando sshpass..."
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        brew install hudochenkov/sshpass/sshpass
+    else
+        sudo apt-get install -y sshpass
+    fi
+fi
 
 ###############################################################################
 # 3. COPIAR CREDENCIAIS PARA A VM
@@ -49,7 +64,7 @@ echo ""
 echo -e "\n${YELLOW}[3/6] Copiando credenciais para a VM...${NC}"
 
 # Copiar arquivo para home do usuário primeiro (não precisa sudo)
-scp "$LOCAL_CREDENTIALS" $VM_SSH:~/google-credentials.json
+sshpass -p "$SSH_PASSWORD" scp -o StrictHostKeyChecking=no "$LOCAL_CREDENTIALS" $VM_SSH:~/google-credentials.json
 
 echo -e "${GREEN}✓ Credenciais copiadas com sucesso!${NC}"
 
@@ -58,7 +73,7 @@ echo -e "${GREEN}✓ Credenciais copiadas com sucesso!${NC}"
 ###############################################################################
 echo -e "\n${YELLOW}[4/6] Fazendo git pull na VM...${NC}"
 
-ssh $VM_SSH << 'ENDSSH'
+sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no $VM_SSH << 'ENDSSH'
 cd /home/airton/atendechat
 echo "Descartando alterações locais e pegando código mais recente..."
 git fetch origin main
@@ -86,7 +101,7 @@ rm -rf build
 REACT_APP_BACKEND_URL=https://api.atendeaibr.com npm run build
 
 echo "Fazendo upload do build para a VM..."
-rsync -avz --delete build/ $VM_SSH:/home/airton/atendechat/codatendechat-main/frontend/build/
+sshpass -p "$SSH_PASSWORD" rsync -avz --delete -e "ssh -o StrictHostKeyChecking=no" build/ $VM_SSH:/home/airton/atendechat/codatendechat-main/frontend/build/
 
 cd ../..
 
@@ -96,7 +111,7 @@ cd ../..
 echo -e "\n${YELLOW}[6/7] Rebuild backend e restart containers...${NC}"
 
 # Backend rebuild completo
-ssh $VM_SSH "cd /home/airton/atendechat/codatendechat-main && docker-compose build --no-cache backend && docker-compose up -d --force-recreate backend"
+sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no $VM_SSH "cd /home/airton/atendechat/codatendechat-main && docker-compose build --no-cache backend && docker-compose up -d --force-recreate backend"
 
 # Frontend rebuild completo
 ssh $VM_SSH bash << 'ENDSSH'
@@ -127,7 +142,7 @@ ENDSSH
 ###############################################################################
 echo -e "\n${YELLOW}[7/7] Atualizando e reiniciando CrewAI service...${NC}"
 
-ssh $VM_SSH bash << ENDSSH
+sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no $VM_SSH bash << ENDSSH
 # Copiar credenciais para /opt/crewai
 echo "$SUDO_PASSWORD" | sudo -S cp ~/google-credentials.json /opt/crewai/
 echo "$SUDO_PASSWORD" | sudo -S chown airton:airton /opt/crewai/google-credentials.json
