@@ -145,7 +145,10 @@ cd /home/airton/atendechat
 echo "Descartando alterações locais e pegando código mais recente..."
 git fetch origin main
 git reset --hard origin/main
-git clean -fd
+
+# NÃO apagar venv e __pycache__ (são gerados automaticamente)
+git clean -fd -e "codatendechat-main/crewai-service/venv/" -e "**/__pycache__/"
+
 echo "✓ Código atualizado com sucesso!"
 ENDSSH
 
@@ -240,16 +243,31 @@ rm -f ~/google-credentials.json
 
 # Criar/Atualizar virtualenv do CrewAI
 cd /home/airton/atendechat/codatendechat-main/crewai-service
-echo "Recriando virtualenv do zero..."
-rm -rf venv
-python3 -m venv venv
-echo "✓ Virtualenv criado!"
+
+# Verificar se venv existe e está OK
+if [ ! -d "venv" ] || [ ! -f "venv/bin/activate" ]; then
+    echo "Criando virtualenv do zero..."
+    rm -rf venv
+    python3 -m venv venv
+    echo "✓ Virtualenv criado!"
+    FORCE_INSTALL=true
+else
+    echo "✓ Virtualenv já existe, será atualizado"
+    FORCE_INSTALL=false
+fi
 
 # Ativar venv e instalar/atualizar dependências
-echo "Instalando dependências..."
 source venv/bin/activate
-pip install --upgrade pip
-pip install -r requirements.txt
+pip install --upgrade pip -q
+
+if [ "\$FORCE_INSTALL" = true ]; then
+    echo "Instalando todas as dependências..."
+    pip install -r requirements.txt
+else
+    echo "Atualizando apenas dependências modificadas..."
+    pip install -r requirements.txt --upgrade
+fi
+
 deactivate
 echo "✓ Dependências instaladas!"
 
