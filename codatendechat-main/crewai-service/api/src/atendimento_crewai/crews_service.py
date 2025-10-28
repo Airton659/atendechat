@@ -161,7 +161,19 @@ async def update_crew(crew_id: str, request: UpdateCrewRequest):
             update_data["description"] = request.description
 
         if request.agents is not None:
-            update_data["agents"] = request.agents
+            # MESCLAR agents preservando validation_config de cada agente
+            existing_agents = crew_data.get('agents', {})
+            new_agents = request.agents
+
+            # Para cada agente novo, preservar validation_config do existente
+            for agent_id, agent_data in new_agents.items():
+                if agent_id in existing_agents:
+                    # Preservar validation_config do agente existente
+                    existing_validation = existing_agents[agent_id].get('validation_config')
+                    if existing_validation:
+                        agent_data['validation_config'] = existing_validation
+
+            update_data["agents"] = new_agents
 
         if request.config is not None:
             update_data["config"] = request.config
