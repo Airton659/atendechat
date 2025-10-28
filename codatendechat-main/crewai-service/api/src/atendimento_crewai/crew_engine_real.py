@@ -678,7 +678,8 @@ class RealCrewEngine:
             # Criar task para processar a mensagem
             # IMPORTANTE: Não incluir texto que possa aparecer na resposta final
             scheduling_reminder = ""
-            if 'schedule_appointment' in agent_tools:
+            agent_tool_list = selected_agent.get('tools', [])
+            if 'schedule_appointment' in agent_tool_list:
                 scheduling_reminder = """
 
             ⚠️ REGRA CRÍTICA DE AGENDAMENTO:

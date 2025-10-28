@@ -11,8 +11,9 @@ echo "============================================"
 echo "MATANDO TUDO NA PORTA 8000 - SEM PIEDADE"
 echo "============================================"
 
-# Parar serviço primeiro E MATAR PROCESSOS ÓRFÃOS
-echo "1. Parando serviço crewai e matando órfãos..."
+# MASCARAR o serviço ANTES de parar (impede auto-restart)
+echo "1. MASCARANDO serviço crewai (IMPEDE auto-restart)..."
+systemctl mask crewai.service 2>/dev/null || true
 systemctl stop crewai.service 2>/dev/null || true
 systemctl kill --signal=SIGKILL crewai.service 2>/dev/null || true
 systemctl disable crewai.service 2>/dev/null || true

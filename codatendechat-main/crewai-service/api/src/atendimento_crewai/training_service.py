@@ -1,6 +1,6 @@
 # api/src/atendimento_crewai/training_service.py - Serviço de Treinamento Interativo
 
-from fastapi import APIRouter, HTTPException, Body
+from fastapi import APIRouter, HTTPException, Body, Query
 from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
 import json
@@ -1354,9 +1354,9 @@ async def update_validation_rule(
 @router.delete("/validation-rules/{ruleId}")
 async def delete_validation_rule(
     ruleId: str,
-    teamId: str = Body(...),
-    tenantId: str = Body(...),
-    agentId: str = Body(...)
+    teamId: str = Query(...),
+    tenantId: str = Query(...),
+    agentId: str = Query(...)
 ):
     """
     Remove uma regra de validação.
