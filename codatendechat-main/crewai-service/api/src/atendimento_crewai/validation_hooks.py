@@ -217,9 +217,13 @@ class GenericValidationHooks:
 
             if method == 'regex':
                 try:
+                    logger.info(f"  🔎 Testando regex '{pattern}' para {entity_type}")
                     match = re.search(pattern, message_lower, re.IGNORECASE)
                     if match:
                         detected_value = match.group(1).strip() if match.groups() else match.group(0).strip()
+                        logger.info(f"  ✅ Regex match! Valor: '{detected_value}'")
+                    else:
+                        logger.warning(f"  ⚠️ Regex '{pattern}' NÃO deu match para {entity_type}")
                 except Exception as e:
                     logger.error(f"  ❌ Erro ao aplicar regex para {entity_type}: {e}")
 
