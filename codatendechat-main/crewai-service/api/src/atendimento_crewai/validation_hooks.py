@@ -275,6 +275,7 @@ class GenericValidationHooks:
 
         # Construir query combinando todas as entidades
         query = " ".join(entities.values())
+        logger.info(f"   🔎 Query para KB: '{query}'")
 
         # Buscar na KB com as entidades combinadas
         kb_results = await self.kb_search(query=query, crew_id=crew_id, doc_ids=doc_ids)
@@ -288,12 +289,16 @@ class GenericValidationHooks:
         combined_kb_content = "\n".join([r.get('content', '') for r in top_results])
 
         logger.info(f"📄 KB retornou {len(kb_results)} resultados, analisando top 3")
+        logger.info(f"📄 Conteúdo da KB (primeiros 500 chars): {combined_kb_content[:500]}")
 
         # VALIDAÇÃO: Verificar se TODAS as entidades aparecem JUNTAS no contexto da KB
         all_entities_found_together = True
 
+        logger.info(f"   🔍 Verificando se cada entidade aparece na KB...")
         for entity_type, entity_value in entities.items():
-            if entity_value.lower() not in combined_kb_content.lower():
+            found = entity_value.lower() in combined_kb_content.lower()
+            logger.info(f"   {'✅' if found else '❌'} '{entity_value}' ({entity_type}): {'ENCONTRADO' if found else 'NÃO ENCONTRADO'}")
+            if not found:
                 all_entities_found_together = False
                 logger.warning(f"  ⚠️ '{entity_value}' ({entity_type}) NÃO encontrado no contexto da KB")
                 break
@@ -419,10 +424,13 @@ class GenericValidationHooks:
 
         # 2. Extrair entidades da mensagem
         entity_extraction_config = rule_config.get('entity_extraction', {})
+        logger.info(f"   📝 Entity extraction config: {entity_extraction_config}")
         detected_entities = self.extract_entities_from_message(
             message=message,
             entity_types_config=entity_extraction_config
         )
+
+        logger.info(f"   📦 Entidades detectadas: {detected_entities}")
 
         if not detected_entities:
             logger.info(f"⏭️ Nenhuma entidade detectada, validação pulada")
