@@ -595,13 +595,24 @@ class RealCrewEngine:
 
                     # Wrapper para kb_search compatível com validation_hooks
                     async def kb_search_wrapper(query: str, crew_id: str, doc_ids: List[str]) -> List[Dict[str, Any]]:
-                        """Wrapper para compatibilizar _search_knowledge com GenericValidationHooks"""
-                        return await self._search_knowledge(
+                        """Wrapper para compatibilizar knowledge_tool._run com GenericValidationHooks"""
+                        if not self.knowledge_tool:
+                            return []
+
+                        # knowledge_tool._run é síncrono, então chamamos direto
+                        result_str = self.knowledge_tool._run(
                             query=query,
                             crew_id=crew_id,
-                            document_ids=doc_ids,
                             max_results=5
                         )
+
+                        # Parsear resultado string para lista de dicts
+                        # O knowledge_tool retorna string formatada, precisamos adaptar
+                        if not result_str or result_str == "Nenhum resultado encontrado":
+                            return []
+
+                        # Retornar resultado simplificado
+                        return [{"content": result_str, "score": 1.0}]
 
                     validator = GenericValidationHooks(kb_search_func=kb_search_wrapper)
 
