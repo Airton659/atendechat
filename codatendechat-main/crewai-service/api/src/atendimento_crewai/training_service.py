@@ -1170,9 +1170,9 @@ async def create_validation_rule(
         # Adicionar nova regra
         validation_config['rules'].append(new_rule)
 
-        # Atualizar no Firestore
+        # Atualizar no Firestore (salvar validation_config INTEIRO)
         team_ref.update({
-            f'{agent_path}.rules': validation_config['rules']
+            agent_path: validation_config
         })
 
         print(f"✅ Regra de validação '{rule.get('name')}' (ID: {rule_id}) criada para agente '{agentId}'")
