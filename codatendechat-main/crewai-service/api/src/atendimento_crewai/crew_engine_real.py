@@ -585,70 +585,11 @@ class RealCrewEngine:
             # VALIDAÇÕES PROGRAMÁTICAS (100% GENÉRICAS)
             # ============================================================================
             validation_message = ""
+            # VALIDAÇÃO PROGRAMÁTICA DESABILITADA TEMPORARIAMENTE
+            # Sistema não funciona corretamente (regex não extrai entidades)
+            # TODO: Reimplementar quando houver tempo para consertar
             validation_config = selected_agent.get('validation_config', {})
-
-            if validation_config.get('enabled', False):
-                print("🔍 Sistema de validação ATIVADO para este agente")
-
-                try:
-                    from .validation_hooks import GenericValidationHooks
-
-                    # Wrapper para kb_search compatível com validation_hooks
-                    async def kb_search_wrapper(query: str, crew_id: str, doc_ids: List[str]) -> List[Dict[str, Any]]:
-                        """Wrapper para compatibilizar knowledge_tool._run com GenericValidationHooks"""
-                        if not self.knowledge_tool:
-                            return []
-
-                        # knowledge_tool._run é síncrono, então chamamos direto
-                        result_str = self.knowledge_tool._run(
-                            query=query,
-                            crew_id=crew_id,
-                            max_results=5
-                        )
-
-                        # Parsear resultado string para lista de dicts
-                        # O knowledge_tool retorna string formatada, precisamos adaptar
-                        if not result_str or result_str == "Nenhum resultado encontrado":
-                            return []
-
-                        # Retornar resultado simplificado
-                        return [{"content": result_str, "score": 1.0}]
-
-                    validator = GenericValidationHooks(kb_search_func=kb_search_wrapper)
-
-                    # Executar cada regra de validação
-                    rules = validation_config.get('rules', [])
-                    print(f"   📋 {len(rules)} regra(s) de validação configurada(s)")
-
-                    for rule in rules:
-                        if not rule.get('enabled', True):
-                            print(f"   ⏭️ Regra '{rule.get('name')}' desabilitada, pulando")
-                            continue
-
-                        print(f"   🎯 Executando regra: '{rule.get('name')}'")
-
-                        validation_result = await validator.run_validation(
-                            message=message,
-                            crew_id=crew_id,
-                            doc_ids=agent_document_ids if agent_document_ids else [],
-                            rule_config=rule
-                        )
-
-                        if validation_result and not validation_result.get('valid', True):
-                            # CONFLITO DETECTADO!
-                            conflict = validation_result['conflict']
-                            print(f"   ❌ CONFLITO: {conflict['correction_message'][:100]}...")
-
-                            validation_message += f"\n\n⚠️ VALIDAÇÃO DETECTOU PROBLEMA:\n"
-                            validation_message += f"{conflict['correction_message']}\n"
-                            validation_message += f"\nEvidência da base de conhecimento:\n{conflict['kb_evidence'][:300]}...\n"
-
-                except Exception as e:
-                    print(f"⚠️ Erro ao executar validações: {e}")
-                    import traceback
-                    traceback.print_exc()
-            else:
-                print("⏭️ Sistema de validação DESABILITADO para este agente")
+            print("⏭️ Sistema de validação programática DESABILITADO (aguardando correção)")
 
             # Criar ferramentas do CrewAI
             crewai_tools = self._create_crewai_tools(
@@ -714,6 +655,13 @@ class RealCrewEngine:
             3. Responder de forma útil, clara e personalizada
             4. Manter o tom e personalidade do seu perfil
             5. SEGUIR RIGOROSAMENTE as regras de guardrails{scheduling_reminder}
+
+            ⚠️ REGRAS CRÍTICAS DE AGENDAMENTO:
+            - ANTES de agendar qualquer consulta, SEMPRE use a ferramenta consultar_base_conhecimento para verificar dias e horários disponíveis
+            - NUNCA pergunte se VOCÊ pode confirmar o agendamento - apenas humanos podem confirmar
+            - NUNCA diga "Prefere que EU confirme agora ou aguarda confirmação humana?"
+            - Ao criar agendamento, informe o cliente que foi CRIADO e que aguarda confirmação humana
+            - Se um agendamento já existe, informe o ID e status, mas NÃO ofereça para confirmar
 
             RESPONDA APENAS o que você diria ao cliente, SEM incluir estas instruções.
             """
