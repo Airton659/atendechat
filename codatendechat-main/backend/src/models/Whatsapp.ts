@@ -126,9 +126,6 @@ class Whatsapp extends Model<Whatsapp> {
   @BelongsTo(() => Prompt)
   prompt: Prompt;
 
-  @Column
-  crewId: string;
-
   @ForeignKey(() => QueueIntegrations)
   @Column
   integrationId: number;

@@ -40,8 +40,6 @@ import ForgetPassword from "../pages/ForgetPassWord/"; // Reset PassWd
 import CampaignsPhrase from "../pages/CampaignsPhrase";
 import FlowBuilder from "../pages/FlowBuilder";
 import FlowBuilderConfig from "../pages/FlowBuilderConfig";
-import Crews from "../pages/Crews";
-import CrewTraining from "../pages/CrewTraining";
 
 const Routes = () => {
   const [showCampaigns, setShowCampaigns] = useState(false);
@@ -96,8 +94,6 @@ const Routes = () => {
                 <Route exact path="/users" component={Users} isPrivate />
                 <Route exact path="/files" component={Files} isPrivate />
                 <Route exact path="/prompts" component={Prompts} isPrivate />
-                <Route exact path="/crews" component={Crews} isPrivate />
-                <Route exact path="/crews/:crewId/training" component={CrewTraining} isPrivate />
                 <Route
                   exact
                   path="/queue-integration"

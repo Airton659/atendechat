@@ -5,6 +5,7 @@ import React, {
   useContext,
   useCallback,
 } from "react";
+import { SiOpenai } from "react-icons/si";
 import typebotIcon from "../../assets/typebot-ico.png";
 import { HiOutlinePuzzle } from "react-icons/hi";
 
@@ -17,6 +18,7 @@ import Button from "@material-ui/core/Button";
 
 import audioNode from "./nodes/audioNode";
 import typebotNode from "./nodes/typebotNode";
+import openaiNode from "./nodes/openaiNode";
 import messageNode from "./nodes/messageNode.js";
 import startNode from "./nodes/startNode";
 import menuNode from "./nodes/menuNode";
@@ -72,6 +74,7 @@ import FlowBuilderRandomizerModal from "../../components/FlowBuilderRandomizerMo
 import FlowBuilderAddVideoModal from "../../components/FlowBuilderAddVideoModal";
 import FlowBuilderSingleBlockModal from "../../components/FlowBuilderSingleBlockModal";
 import FlowBuilderTypebotModal from "../../components/FlowBuilderAddTypebotModal";
+import FlowBuilderOpenAIModal from "../../components/FlowBuilderAddOpenAIModal";
 import FlowBuilderAddQuestionModal from "../../components/FlowBuilderAddQuestionModal";
 
 import {
@@ -128,6 +131,7 @@ const nodeTypes = {
   singleBlock: singleBlockNode,
   ticket: ticketNode,
   typebot: typebotNode,
+  openai: openaiNode,
   question: questionNode,
 };
 
@@ -169,6 +173,7 @@ const FlowBuilderConfig = () => {
   const [modalAddSingleBlock, setModalAddSingleBlock] = useState(null);
   const [modalAddTicket, setModalAddTicket] = useState(null);
   const [modalAddTypebot, setModalAddTypebot] = useState(null);
+  const [modalAddOpenAI, setModalAddOpenAI] = useState(null);
   const [modalAddQuestion, setModalAddQuestion] = useState(null);
 
   const connectionLineStyle = { stroke: "#2b2b2b", strokeWidth: "6px" };
@@ -417,6 +422,10 @@ const FlowBuilderConfig = () => {
     addNode("typebot", data);
   };
 
+  const openaiAdd = (data) => {
+    addNode("openai", data);
+  };
+
   const questionAdd = (data) => {
     addNode("question", data);
   };
@@ -484,6 +493,9 @@ const FlowBuilderConfig = () => {
     if (node.type === "typebot") {
       setModalAddTypebot("edit");
     }
+    if (node.type === "openai") {
+      setModalAddOpenAI("edit");
+    }
     if (node.type === "question") {
       setModalAddQuestion("edit");
     }
@@ -529,6 +541,7 @@ const FlowBuilderConfig = () => {
     setModalAddText(null);
     setModalAddInterval(null);
     setModalAddMenu(null);
+    setModalAddOpenAI(null);
     setModalAddTypebot(null);
   };
 
@@ -617,6 +630,17 @@ const FlowBuilderConfig = () => {
     },
     {
       icon: (
+        <SiOpenai
+          sx={{
+            color: "#F7953B",
+          }}
+        />
+      ),
+      name: "OpenAI",
+      type: "openai",
+    },
+    {
+      icon: (
         <BallotIcon
           sx={{
             color: "#F7953B",
@@ -652,6 +676,9 @@ const FlowBuilderConfig = () => {
       case "typebot":
         setModalAddTypebot("create");
         break;
+      case "openai":
+        setModalAddOpenAI("create");
+        break
       case "question":
         setModalAddQuestion("create");
         break
@@ -787,6 +814,14 @@ const FlowBuilderConfig = () => {
         data={dataNode}
         onUpdate={updateNode}
         close={setModalAddTicket}
+      />
+
+      <FlowBuilderOpenAIModal
+        open={modalAddOpenAI}
+        onSave={openaiAdd}
+        data={dataNode}
+        onUpdate={updateNode}
+        close={setModalAddOpenAI}
       />
 
       <FlowBuilderTypebotModal

@@ -115,11 +115,8 @@ const SocketManager = {
         return new DummySocket();
       }
       
-      // Usar URL completa do backend para WebSocket
-      const socketUrl = process.env.REACT_APP_BACKEND_URL;
-
-      this.currentSocket = openSocket(socketUrl, {
-        transports: ["websocket", "polling"],
+      this.currentSocket = openSocket(process.env.REACT_APP_BACKEND_URL, {
+        transports: ["polling"],
         pingTimeout: 18000,
         pingInterval: 18000,
         query: { token },

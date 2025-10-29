@@ -153,6 +153,8 @@ const MainListItems = (props) => {
   const [searchParam] = useState("");
   const [chats, dispatch] = useReducer(reducer, []);
   const { getPlanCompany } = usePlans();
+  
+  const [openFlowsSubmenu, setOpenFlowsSubmenu] = useState(false);
 
   const socketManager = useContext(SocketContext);
 
@@ -417,18 +419,52 @@ const MainListItems = (props) => {
                     </ListItem>
                   </List>
                 </Collapse>
-                {/* CrewAI */}
+                {/* Flow builder */}
                 <ListItem
                     button
-                    onClick={() => history.push("/crews")}
+                    onClick={() => setOpenFlowsSubmenu((prev) => !prev)}
                 >
                   <ListItemIcon>
                     <AccountTree />
                   </ListItemIcon>
                   <ListItemText
-                      primary="CrewAI"
+                      primary={i18n.t("mainDrawer.listItems.flows")}
                   />
+                  {openCampaignSubmenu ? (
+                      <ExpandLessIcon />
+                  ) : (
+                      <ExpandMoreIcon />
+                  )}
                 </ListItem>
+
+                <Collapse
+                    style={{ paddingLeft: 15 }}
+                    in={openFlowsSubmenu}
+                    timeout="auto"
+                    unmountOnExit
+                >
+                  <List component="div" disablePadding>
+                    <ListItem
+                        onClick={() => history.push("/phrase-lists")}
+                        button
+                    >
+                      <ListItemIcon>
+                        <EventAvailableIcon />
+                      </ListItemIcon>
+                      <ListItemText primary="Campanha" />
+                    </ListItem>
+
+                    <ListItem
+                        onClick={() => history.push("/flowbuilders")}
+                        button
+                    >
+                      <ListItemIcon>
+                        <ShapeLine />
+                      </ListItemIcon>
+                      <ListItemText primary="Conversa" />
+                    </ListItem>
+                  </List>
+                </Collapse>
               </>
             )}
 
@@ -437,6 +473,13 @@ const MainListItems = (props) => {
                 to="/announcements"
                 primary={i18n.t("mainDrawer.listItems.annoucements")}
                 icon={<AnnouncementIcon />}
+              />
+            )}
+            {showOpenAi && (
+              <ListItemLink
+                to="/prompts"
+                primary={i18n.t("mainDrawer.listItems.prompts")}
+                icon={<AllInclusive />}
               />
             )}
 

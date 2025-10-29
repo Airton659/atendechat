@@ -20,7 +20,6 @@ services:
       - GERENCIANET_CLIENT_ID=${GERENCIANET_CLIENT_ID}
       - GERENCIANET_CLIENT_SECRET=${GERENCIANET_CLIENT_SECRET}
       - GERENCIANET_PIX_KEY=${GERENCIANET_PIX_KEY}
-      - CREWAI_SERVICE_URL=http://172.18.0.1:8000
     env_file:
       - .env
     depends_on:
@@ -28,11 +27,19 @@ services:
       - redis
     networks:
       - app-network
+    deploy:
+      resources:
+        limits:
+          cpus: '${BACKEND_CPU_LIMIT}'
+          memory: ${BACKEND_MEM_LIMIT}M
+        reservations:
+          cpus: '${BACKEND_CPU_RESERVE}'
+          memory: ${BACKEND_MEM_RESERVE}M
 
   frontend:
     build:
       context: .
-      dockerfile: frontend/Dockerfile.production
+      dockerfile: frontend/Dockerfile
       args:
         - REACT_APP_BACKEND_URL=${BACKEND_URL}
         - REACT_APP_HOURS_CLOSE_TICKETS_AUTO=24
@@ -45,6 +52,14 @@ services:
       - backend
     networks:
       - app-network
+    deploy:
+      resources:
+        limits:
+          cpus: '${FRONTEND_CPU_LIMIT}'
+          memory: ${FRONTEND_MEM_LIMIT}M
+        reservations:
+          cpus: '${FRONTEND_CPU_RESERVE}'
+          memory: ${FRONTEND_MEM_RESERVE}M
 
   postgres:
     image: postgres:14-alpine
@@ -56,6 +71,14 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - app-network
+    deploy:
+      resources:
+        limits:
+          cpus: '${POSTGRES_CPU_LIMIT}'
+          memory: ${POSTGRES_MEM_LIMIT}M
+        reservations:
+          cpus: '${POSTGRES_CPU_RESERVE}'
+          memory: ${POSTGRES_MEM_RESERVE}M
 
   redis:
     image: redis:alpine
@@ -63,6 +86,14 @@ services:
       - redis_data:/data
     networks:
       - app-network
+    deploy:
+      resources:
+        limits:
+          cpus: '${REDIS_CPU_LIMIT}'
+          memory: ${REDIS_MEM_LIMIT}M
+        reservations:
+          cpus: '${REDIS_CPU_RESERVE}'
+          memory: ${REDIS_MEM_RESERVE}M
 
 networks:
   app-network:

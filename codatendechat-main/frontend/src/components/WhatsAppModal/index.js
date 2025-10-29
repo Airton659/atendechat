@@ -87,8 +87,8 @@ const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
   const [selectedQueueIds, setSelectedQueueIds] = useState([]);
   const [queues, setQueues] = useState([]);
   const [selectedQueueId, setSelectedQueueId] = useState(null)
-  const [selectedCrew, setSelectedCrew] = useState(null);
-  const [crews, setCrews] = useState([]);
+  const [selectedPrompt, setSelectedPrompt] = useState(null);
+  const [prompts, setPrompts] = useState([]);
   const [integrations, setIntegrations] = useState([]);
   const [selectedIntegration, setSelectedIntegration] = useState(null);
   
@@ -101,7 +101,7 @@ const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
           const { data } = await api.get(`whatsapp/${whatsAppId}?session=0`);
 
           setWhatsApp(data);
-          setSelectedCrew(data.crewId || null);
+          setSelectedPrompt( data.promptId );
           setSelectedIntegration(data.integrationId)
 
           const whatsQueueIds = data.queues?.map((queue) => queue.id);
@@ -117,8 +117,8 @@ const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await api.get("/crews");
-        setCrews(data);
+        const { data } = await api.get("/prompt");
+        setPrompts(data.prompts);
 
         const {data: dataIntegration} = await api.get("/queueIntegration");
         setIntegrations(dataIntegration.queueIntegrations);
@@ -141,45 +141,34 @@ const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
   }, []);
 
   const handleSaveWhatsApp = async (values) => {
-    console.log("=== SAVE WHATSAPP CALLED ===");
-    console.log("values:", values);
-    console.log("selectedCrew:", selectedCrew);
-    console.log("selectedQueueIds:", selectedQueueIds);
-
     const whatsappData = {
       ...values, queueIds: selectedQueueIds, transferQueueId: selectedQueueId,
-      crewId: selectedCrew ? selectedCrew : null,
+      promptId: selectedPrompt ? selectedPrompt : null,
       integrationId: selectedIntegration
     };
     delete whatsappData["queues"];
     delete whatsappData["session"];
 
-    console.log("whatsappData to send:", whatsappData);
-
     try {
       if (whatsAppId) {
-        console.log("PUT /whatsapp/" + whatsAppId);
         await api.put(`/whatsapp/${whatsAppId}`, whatsappData);
       } else {
-        console.log("POST /whatsapp");
         await api.post("/whatsapp", whatsappData);
       }
-      console.log("SUCCESS!");
       toast.success(i18n.t("whatsappModal.success"));
       handleClose();
     } catch (err) {
-      console.log("ERROR:", err);
       toastError(err);
     }
   };
 
   const handleChangeQueue = (e) => {
     setSelectedQueueIds(e);
-    setSelectedCrew(null);
+    setSelectedPrompt(null);
   };
 
-  const handleChangeCrew = (e) => {
-    setSelectedCrew(e.target.value);
+  const handleChangePrompt = (e) => {
+    setSelectedPrompt(e.target.value);
     setSelectedQueueIds([]);
   };
 
@@ -349,15 +338,15 @@ const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
                   fullWidth
                 >
                   <InputLabel>
-                    Equipe de IA (CrewAI)
+                    {i18n.t("whatsappModal.form.prompt")}
                   </InputLabel>
                   <Select
-                    labelId="dialog-select-crew-label"
-                    id="dialog-select-crew"
-                    name="crewId"
-                    value={selectedCrew || ""}
-                    onChange={handleChangeCrew}
-                    label="Equipe de IA (CrewAI)"
+                    labelId="dialog-select-prompt-label"
+                    id="dialog-select-prompt"
+                    name="promptId"
+                    value={selectedPrompt || ""}
+                    onChange={handleChangePrompt}
+                    label={i18n.t("whatsappModal.form.prompt")}
                     fullWidth
                     MenuProps={{
                       anchorOrigin: {
@@ -371,15 +360,12 @@ const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
                       getContentAnchorEl: null,
                     }}
                   >
-                    <MenuItem value="">
-                      <em>Nenhuma</em>
-                    </MenuItem>
-                    {crews.map((crew) => (
+                    {prompts.map((prompt) => (
                       <MenuItem
-                        key={crew.id}
-                        value={crew.id}
+                        key={prompt.id}
+                        value={prompt.id}
                       >
-                        {crew.name}
+                        {prompt.name}
                       </MenuItem>
                     ))}
                   </Select>

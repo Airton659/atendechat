@@ -78,12 +78,8 @@ export const uploadMedias = async (req: Request, res: Response): Promise<Respons
           }
         });
 
-        // Extrair path relativo à pasta public
-        const publicFolder = require('path').resolve(__dirname, "..", "..", "public");
-        const relativePath = file.path.replace(publicFolder + require('path').sep, '');
-
         fileOpt.update({
-          path: relativePath.replace(/\\/g, '/'),  // Normalizar separadores para /
+          path: file.filename.replace('/','-'),
           mediaType: Array.isArray(mediaType)? mediaType[index] : mediaType
         }) ;
       }
@@ -154,30 +150,4 @@ export const list = async (req: Request, res: Response): Promise<Response> => {
   const ratings = await SimpleListService({ searchParam, companyId });
 
   return res.json(ratings);
-};
-
-// === ENDPOINT NÃO AUTENTICADO PARA CREWAI ===
-
-// GET /files/agent - Lista arquivos da empresa (para IA)
-export const listFromAgent = async (req: Request, res: Response): Promise<Response> => {
-  const { tenantId } = req.query;
-
-  if (!tenantId) {
-    throw new AppError("ERR_INVALID_TENANT_ID", 400);
-  }
-
-  // Extrair companyId do tenantId (ex: "company_3" -> 3)
-  const companyId = parseInt(tenantId.toString().replace('company_', ''));
-
-  if (!companyId) {
-    throw new AppError("ERR_INVALID_TENANT_ID", 400);
-  }
-
-  const { files, count, hasMore } = await ListService({
-    searchParam: undefined,
-    pageNumber: 1,
-    companyId
-  });
-
-  return res.json({ files, count, hasMore });
 };

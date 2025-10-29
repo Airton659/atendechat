@@ -9,7 +9,6 @@ interface Request {
   contactId: number | string;
   companyId: number | string;
   userId?: number | string;
-  status?: string;
 }
 
 const CreateService = async ({
@@ -17,8 +16,7 @@ const CreateService = async ({
   sendAt,
   contactId,
   companyId,
-  userId,
-  status
+  userId
 }: Request): Promise<Schedule> => {
   const schema = Yup.object().shape({
     body: Yup.string().required().min(5),
@@ -38,13 +36,11 @@ const CreateService = async ({
       contactId,
       companyId,
       userId,
-      status: status || 'PENDENTE'
+      status: 'PENDENTE'
     }
   );
 
-  await schedule.reload({
-    include: ["contact", "user"]
-  });
+  await schedule.reload();
 
   return schedule;
 };

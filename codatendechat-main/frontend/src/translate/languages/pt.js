@@ -2,9 +2,6 @@ const messages = {
   pt: {
     translations: {
       selectLanguage: "Selecione um idioma",
-      common: {
-        close: "Fechar",
-      },
       signup: {
         title: "Cadastre-se",
         toasts: {
@@ -1594,84 +1591,6 @@ const messages = {
         confirmationModal: {
           title: "Apagar mensagem?",
           message: "Esta ação não pode ser revertida.",
-        },
-      },
-      crews: {
-        title: "Equipes de IA",
-        searchPlaceholder: "Pesquisar equipes...",
-        buttons: {
-          add: "Nova Equipe",
-          architect: "Gerar com IA",
-          edit: "Editar",
-          train: "Treinar",
-          cancel: "Cancelar",
-          close: "Fechar",
-          okAdd: "Adicionar",
-          okEdit: "Salvar",
-        },
-        status: {
-          active: "Ativa",
-          inactive: "Inativa",
-        },
-        table: {
-          name: "Nome",
-          description: "Descrição",
-          status: "Status",
-          conversations: "Conversas",
-          satisfaction: "Satisfação",
-          actions: "Ações",
-        },
-        form: {
-          name: "Nome da Equipe",
-          description: "Descrição",
-          isActive: "Equipe Ativa",
-        },
-        dialog: {
-          add: "Nova Equipe",
-          edit: "Editar Equipe",
-        },
-        architect: {
-          title: "Arquiteto de IA - Gerar Equipe",
-          description: "Descreva seu negócio e deixe a IA criar uma equipe personalizada de atendimento para você.",
-          teamName: "Nome da Equipe",
-          industry: "Indústria",
-          businessDescription: "Descrição do Negócio",
-          placeholder: "Descreva seu negócio, público-alvo, produtos/serviços, tom de voz desejado...",
-          generate: "Gerar Equipe",
-          result: "Equipe Gerada",
-          analysis: "Análise do Negócio",
-          agents: "Agentes Criados",
-          saved: "A equipe foi salva automaticamente e já está disponível para uso.",
-        },
-        training: {
-          title: "Treinar Equipe",
-          selectAgent: "Selecione o agente para treinar",
-          startConversation: "Inicie uma conversa para treinar a equipe...",
-          inputPlaceholder: "Digite sua mensagem...",
-          thinking: "Pensando...",
-          metrics: "Métricas de Treinamento",
-          totalMessages: "Total de Mensagens",
-          avgResponseTime: "Tempo Médio",
-          corrections: "Correções",
-          avgConfidence: "Confiança Média",
-          confidence: "Confiança",
-          knowledgeSources: "fontes da base",
-          rewrite: "Reescrever",
-          rewriteMessage: "Reescreva a mensagem como deveria ser:",
-          rewritePlaceholder: "Digite como a resposta deveria ser...",
-          saveCorrection: "Salvar Correção",
-          correctionSaved: "Correção salva como exemplo de treinamento!",
-          edited: "Editado",
-          clearChat: "Limpar conversa",
-        },
-        confirmationModal: {
-          deleteTitle: "Excluir equipe",
-          deleteMessage: "Tem certeza que deseja excluir esta equipe? Esta ação não pode ser revertida.",
-        },
-        toasts: {
-          created: "Equipe criada com sucesso!",
-          updated: "Equipe atualizada com sucesso!",
-          deleted: "Equipe excluída com sucesso!",
         },
       },
       backendErrors: {

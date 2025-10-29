@@ -13,33 +13,28 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 RUN rm -f package-lock.json
 
 COPY backend/package*.json ./
-
-# Install dependencies
-RUN npm install --legacy-peer-deps
-
+COPY backend/yarn.lock ./
+COPY backend/node_modules ./node_modules
 COPY backend/ .
 
 # Configure git to use HTTPS instead of SSH
 RUN git config --global url."https://".insteadOf ssh://
 
-RUN npm install fluent-ffmpeg @ffmpeg-installer/ffmpeg
+RUN yarn add fluent-ffmpeg @ffmpeg-installer/ffmpeg
 
-# Create certs-temp directory
-RUN mkdir -p ./certs-temp
+COPY certificates ./certs-temp
 
-# Copy certificates if exists (won't fail if doesn't exist due to context)
 COPY backend/copy_cert_assets.sh ./
 RUN chmod +x copy_cert_assets.sh
 
 ARG STACK_NAME
 ENV STACK_NAME=$STACK_NAME
 
-# Run script (will skip if no certs)
-RUN ./copy_cert_assets.sh || echo "No certificates to copy"
+RUN ./copy_cert_assets.sh
 
 RUN rm -rf ./certs-temp
 
-RUN npm run build
+RUN yarn build
 
 EXPOSE 3000
 

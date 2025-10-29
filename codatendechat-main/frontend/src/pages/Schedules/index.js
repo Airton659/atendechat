@@ -14,11 +14,6 @@ import { i18n } from "../../translate/i18n";
 import MainHeaderButtonsWrapper from "../../components/MainHeaderButtonsWrapper";
 import ScheduleModal from "../../components/ScheduleModal";
 import ConfirmationModal from "../../components/ConfirmationModal";
-import Dialog from "@material-ui/core/Dialog";
-import DialogTitle from "@material-ui/core/DialogTitle";
-import DialogContent from "@material-ui/core/DialogContent";
-import DialogActions from "@material-ui/core/DialogActions";
-import Typography from "@material-ui/core/Typography";
 import toastError from "../../errors/toastError";
 import moment from "moment";
 import { SocketContext } from "../../context/Socket/SocketContext";
@@ -123,8 +118,6 @@ const Schedules = () => {
   const [schedules, dispatch] = useReducer(reducer, []);
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [contactId, setContactId] = useState(+getUrlParam("contactId"));
-  const [selectedScheduleDetails, setSelectedScheduleDetails] = useState(null);
-  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
 
 
   const fetchSchedules = useCallback(async () => {
@@ -182,25 +175,6 @@ const Schedules = () => {
       }
     });
 
-    // Listener para agendamentos pendentes de confirmação criados pela IA
-    socket.on(`company${user.companyId}-schedule:pending_confirmation`, (data) => {
-      const { schedule } = data;
-      dispatch({ type: "UPDATE_SCHEDULES", payload: schedule });
-
-      // Notificação visual com toast
-      toast.warning(
-        `⏳ Novo agendamento pendente de confirmação!\n${schedule.contact?.name || 'Cliente'} - ${moment(schedule.sendAt).format('DD/MM/YYYY HH:mm')}`,
-        {
-          position: "top-right",
-          autoClose: 8000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-        }
-      );
-    });
-
     return () => {
       socket.disconnect();
     };
@@ -227,26 +201,6 @@ const Schedules = () => {
   const handleEditSchedule = (schedule) => {
     setSelectedSchedule(schedule);
     setScheduleModalOpen(true);
-  };
-
-  const handleConfirmSchedule = async (scheduleId) => {
-    try {
-      await api.put(`/schedules/${scheduleId}/confirm`);
-      toast.success("Agendamento confirmado com sucesso!");
-      await fetchSchedules();
-    } catch (err) {
-      toastError(err);
-    }
-  };
-
-  const handleRejectSchedule = async (scheduleId) => {
-    try {
-      await api.put(`/schedules/${scheduleId}/reject`);
-      toast.success("Agendamento rejeitado com sucesso!");
-      await fetchSchedules();
-    } catch (err) {
-      toastError(err);
-    }
   };
 
   const handleDeleteSchedule = async (scheduleId) => {
@@ -284,16 +238,6 @@ const Schedules = () => {
     return str;
   };
 
-  const handleSelectEvent = (event) => {
-    setSelectedScheduleDetails(event.resource);
-    setDetailsModalOpen(true);
-  };
-
-  const handleCloseDetailsModal = () => {
-    setSelectedScheduleDetails(null);
-    setDetailsModalOpen(false);
-  };
-
   return (
     <MainContainer>
       <ConfirmationModal
@@ -316,99 +260,6 @@ const Schedules = () => {
         contactId={contactId}
         cleanContact={cleanContact}
       />
-      <Dialog open={detailsModalOpen} onClose={handleCloseDetailsModal} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          📅 Detalhes do Agendamento
-          {selectedScheduleDetails?.status === 'pending_confirmation' && (
-            <span style={{
-              backgroundColor: '#ff9800',
-              color: 'white',
-              padding: '4px 8px',
-              borderRadius: '4px',
-              fontSize: '12px',
-              marginLeft: '12px',
-              fontWeight: 'bold'
-            }}>
-              ⏳ PENDENTE
-            </span>
-          )}
-        </DialogTitle>
-        <DialogContent dividers>
-          {selectedScheduleDetails && (
-            <>
-              <Typography variant="subtitle1" style={{ marginBottom: '8px' }}>
-                <strong>Cliente:</strong> {selectedScheduleDetails.contact?.name || 'N/A'}
-              </Typography>
-              <Typography variant="subtitle1" style={{ marginBottom: '8px' }}>
-                <strong>Telefone:</strong> {selectedScheduleDetails.contact?.number || 'N/A'}
-              </Typography>
-              <Typography variant="subtitle1" style={{ marginBottom: '8px' }}>
-                <strong>Data/Hora:</strong> {moment(selectedScheduleDetails.sendAt).format('DD/MM/YYYY HH:mm')}
-              </Typography>
-              <Typography variant="subtitle1" style={{ marginBottom: '8px' }}>
-                <strong>Descrição:</strong>
-              </Typography>
-              <Typography variant="body2" style={{ whiteSpace: 'pre-wrap', backgroundColor: '#f5f5f5', padding: '12px', borderRadius: '4px' }}>
-                {selectedScheduleDetails.body}
-              </Typography>
-              {selectedScheduleDetails.user && (
-                <Typography variant="subtitle1" style={{ marginTop: '12px' }}>
-                  <strong>Atendente:</strong> {selectedScheduleDetails.user.name}
-                </Typography>
-              )}
-            </>
-          )}
-        </DialogContent>
-        <DialogActions>
-          {selectedScheduleDetails?.status === 'pending_confirmation' && (
-            <>
-              <Button
-                onClick={() => {
-                  handleConfirmSchedule(selectedScheduleDetails.id);
-                  handleCloseDetailsModal();
-                }}
-                style={{ backgroundColor: '#4caf50', color: 'white' }}
-                variant="contained"
-              >
-                ✓ Confirmar
-              </Button>
-              <Button
-                onClick={() => {
-                  handleRejectSchedule(selectedScheduleDetails.id);
-                  handleCloseDetailsModal();
-                }}
-                style={{ backgroundColor: '#f44336', color: 'white' }}
-                variant="contained"
-              >
-                ✗ Rejeitar
-              </Button>
-            </>
-          )}
-          <Button
-            onClick={() => {
-              handleEditSchedule(selectedScheduleDetails);
-              handleCloseDetailsModal();
-            }}
-            color="primary"
-            variant="outlined"
-          >
-            ✏️ Editar
-          </Button>
-          <Button
-            onClick={() => {
-              handleDeleteSchedule(selectedScheduleDetails.id);
-              handleCloseDetailsModal();
-            }}
-            color="secondary"
-            variant="outlined"
-          >
-            🗑️ Deletar
-          </Button>
-          <Button onClick={handleCloseDetailsModal} color="default">
-            Fechar
-          </Button>
-        </DialogActions>
-      </Dialog>
       <MainHeader>
         <Title>{i18n.t("schedules.title")} ({schedules.length})</Title>
         <MainHeaderButtonsWrapper>
@@ -442,64 +293,10 @@ const Schedules = () => {
           weekdayFormat: "dddd"
       }}
           localizer={localizer}
-          onSelectEvent={handleSelectEvent}
           events={schedules.map((schedule) => ({
             title: (
               <div className="event-container">
-                {schedule.status === 'pending_confirmation' && (
-                  <span style={{
-                    backgroundColor: '#ff9800',
-                    color: 'white',
-                    padding: '2px 6px',
-                    borderRadius: '3px',
-                    fontSize: '10px',
-                    marginRight: '4px',
-                    fontWeight: 'bold'
-                  }}>
-                    ⏳ PENDENTE
-                  </span>
-                )}
                 <div style={eventTitleStyle}>{schedule.contact.name}</div>
-                {schedule.status === 'pending_confirmation' && (
-                  <>
-                    <Button
-                      size="small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleConfirmSchedule(schedule.id);
-                      }}
-                      style={{
-                        minWidth: '30px',
-                        padding: '2px 6px',
-                        fontSize: '11px',
-                        backgroundColor: '#4caf50',
-                        color: 'white',
-                        marginRight: '4px'
-                      }}
-                      title="Confirmar agendamento"
-                    >
-                      ✓
-                    </Button>
-                    <Button
-                      size="small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRejectSchedule(schedule.id);
-                      }}
-                      style={{
-                        minWidth: '30px',
-                        padding: '2px 6px',
-                        fontSize: '11px',
-                        backgroundColor: '#f44336',
-                        color: 'white',
-                        marginRight: '4px'
-                      }}
-                      title="Rejeitar agendamento"
-                    >
-                      ✗
-                    </Button>
-                  </>
-                )}
                 <DeleteOutlineIcon
                   onClick={() => handleDeleteSchedule(schedule.id)}
                   className="delete-icon"
@@ -515,7 +312,6 @@ const Schedules = () => {
             ),
             start: new Date(schedule.sendAt),
             end: new Date(schedule.sendAt),
-            resource: schedule, // Adicionar schedule completo para acessar dados no eventStyleGetter
           }))}
           startAccessor="start"
           endAccessor="end"

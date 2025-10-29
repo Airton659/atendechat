@@ -9,10 +9,6 @@ const upload = multer(uploadConfig);
 
 const filesRoutes = express.Router();
 
-// === ENDPOINT NÃO AUTENTICADO PARA CREWAI ===
-// Lista arquivos da empresa (para IA listar arquivos disponíveis)
-filesRoutes.get("/files/agent", FilesController.listFromAgent);
-
 filesRoutes.get("/files/list", isAuth, FilesController.list);
 filesRoutes.get("/files", isAuth, FilesController.index);
 filesRoutes.post("/files", isAuth, FilesController.store);
