@@ -47,12 +47,12 @@ class Agent extends Model<Agent> {
   @Column(DataType.JSONB)
   dontList: string[];
 
-  @Column(DataType.ENUM("openai", "crewai"))
   @Default("openai")
+  @Column(DataType.ENUM("openai", "crewai"))
   aiProvider: "openai" | "crewai";
 
-  @Column
   @Default(true)
+  @Column
   isActive: boolean;
 
   @ForeignKey(() => Company)
