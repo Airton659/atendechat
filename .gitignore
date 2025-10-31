@@ -1,7 +1,6 @@
-node_modules/
-.env
-dist/
-build/
-instances.json
-brands/
-certificates/
+# Ignorar tudo do atendelimpo EXCETO o google-credentials.json
+atendelimpo/*
+!atendelimpo/backend/
+atendelimpo/backend/*
+!atendelimpo/backend/google-credentials.json
+google-credentials.json
