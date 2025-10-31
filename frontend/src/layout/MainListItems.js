@@ -483,6 +483,14 @@ const MainListItems = (props) => {
               />
             )}
 
+            {showOpenAi && (
+              <ListItemLink
+                to="/agents"
+                primary="Agentes IA"
+                icon={<SmartToy />}
+              />
+            )}
+
             {showIntegrations && (
               <ListItemLink
                 to="/queue-integration"
@@ -508,11 +516,6 @@ const MainListItems = (props) => {
               to="/queues"
               primary={i18n.t("mainDrawer.listItems.queues")}
               icon={<AccountTreeOutlinedIcon />}
-            />
-            <ListItemLink
-              to="/agents"
-              primary="Agentes IA"
-              icon={<SmartToy />}
             />
             <ListItemLink
               to="/users"
