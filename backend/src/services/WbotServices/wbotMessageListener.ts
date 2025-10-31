@@ -20,6 +20,7 @@ import {
 import Contact from "../../models/Contact";
 import Ticket from "../../models/Ticket";
 import Message from "../../models/Message";
+import Agent from "../../models/Agent";
 
 import { getIO } from "../../libs/socket";
 import CreateMessageService from "../MessageServices/CreateMessageService";
@@ -854,6 +855,172 @@ const handleOpenAi = async (
     }*/
   }
   messagesOpenAi = [];
+};
+
+const handleAgent = async (
+  msg: proto.IWebMessageInfo,
+  wbot: Session,
+  ticket: Ticket,
+  contact: Contact,
+  mediaSent: Message | undefined
+): Promise<void> => {
+  // REGRA PARA DESABILITAR O BOT PARA ALGUM CONTATO
+  if (contact.disableBot) {
+    return;
+  }
+
+  const bodyMessage = getBodyMessage(msg);
+  if (!bodyMessage) return;
+
+  // Buscar agentes ativos da company
+  const agents = await Agent.findAll({
+    where: {
+      companyId: ticket.companyId,
+      isActive: true
+    }
+  });
+
+  if (!agents || agents.length === 0) return;
+
+  // Procurar agente que tenha keyword correspondente
+  let selectedAgent: Agent | null = null;
+  const lowerBodyMessage = bodyMessage.toLowerCase();
+
+  for (const agent of agents) {
+    if (agent.keywords && agent.keywords.length > 0) {
+      const hasKeyword = agent.keywords.some(keyword =>
+        lowerBodyMessage.includes(keyword.toLowerCase())
+      );
+      if (hasKeyword) {
+        selectedAgent = agent;
+        break;
+      }
+    }
+  }
+
+  // Se não encontrou por keyword, usar o primeiro agente ativo
+  if (!selectedAgent) {
+    selectedAgent = agents[0];
+  }
+
+  // Buscar mensagens anteriores para contexto
+  const maxMessages = 10; // Limitar a 10 mensagens de histórico
+  const messages = await Message.findAll({
+    where: { ticketId: ticket.id },
+    order: [["createdAt", "DESC"]],
+    limit: maxMessages
+  });
+
+  // Construir prompt do sistema baseado nas configurações do agente
+  let systemPrompt = `Você é ${selectedAgent.name}.\n\n`;
+
+  if (selectedAgent.function) {
+    systemPrompt += `Função: ${selectedAgent.function}\n\n`;
+  }
+
+  if (selectedAgent.objective) {
+    systemPrompt += `Objetivo: ${selectedAgent.objective}\n\n`;
+  }
+
+  if (selectedAgent.backstory) {
+    systemPrompt += `História: ${selectedAgent.backstory}\n\n`;
+  }
+
+  if (selectedAgent.persona) {
+    systemPrompt += `Persona: ${selectedAgent.persona}\n\n`;
+  }
+
+  if (selectedAgent.customInstructions) {
+    systemPrompt += `Instruções personalizadas: ${selectedAgent.customInstructions}\n\n`;
+  }
+
+  if (selectedAgent.doList && selectedAgent.doList.length > 0) {
+    systemPrompt += `O que FAZER:\n`;
+    selectedAgent.doList.forEach(item => {
+      systemPrompt += `- ${item}\n`;
+    });
+    systemPrompt += `\n`;
+  }
+
+  if (selectedAgent.dontList && selectedAgent.dontList.length > 0) {
+    systemPrompt += `O que NÃO fazer:\n`;
+    selectedAgent.dontList.forEach(item => {
+      systemPrompt += `- ${item}\n`;
+    });
+    systemPrompt += `\n`;
+  }
+
+  systemPrompt += `Utilize o nome ${sanitizeName(
+    contact.name || "Amigo(a)"
+  )} para identificar o cliente.\n`;
+
+  // Se for OpenAI
+  if (selectedAgent.aiProvider === "openai") {
+    // Buscar configuração do OpenAI (apiKey, etc)
+    let { prompt } = await ShowWhatsAppService(wbot.id, ticket.companyId);
+
+    if (!prompt) {
+      logger.info("OpenAI não configurado para este whatsapp");
+      return;
+    }
+
+    const configuration = new Configuration({
+      apiKey: prompt.apiKey
+    });
+    const openai = new OpenAIApi(configuration);
+
+    // Montar histórico de mensagens
+    let messagesOpenAi: ChatCompletionRequestMessage[] = [];
+    messagesOpenAi.push({ role: "system", content: systemPrompt });
+
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const message = messages[i];
+      if (
+        message.mediaType === "conversation" ||
+        message.mediaType === "extendedTextMessage"
+      ) {
+        if (message.fromMe) {
+          messagesOpenAi.push({ role: "assistant", content: message.body });
+        } else {
+          messagesOpenAi.push({ role: "user", content: message.body });
+        }
+      }
+    }
+    messagesOpenAi.push({ role: "user", content: bodyMessage });
+
+    try {
+      const chat = await openai.createChatCompletion({
+        model: prompt.model || "gpt-3.5-turbo",
+        messages: messagesOpenAi,
+        max_tokens: prompt.maxTokens || 500,
+        temperature: prompt.temperature || 0.7
+      });
+
+      let response = chat.data.choices[0].message?.content;
+
+      if (response) {
+        const sentMessage = await wbot.sendMessage(msg.key.remoteJid!, {
+          text: response
+        });
+        await verifyMessage(sentMessage!, ticket, contact);
+
+        // Marcar ticket com o agentId usado
+        await ticket.update({
+          agentId: selectedAgent.id
+        });
+      }
+    } catch (error) {
+      logger.error(`Erro ao processar com OpenAI: ${error}`);
+    }
+  } else if (selectedAgent.aiProvider === "crewai") {
+    // TODO: Implementar integração com CrewAI
+    logger.info("CrewAI provider selecionado - implementação futura");
+
+    // Marcar ticket com o agentId usado
+    await ticket.update({
+      agentId: selectedAgent.id
+    });
+  }
 };
 
 export const transferQueue = async (

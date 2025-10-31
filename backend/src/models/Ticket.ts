@@ -27,6 +27,7 @@ import Tag from "./Tag";
 import TicketTag from "./TicketTag";
 import QueueIntegrations from "./QueueIntegrations";
 import Prompt from "./Prompt";
+import Agent from "./Agent";
 
 @Table
 class Ticket extends Model<Ticket> {
@@ -141,6 +142,13 @@ class Ticket extends Model<Ticket> {
 
   @BelongsTo(() => Prompt)
   prompt: Prompt;
+
+  @ForeignKey(() => Agent)
+  @Column
+  agentId: number;
+
+  @BelongsTo(() => Agent)
+  agent: Agent;
 
   @Column
   fromMe: boolean;

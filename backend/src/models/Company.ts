@@ -11,6 +11,7 @@ import {
   DataType,
   HasMany
 } from "sequelize-typescript";
+import Agent from "./Agent";
 import Contact from "./Contact";
 import Message from "./Message";
 
@@ -131,6 +132,13 @@ class Company extends Model<Company> {
     hooks: true
   })
   ticketTrankins: TicketTraking[];
+
+  @HasMany(() => Agent, {
+    onUpdate: "CASCADE",
+    onDelete: "CASCADE",
+    hooks: true
+  })
+  agents: Agent[];
 }
 
 export default Company;
