@@ -12,6 +12,7 @@ import {
   Default
 } from "sequelize-typescript";
 import Company from "./Company";
+import Team from "./Team";
 
 @Table
 class Agent extends Model<Agent> {
@@ -75,7 +76,5 @@ class Agent extends Model<Agent> {
   @UpdatedAt
   updatedAt: Date;
 }
-
-import Team from "./Team";
 
 export default Agent;
