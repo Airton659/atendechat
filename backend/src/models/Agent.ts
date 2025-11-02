@@ -12,7 +12,6 @@ import {
   Default
 } from "sequelize-typescript";
 import Company from "./Company";
-import Team from "./Team";
 
 @Table
 class Agent extends Model<Agent> {
@@ -63,12 +62,12 @@ class Agent extends Model<Agent> {
   @BelongsTo(() => Company)
   company: Company;
 
-  @ForeignKey(() => Team)
+  @ForeignKey(() => require("./Team").default)
   @Column
   teamId: number;
 
-  @BelongsTo(() => Team)
-  team: Team;
+  @BelongsTo(() => require("./Team").default)
+  team: any;
 
   @CreatedAt
   createdAt: Date;
