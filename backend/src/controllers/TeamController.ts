@@ -71,7 +71,7 @@ export const show = async (req: Request, res: Response): Promise<Response> => {
     throw new AppError("Equipe não encontrada", 404);
   }
 
-  return res.status(200).json(team);
+  return res.status(200).json({ team });
 };
 
 // Atualizar equipe

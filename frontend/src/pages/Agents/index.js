@@ -22,8 +22,9 @@ import TableRowSkeleton from "../../components/TableRowSkeleton";
 import Title from "../../components/Title";
 import toastError from "../../errors/toastError";
 import api from "../../services/api";
-import { DeleteOutline, Edit, Visibility, Stars as AutoAwesomeIcon } from "@material-ui/icons";
+import { DeleteOutline, Edit, Visibility, Stars as AutoAwesomeIcon, Add as AddIcon } from "@material-ui/icons";
 import TeamArchitectModal from "../../components/TeamArchitectModal";
+import TeamModal from "../../components/TeamModal";
 import { toast } from "react-toastify";
 import ConfirmationModal from "../../components/ConfirmationModal";
 
@@ -91,6 +92,7 @@ const Agents = () => {
   const [teams, dispatch] = useReducer(reducer, []);
   const [loading, setLoading] = useState(false);
 
+  const [teamModalOpen, setTeamModalOpen] = useState(false);
   const [architectModalOpen, setArchitectModalOpen] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
@@ -111,13 +113,23 @@ const Agents = () => {
     }
   };
 
+  const handleOpenTeamModal = () => {
+    setTeamModalOpen(true);
+    setSelectedTeam(null);
+  };
+
+  const handleCloseTeamModal = () => {
+    setTeamModalOpen(false);
+    setSelectedTeam(null);
+    loadTeams();
+  };
+
   const handleOpenArchitectModal = () => {
     setArchitectModalOpen(true);
   };
 
   const handleCloseArchitectModal = () => {
     setArchitectModalOpen(false);
-    // Recarregar lista
     loadTeams();
   };
 
@@ -148,10 +160,15 @@ const Agents = () => {
         title="Deletar Equipe"
         open={confirmModalOpen}
         onClose={handleCloseConfirmationModal}
-        onConfirm={() => handleDeleteTeam(selectedTeam.id)}
+        onConfirm={() => selectedTeam && handleDeleteTeam(selectedTeam.id)}
       >
         Tem certeza que deseja deletar esta equipe?
       </ConfirmationModal>
+      <TeamModal
+        open={teamModalOpen}
+        onClose={handleCloseTeamModal}
+        teamId={selectedTeam?.id}
+      />
       <TeamArchitectModal
         open={architectModalOpen}
         onClose={handleCloseArchitectModal}
@@ -165,8 +182,17 @@ const Agents = () => {
             color="secondary"
             startIcon={<AutoAwesomeIcon />}
             onClick={handleOpenArchitectModal}
+            style={{ marginRight: 8 }}
           >
             Gerar com IA
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AddIcon />}
+            onClick={handleOpenTeamModal}
+          >
+            Criar Equipe
           </Button>
         </MainHeaderButtonsWrapper>
       </MainHeader>
