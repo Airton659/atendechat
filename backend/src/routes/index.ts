@@ -35,6 +35,7 @@ import flowDefaultRoutes from "./flowDefaultRoutes";
 import flowBuilder from "./flowBuilderRoutes";
 import flowCampaignRoutes from "./flowCampaignRoutes";
 import agentRoutes from "./agentRoutes";
+import teamRoutes from "./teamRoutes";
 const routes = Router();
 
 routes.use(userRoutes);
@@ -74,5 +75,6 @@ routes.use(flowDefaultRoutes);
 routes.use(flowBuilder)
 routes.use(flowCampaignRoutes)
 routes.use(agentRoutes);
+routes.use(teamRoutes);
 
 export default routes;

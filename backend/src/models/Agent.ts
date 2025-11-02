@@ -62,11 +62,20 @@ class Agent extends Model<Agent> {
   @BelongsTo(() => Company)
   company: Company;
 
+  @ForeignKey(() => Team)
+  @Column
+  teamId: number;
+
+  @BelongsTo(() => Team)
+  team: Team;
+
   @CreatedAt
   createdAt: Date;
 
   @UpdatedAt
   updatedAt: Date;
 }
+
+import Team from "./Team";
 
 export default Agent;
