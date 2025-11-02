@@ -211,7 +211,7 @@ const TeamArchitectModal = ({ open, onClose, onSave }) => {
                 }
               />
             </ListItem>
-            {idx < generatedAgents.blueprint.customTools.length - 1 && <Divider />}
+            {idx < generatedTeam.blueprint.customTools.length - 1 && <Divider />}
           </React.Fragment>
         ))}
       </List>

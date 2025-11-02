@@ -69,7 +69,7 @@ const AgentSchema = Yup.object().shape({
     .required("Provedor é obrigatório"),
 });
 
-const AgentModal = ({ open, onClose, agentId }) => {
+const AgentModal = ({ open, onClose, agentId, teamId }) => {
   const classes = useStyles();
 
   const initialState = {
@@ -84,6 +84,7 @@ const AgentModal = ({ open, onClose, agentId }) => {
     dontList: [],
     aiProvider: "openai",
     isActive: true,
+    teamId: teamId || null,
   };
 
   const [agent, setAgent] = useState(initialState);
@@ -105,13 +106,14 @@ const AgentModal = ({ open, onClose, agentId }) => {
           dontList: data.dontList || [],
           aiProvider: data.aiProvider,
           isActive: data.isActive,
+          teamId: data.teamId || teamId || null,
         });
       } catch (err) {
         toastError(err);
       }
     };
     fetchAgent();
-  }, [agentId, open]);
+  }, [agentId, teamId, open]);
 
   const handleClose = () => {
     setAgent(initialState);

@@ -1,4 +1,5 @@
 import React, { useEffect, useReducer, useState } from "react";
+import { useHistory } from "react-router-dom";
 
 import {
   Button,
@@ -21,9 +22,8 @@ import TableRowSkeleton from "../../components/TableRowSkeleton";
 import Title from "../../components/Title";
 import toastError from "../../errors/toastError";
 import api from "../../services/api";
-import { DeleteOutline, Edit, Add as AddIcon, Stars as AutoAwesomeIcon } from "@material-ui/icons";
-import AgentModal from "../../components/AgentModal";
-import AgentArchitectModal from "../../components/AgentArchitectModal";
+import { DeleteOutline, Edit, Visibility, Stars as AutoAwesomeIcon } from "@material-ui/icons";
+import TeamArchitectModal from "../../components/TeamArchitectModal";
 import { toast } from "react-toastify";
 import ConfirmationModal from "../../components/ConfirmationModal";
 
@@ -42,39 +42,39 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 const reducer = (state, action) => {
-  if (action.type === "LOAD_AGENTS") {
-    const agents = action.payload;
-    const newAgents = [];
+  if (action.type === "LOAD_TEAMS") {
+    const teams = action.payload;
+    const newTeams = [];
 
-    agents.forEach((agent) => {
-      const agentIndex = state.findIndex((a) => a.id === agent.id);
-      if (agentIndex !== -1) {
-        state[agentIndex] = agent;
+    teams.forEach((team) => {
+      const teamIndex = state.findIndex((t) => t.id === team.id);
+      if (teamIndex !== -1) {
+        state[teamIndex] = team;
       } else {
-        newAgents.push(agent);
+        newTeams.push(team);
       }
     });
 
-    return [...state, ...newAgents];
+    return [...state, ...newTeams];
   }
 
-  if (action.type === "UPDATE_AGENT") {
-    const agent = action.payload;
-    const agentIndex = state.findIndex((a) => a.id === agent.id);
+  if (action.type === "UPDATE_TEAM") {
+    const team = action.payload;
+    const teamIndex = state.findIndex((t) => t.id === team.id);
 
-    if (agentIndex !== -1) {
-      state[agentIndex] = agent;
+    if (teamIndex !== -1) {
+      state[teamIndex] = team;
       return [...state];
     } else {
-      return [agent, ...state];
+      return [team, ...state];
     }
   }
 
-  if (action.type === "DELETE_AGENT") {
-    const agentId = action.payload;
-    const agentIndex = state.findIndex((a) => a.id === agentId);
-    if (agentIndex !== -1) {
-      state.splice(agentIndex, 1);
+  if (action.type === "DELETE_TEAM") {
+    const teamId = action.payload;
+    const teamIndex = state.findIndex((t) => t.id === teamId);
+    if (teamIndex !== -1) {
+      state.splice(teamIndex, 1);
     }
     return [...state];
   }
@@ -86,127 +86,87 @@ const reducer = (state, action) => {
 
 const Agents = () => {
   const classes = useStyles();
+  const history = useHistory();
 
-  const [agents, dispatch] = useReducer(reducer, []);
+  const [teams, dispatch] = useReducer(reducer, []);
   const [loading, setLoading] = useState(false);
 
-  const [agentModalOpen, setAgentModalOpen] = useState(false);
   const [architectModalOpen, setArchitectModalOpen] = useState(false);
-  const [selectedAgent, setSelectedAgent] = useState(null);
+  const [selectedTeam, setSelectedTeam] = useState(null);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      setLoading(true);
-      try {
-        const { data } = await api.get("/agents");
-        dispatch({ type: "LOAD_AGENTS", payload: data.agents });
-        setLoading(false);
-      } catch (err) {
-        toastError(err);
-        setLoading(false);
-      }
-    })();
+    loadTeams();
   }, []);
 
-  const handleOpenAgentModal = () => {
-    setAgentModalOpen(true);
-    setSelectedAgent(null);
+  const loadTeams = async () => {
+    setLoading(true);
+    try {
+      const { data } = await api.get("/teams");
+      dispatch({ type: "LOAD_TEAMS", payload: data.teams });
+      setLoading(false);
+    } catch (err) {
+      toastError(err);
+      setLoading(false);
+    }
   };
 
   const handleOpenArchitectModal = () => {
     setArchitectModalOpen(true);
   };
 
-  const handleCloseAgentModal = () => {
-    setAgentModalOpen(false);
-    setSelectedAgent(null);
-    // Recarregar lista
-    (async () => {
-      try {
-        const { data } = await api.get("/agents");
-        dispatch({ type: "LOAD_AGENTS", payload: data.agents });
-      } catch (err) {
-        toastError(err);
-      }
-    })();
-  };
-
   const handleCloseArchitectModal = () => {
     setArchitectModalOpen(false);
     // Recarregar lista
-    (async () => {
-      try {
-        const { data } = await api.get("/agents");
-        dispatch({ type: "RESET" });
-        dispatch({ type: "LOAD_AGENTS", payload: data.agents });
-      } catch (err) {
-        toastError(err);
-      }
-    })();
+    loadTeams();
   };
 
-  const handleEditAgent = (agent) => {
-    setSelectedAgent(agent);
-    setAgentModalOpen(true);
+  const handleViewTeam = (team) => {
+    history.push(`/teams/${team.id}`);
   };
 
   const handleCloseConfirmationModal = () => {
     setConfirmModalOpen(false);
-    setSelectedAgent(null);
+    setSelectedTeam(null);
   };
 
-  const handleDeleteAgent = async (agentId) => {
+  const handleDeleteTeam = async (teamId) => {
     try {
-      await api.delete(`/agents/${agentId}`);
-      toast.success("Agente deletado com sucesso!");
-      dispatch({ type: "DELETE_AGENT", payload: agentId });
+      await api.delete(`/teams/${teamId}`);
+      toast.success("Equipe deletada com sucesso!");
+      dispatch({ type: "DELETE_TEAM", payload: teamId });
     } catch (err) {
       toastError(err);
     }
     setConfirmModalOpen(false);
-    setSelectedAgent(null);
+    setSelectedTeam(null);
   };
 
   return (
     <MainContainer>
       <ConfirmationModal
-        title="Deletar Agente"
+        title="Deletar Equipe"
         open={confirmModalOpen}
         onClose={handleCloseConfirmationModal}
-        onConfirm={() => handleDeleteAgent(selectedAgent.id)}
+        onConfirm={() => handleDeleteTeam(selectedTeam.id)}
       >
-        Tem certeza que deseja deletar este agente?
+        Tem certeza que deseja deletar esta equipe?
       </ConfirmationModal>
-      <AgentModal
-        open={agentModalOpen}
-        onClose={handleCloseAgentModal}
-        agentId={selectedAgent?.id}
-      />
-      <AgentArchitectModal
+      <TeamArchitectModal
         open={architectModalOpen}
         onClose={handleCloseArchitectModal}
         onSave={handleCloseArchitectModal}
       />
       <MainHeader>
-        <Title>Agentes IA</Title>
+        <Title>Equipes de Agentes IA</Title>
         <MainHeaderButtonsWrapper>
           <Button
             variant="contained"
             color="secondary"
             startIcon={<AutoAwesomeIcon />}
             onClick={handleOpenArchitectModal}
-            style={{ marginRight: 8 }}
           >
             Gerar com IA
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<AddIcon />}
-            onClick={handleOpenAgentModal}
-          >
-            Criar Agente
           </Button>
         </MainHeaderButtonsWrapper>
       </MainHeader>
@@ -215,59 +175,68 @@ const Agents = () => {
           <TableHead>
             <TableRow>
               <TableCell align="center">Nome</TableCell>
-              <TableCell align="center">Provedor IA</TableCell>
-              <TableCell align="center">Função</TableCell>
-              <TableCell align="center">Keywords</TableCell>
+              <TableCell align="center">Descrição</TableCell>
+              <TableCell align="center">Indústria</TableCell>
+              <TableCell align="center">Agentes</TableCell>
               <TableCell align="center">Status</TableCell>
+              <TableCell align="center">Criação</TableCell>
               <TableCell align="center">Ações</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             <>
-              {agents.map((agent) => (
-                <TableRow key={agent.id}>
-                  <TableCell align="center">{agent.name}</TableCell>
+              {teams.map((team) => (
+                <TableRow key={team.id}>
+                  <TableCell align="center">{team.name}</TableCell>
+                  <TableCell align="center">
+                    {team.description ? team.description.substring(0, 50) + "..." : "-"}
+                  </TableCell>
+                  <TableCell align="center">
+                    <Chip label={team.industry || "Geral"} size="small" />
+                  </TableCell>
                   <TableCell align="center">
                     <Chip
-                      label={agent.aiProvider === "openai" ? "OpenAI" : "CrewAI"}
-                      color={agent.aiProvider === "openai" ? "primary" : "secondary"}
+                      label={team.agents?.length || 0}
+                      color="primary"
                       size="small"
                     />
                   </TableCell>
                   <TableCell align="center">
-                    {agent.function ? agent.function.substring(0, 50) + "..." : "-"}
-                  </TableCell>
-                  <TableCell align="center">
-                    {agent.keywords && agent.keywords.length > 0
-                      ? agent.keywords.slice(0, 3).map((kw, idx) => (
-                          <Chip key={idx} label={kw} size="small" style={{ margin: 2 }} />
-                        ))
-                      : "-"}
-                  </TableCell>
-                  <TableCell align="center">
                     <Chip
-                      label={agent.isActive ? "Ativo" : "Inativo"}
-                      color={agent.isActive ? "primary" : "default"}
+                      label={team.isActive ? "Ativo" : "Inativo"}
+                      color={team.isActive ? "primary" : "default"}
                       size="small"
                     />
                   </TableCell>
                   <TableCell align="center">
-                    <IconButton size="small" onClick={() => handleEditAgent(agent)}>
-                      <Edit />
+                    <Chip
+                      label={team.generatedBy === "architect" ? "IA" : "Manual"}
+                      color={team.generatedBy === "architect" ? "secondary" : "default"}
+                      size="small"
+                    />
+                  </TableCell>
+                  <TableCell align="center">
+                    <IconButton
+                      size="small"
+                      onClick={() => handleViewTeam(team)}
+                      title="Ver/Editar Equipe"
+                    >
+                      <Visibility />
                     </IconButton>
                     <IconButton
                       size="small"
                       onClick={() => {
-                        setSelectedAgent(agent);
+                        setSelectedTeam(team);
                         setConfirmModalOpen(true);
                       }}
+                      title="Deletar Equipe"
                     >
                       <DeleteOutline />
                     </IconButton>
                   </TableCell>
                 </TableRow>
               ))}
-              {loading && <TableRowSkeleton columns={6} />}
+              {loading && <TableRowSkeleton columns={7} />}
             </>
           </TableBody>
         </Table>
