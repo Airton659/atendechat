@@ -4,6 +4,7 @@ import Setting from "../models/Setting";
 import Contact from "../models/Contact";
 import Ticket from "../models/Ticket";
 import Whatsapp from "../models/Whatsapp";
+import Team from "../models/Team";
 import Agent from "../models/Agent";
 import ContactCustomField from "../models/ContactCustomField";
 import Message from "../models/Message";
@@ -57,6 +58,7 @@ const models = [
   Ticket,
   Message,
   Whatsapp,
+  Team,
   Agent,
   ContactCustomField,
   Setting,
