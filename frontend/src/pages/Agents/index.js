@@ -21,8 +21,9 @@ import TableRowSkeleton from "../../components/TableRowSkeleton";
 import Title from "../../components/Title";
 import toastError from "../../errors/toastError";
 import api from "../../services/api";
-import { DeleteOutline, Edit } from "@material-ui/icons";
+import { DeleteOutline, Edit, Add as AddIcon, Stars as AutoAwesomeIcon } from "@material-ui/icons";
 import AgentModal from "../../components/AgentModal";
+import AgentArchitectModal from "../../components/AgentArchitectModal";
 import { toast } from "react-toastify";
 import ConfirmationModal from "../../components/ConfirmationModal";
 
@@ -90,6 +91,7 @@ const Agents = () => {
   const [loading, setLoading] = useState(false);
 
   const [agentModalOpen, setAgentModalOpen] = useState(false);
+  const [architectModalOpen, setArchitectModalOpen] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
 
@@ -112,6 +114,10 @@ const Agents = () => {
     setSelectedAgent(null);
   };
 
+  const handleOpenArchitectModal = () => {
+    setArchitectModalOpen(true);
+  };
+
   const handleCloseAgentModal = () => {
     setAgentModalOpen(false);
     setSelectedAgent(null);
@@ -119,6 +125,20 @@ const Agents = () => {
     (async () => {
       try {
         const { data } = await api.get("/agents");
+        dispatch({ type: "LOAD_AGENTS", payload: data.agents });
+      } catch (err) {
+        toastError(err);
+      }
+    })();
+  };
+
+  const handleCloseArchitectModal = () => {
+    setArchitectModalOpen(false);
+    // Recarregar lista
+    (async () => {
+      try {
+        const { data } = await api.get("/agents");
+        dispatch({ type: "RESET" });
         dispatch({ type: "LOAD_AGENTS", payload: data.agents });
       } catch (err) {
         toastError(err);
@@ -163,11 +183,30 @@ const Agents = () => {
         onClose={handleCloseAgentModal}
         agentId={selectedAgent?.id}
       />
+      <AgentArchitectModal
+        open={architectModalOpen}
+        onClose={handleCloseArchitectModal}
+        onSave={handleCloseArchitectModal}
+      />
       <MainHeader>
         <Title>Agentes IA</Title>
         <MainHeaderButtonsWrapper>
-          <Button variant="contained" color="primary" onClick={handleOpenAgentModal}>
-            Adicionar Agente
+          <Button
+            variant="contained"
+            color="secondary"
+            startIcon={<AutoAwesomeIcon />}
+            onClick={handleOpenArchitectModal}
+            style={{ marginRight: 8 }}
+          >
+            Gerar com IA
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AddIcon />}
+            onClick={handleOpenAgentModal}
+          >
+            Criar Agente
           </Button>
         </MainHeaderButtonsWrapper>
       </MainHeader>
