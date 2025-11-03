@@ -64,9 +64,6 @@ const AgentSchema = Yup.object().shape({
     .min(2, "Nome muito curto")
     .max(100, "Nome muito longo")
     .required("Nome é obrigatório"),
-  aiProvider: Yup.string()
-    .oneOf(["openai", "crewai"], "Provedor inválido")
-    .required("Provedor é obrigatório"),
 });
 
 const AgentModal = ({ open, onClose, agentId, teamId }) => {
@@ -82,7 +79,7 @@ const AgentModal = ({ open, onClose, agentId, teamId }) => {
     persona: "",
     doList: [],
     dontList: [],
-    aiProvider: "openai",
+    aiProvider: "crewai",
     isActive: true,
     teamId: teamId || null,
   };
@@ -91,7 +88,11 @@ const AgentModal = ({ open, onClose, agentId, teamId }) => {
 
   useEffect(() => {
     const fetchAgent = async () => {
-      if (!agentId) return;
+      if (!agentId) {
+        // Se não tem agentId, resetar para estado inicial
+        setAgent({...initialState, teamId: teamId || null});
+        return;
+      }
       try {
         const { data } = await api.get(`/agents/${agentId}`);
         setAgent({
@@ -104,7 +105,7 @@ const AgentModal = ({ open, onClose, agentId, teamId }) => {
           persona: data.persona || "",
           doList: data.doList || [],
           dontList: data.dontList || [],
-          aiProvider: data.aiProvider,
+          aiProvider: data.aiProvider || "crewai",
           isActive: data.isActive,
           teamId: data.teamId || teamId || null,
         });
@@ -168,20 +169,6 @@ const AgentModal = ({ open, onClose, agentId, teamId }) => {
                       margin="dense"
                       required
                     />
-                  </Grid>
-                  <Grid item xs={12} sm={4}>
-                    <FormControl variant="outlined" fullWidth margin="dense">
-                      <InputLabel>Provedor IA</InputLabel>
-                      <Field
-                        as={Select}
-                        label="Provedor IA"
-                        name="aiProvider"
-                        required
-                      >
-                        <MenuItem value="openai">OpenAI</MenuItem>
-                        <MenuItem value="crewai">CrewAI</MenuItem>
-                      </Field>
-                    </FormControl>
                   </Grid>
 
                   <Grid item xs={12}>

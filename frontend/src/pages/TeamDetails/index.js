@@ -101,11 +101,18 @@ const TeamDetails = () => {
   const loadTeamData = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get(`/teams/${teamId}`);
-      setTeam(data.team);
-      dispatch({ type: "LOAD_AGENTS", payload: data.team.agents || [] });
+      const response = await api.get(`/teams/${teamId}`);
+      const { team } = response.data;
+
+      if (!team) {
+        throw new Error("Team data is empty");
+      }
+
+      setTeam(team);
+      dispatch({ type: "LOAD_AGENTS", payload: team.agents || [] });
       setLoading(false);
     } catch (err) {
+      console.error("Error loading team:", err);
       toastError(err);
       setLoading(false);
       history.push("/agents");

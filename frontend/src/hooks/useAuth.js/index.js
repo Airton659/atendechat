@@ -142,6 +142,12 @@ const useAuth = () => {
 
     try {
       const { data } = await api.post("/auth/login", userData);
+      console.log("Login response:", data);
+
+      if (!data || !data.user) {
+        throw new Error("Resposta de login inválida");
+      }
+
       const {
         user: { companyId, id, company },
       } = data;
@@ -198,6 +204,8 @@ Entre em contato com o Suporte para mais informações! `);
 
       //quebra linha
     } catch (err) {
+      console.error("Login error:", err);
+      console.error("Error response:", err.response);
       toastError(err);
       setLoading(false);
     }

@@ -60,7 +60,7 @@ class Team extends Model<Team> {
   @BelongsTo(() => Company)
   company: Company;
 
-  @HasMany(() => Agent)
+  @HasMany(() => Agent, "teamId")
   agents: Agent[];
 
   @CreatedAt
