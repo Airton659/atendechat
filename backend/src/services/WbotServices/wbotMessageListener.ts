@@ -886,22 +886,22 @@ const handleAgent = async (
   const whatsapp = await ShowWhatsAppService(wbot.id, ticket.companyId);
   console.log("[handleAgent] WhatsApp teamId:", whatsapp.teamId);
 
-  // Buscar agentes ativos da company ou da equipe
-  const whereClause: any = {
-    companyId: ticket.companyId,
-    isActive: true
-  };
-
-  // Se tiver teamId no whatsapp, buscar apenas agentes dessa equipe
-  if (whatsapp.teamId) {
-    whereClause.teamId = whatsapp.teamId;
-    console.log("[handleAgent] Buscando agentes da equipe:", whatsapp.teamId);
-  } else {
-    console.log("[handleAgent] Buscando TODOS os agentes da company (sem equipe definida)");
+  // IMPORTANTE: handleAgent só deve ser chamado quando há teamId
+  // Se não tiver teamId, não processa (pode ter promptId que usa handleOpenAi)
+  if (!whatsapp.teamId) {
+    console.log("[handleAgent] ERRO: handleAgent chamado sem teamId na conexão - encerrando");
+    return;
   }
 
+  console.log("[handleAgent] Buscando agentes da equipe:", whatsapp.teamId);
+
+  // Buscar apenas agentes da equipe especificada
   const agents = await Agent.findAll({
-    where: whereClause
+    where: {
+      companyId: ticket.companyId,
+      isActive: true,
+      teamId: whatsapp.teamId
+    }
   });
 
   console.log("[handleAgent] Agentes encontrados:", agents.length);
