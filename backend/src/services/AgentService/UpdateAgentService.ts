@@ -16,6 +16,7 @@ interface AgentData {
   dontList?: string[];
   aiProvider?: "openai" | "crewai";
   isActive?: boolean;
+  teamId?: number;
 }
 
 const UpdateAgentService = async (agentData: AgentData): Promise<Agent> => {

@@ -53,7 +53,11 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 const reducer = (state, action) => {
+  console.log("[Reducer] Action:", action.type, "Payload:", action.payload);
+  console.log("[Reducer] Estado anterior:", state);
+
   if (action.type === "LOAD_AGENTS") {
+    console.log("[Reducer] LOAD_AGENTS - Retornando:", action.payload);
     return action.payload;
   }
 
@@ -78,6 +82,7 @@ const reducer = (state, action) => {
     return [];
   }
 
+  console.log("[Reducer] Nenhuma ação correspondente, retornando state");
   return state;
 };
 
@@ -101,18 +106,25 @@ const TeamDetails = () => {
   const loadTeamData = async () => {
     setLoading(true);
     try {
+      console.log("[TeamDetails] Carregando dados da equipe:", teamId);
       const response = await api.get(`/teams/${teamId}`);
+      console.log("[TeamDetails] Resposta completa:", response.data);
       const { team } = response.data;
 
       if (!team) {
+        console.error("[TeamDetails] Team não encontrado na resposta");
         throw new Error("Team data is empty");
       }
+
+      console.log("[TeamDetails] Team carregado:", team);
+      console.log("[TeamDetails] Agentes encontrados:", team.agents);
+      console.log("[TeamDetails] Quantidade de agentes:", team.agents?.length);
 
       setTeam(team);
       dispatch({ type: "LOAD_AGENTS", payload: team.agents || [] });
       setLoading(false);
     } catch (err) {
-      console.error("Error loading team:", err);
+      console.error("[TeamDetails] Erro ao carregar team:", err);
       toastError(err);
       setLoading(false);
       history.push("/agents");

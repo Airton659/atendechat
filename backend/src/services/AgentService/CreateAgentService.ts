@@ -15,6 +15,7 @@ interface AgentData {
   aiProvider: "openai" | "crewai";
   isActive?: boolean;
   companyId: number;
+  teamId?: number;
 }
 
 const CreateAgentService = async (agentData: AgentData): Promise<Agent> => {
@@ -51,7 +52,8 @@ const CreateAgentService = async (agentData: AgentData): Promise<Agent> => {
     dontList: agentData.dontList || [],
     aiProvider: agentData.aiProvider,
     isActive: agentData.isActive !== undefined ? agentData.isActive : true,
-    companyId: agentData.companyId
+    companyId: agentData.companyId,
+    teamId: agentData.teamId || null
   });
 
   return agent;
