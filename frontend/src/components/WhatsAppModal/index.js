@@ -91,6 +91,8 @@ const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
   const [prompts, setPrompts] = useState([]);
   const [integrations, setIntegrations] = useState([]);
   const [selectedIntegration, setSelectedIntegration] = useState(null);
+  const [selectedTeam, setSelectedTeam] = useState(null);
+  const [teams, setTeams] = useState([]);
   
     useEffect(() => {
       const fetchSession = async () => {
@@ -102,7 +104,8 @@ const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
 
           setWhatsApp(data);
           setSelectedPrompt( data.promptId );
-          setSelectedIntegration(data.integrationId)
+          setSelectedIntegration(data.integrationId);
+          setSelectedTeam(data.teamId);
 
           const whatsQueueIds = data.queues?.map((queue) => queue.id);
           setSelectedQueueIds(whatsQueueIds);
@@ -122,6 +125,9 @@ const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
 
         const {data: dataIntegration} = await api.get("/queueIntegration");
         setIntegrations(dataIntegration.queueIntegrations);
+
+        const {data: dataTeams} = await api.get("/teams");
+        setTeams(dataTeams.teams);
 
       } catch (err) {
         toastError(err);
@@ -144,7 +150,8 @@ const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
     const whatsappData = {
       ...values, queueIds: selectedQueueIds, transferQueueId: selectedQueueId,
       promptId: selectedPrompt ? selectedPrompt : null,
-      integrationId: selectedIntegration
+      integrationId: selectedIntegration,
+      teamId: selectedTeam ? selectedTeam : null
     };
     delete whatsappData["queues"];
     delete whatsappData["session"];
@@ -174,7 +181,11 @@ const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
 
   const handleChangeIntegration = (e) => {
     setSelectedIntegration(e.target.value);
-  }
+  };
+
+  const handleChangeTeam = (e) => {
+    setSelectedTeam(e.target.value);
+  };
 
   const handleClose = () => {
     onClose();
@@ -360,12 +371,52 @@ const WhatsAppModal = ({ open, onClose, whatsAppId }) => {
                       getContentAnchorEl: null,
                     }}
                   >
+                    <MenuItem value="">Nenhum</MenuItem>
                     {prompts.map((prompt) => (
                       <MenuItem
                         key={prompt.id}
                         value={prompt.id}
                       >
                         {prompt.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormControl
+                  margin="dense"
+                  variant="outlined"
+                  fullWidth
+                >
+                  <InputLabel>
+                    Equipe (CrewAI)
+                  </InputLabel>
+                  <Select
+                    labelId="dialog-select-team-label"
+                    id="dialog-select-team"
+                    name="teamId"
+                    value={selectedTeam || ""}
+                    onChange={handleChangeTeam}
+                    label="Equipe (CrewAI)"
+                    fullWidth
+                    MenuProps={{
+                      anchorOrigin: {
+                        vertical: "bottom",
+                        horizontal: "left",
+                      },
+                      transformOrigin: {
+                        vertical: "top",
+                        horizontal: "left",
+                      },
+                      getContentAnchorEl: null,
+                    }}
+                  >
+                    <MenuItem value="">Nenhuma</MenuItem>
+                    {teams.map((team) => (
+                      <MenuItem
+                        key={team.id}
+                        value={team.id}
+                      >
+                        {team.name}
                       </MenuItem>
                     ))}
                   </Select>
