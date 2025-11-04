@@ -126,6 +126,13 @@ class Whatsapp extends Model<Whatsapp> {
   @BelongsTo(() => Prompt)
   prompt: Prompt;
 
+  @ForeignKey(() => require("./Team").default)
+  @Column
+  teamId: number;
+
+  @BelongsTo(() => require("./Team").default)
+  team: any;
+
   @ForeignKey(() => QueueIntegrations)
   @Column
   integrationId: number;

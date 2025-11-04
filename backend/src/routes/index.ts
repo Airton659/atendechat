@@ -34,6 +34,10 @@ import forgotsRoutes from "./forgotPasswordRoutes";
 import flowDefaultRoutes from "./flowDefaultRoutes";
 import flowBuilder from "./flowBuilderRoutes";
 import flowCampaignRoutes from "./flowCampaignRoutes";
+import agentRoutes from "./agentRoutes";
+import teamRoutes from "./teamRoutes";
+import agentLogRoutes from "./agentLogRoutes";
+import knowledgeBaseRoutes from "./knowledgeBaseRoutes";
 const routes = Router();
 
 routes.use(userRoutes);
@@ -72,5 +76,9 @@ routes.use(forgotsRoutes);
 routes.use(flowDefaultRoutes);
 routes.use(flowBuilder)
 routes.use(flowCampaignRoutes)
+routes.use(agentRoutes);
+routes.use(teamRoutes);
+routes.use(agentLogRoutes);
+routes.use(knowledgeBaseRoutes);
 
 export default routes;

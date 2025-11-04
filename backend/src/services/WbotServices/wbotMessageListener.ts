@@ -20,6 +20,8 @@ import {
 import Contact from "../../models/Contact";
 import Ticket from "../../models/Ticket";
 import Message from "../../models/Message";
+import Agent from "../../models/Agent";
+import Team from "../../models/Team";
 
 import { getIO } from "../../libs/socket";
 import CreateMessageService from "../MessageServices/CreateMessageService";
@@ -46,6 +48,7 @@ import User from "../../models/User";
 import Setting from "../../models/Setting";
 import { cacheLayer } from "../../libs/cache";
 import { provider } from "./providers";
+import conversationMemoryService from "../ConversationMemoryService";
 import { debounce } from "../../helpers/Debounce";
 import { ChatCompletionRequestMessage, Configuration, OpenAIApi } from "openai";
 import ffmpeg from "fluent-ffmpeg";
@@ -854,6 +857,359 @@ const handleOpenAi = async (
     }*/
   }
   messagesOpenAi = [];
+};
+
+const handleAgent = async (
+  msg: proto.IWebMessageInfo,
+  wbot: Session,
+  ticket: Ticket,
+  contact: Contact,
+  mediaSent: Message | undefined
+): Promise<void> => {
+  console.log("[handleAgent] ===== INICIANDO HANDLEAGENT =====");
+  console.log("[handleAgent] Ticket ID:", ticket.id);
+  console.log("[handleAgent] Contact:", contact.name);
+
+  // REGRA PARA DESABILITAR O BOT PARA ALGUM CONTATO
+  if (contact.disableBot) {
+    console.log("[handleAgent] Bot desabilitado para este contato");
+    return;
+  }
+
+  const bodyMessage = getBodyMessage(msg);
+  if (!bodyMessage) {
+    console.log("[handleAgent] Sem mensagem de texto para processar");
+    return;
+  }
+
+  console.log("[handleAgent] Mensagem recebida:", bodyMessage);
+
+  // Buscar whatsapp para pegar teamId
+  const whatsapp = await ShowWhatsAppService(wbot.id, ticket.companyId);
+  console.log("[handleAgent] WhatsApp teamId:", whatsapp.teamId);
+
+  // IMPORTANTE: handleAgent só deve ser chamado quando há teamId
+  // Se não tiver teamId, não processa (pode ter promptId que usa handleOpenAi)
+  if (!whatsapp.teamId) {
+    console.log("[handleAgent] ERRO: handleAgent chamado sem teamId na conexão - encerrando");
+    return;
+  }
+
+  console.log("[handleAgent] Buscando agentes da equipe:", whatsapp.teamId);
+
+  // Buscar apenas agentes da equipe especificada
+  const agents = await Agent.findAll({
+    where: {
+      companyId: ticket.companyId,
+      isActive: true,
+      teamId: whatsapp.teamId
+    }
+  });
+
+  console.log("[handleAgent] Agentes encontrados:", agents.length);
+  if (agents.length > 0) {
+    console.log("[handleAgent] Lista de agentes:");
+    agents.forEach((agent, index) => {
+      console.log(`[handleAgent]   ${index + 1}. ${agent.name} (ID: ${agent.id}, Provider: ${agent.aiProvider}, Keywords: ${JSON.stringify(agent.keywords)})`);
+    });
+  }
+
+  if (!agents || agents.length === 0) {
+    console.log("[handleAgent] Nenhum agente encontrado - encerrando");
+    return;
+  }
+
+  // Procurar agente que tenha keyword correspondente
+  let selectedAgent: Agent | null = null;
+  const lowerBodyMessage = bodyMessage.toLowerCase();
+
+  console.log("[handleAgent] Procurando agente por keywords na mensagem:", lowerBodyMessage);
+
+  for (const agent of agents) {
+    if (agent.keywords && agent.keywords.length > 0) {
+      const hasKeyword = agent.keywords.some(keyword =>
+        lowerBodyMessage.includes(keyword.toLowerCase())
+      );
+      if (hasKeyword) {
+        selectedAgent = agent;
+        console.log("[handleAgent] Agente selecionado por keyword:", agent.name);
+        break;
+      }
+    }
+  }
+
+  // Se não encontrou por keyword, usar o primeiro agente ativo
+  if (!selectedAgent) {
+    selectedAgent = agents[0];
+    console.log("[handleAgent] Nenhuma keyword encontrada, usando primeiro agente:", selectedAgent.name);
+  }
+
+  // Buscar mensagens anteriores para contexto
+  const maxMessages = 10; // Limitar a 10 mensagens de histórico
+  const messages = await Message.findAll({
+    where: { ticketId: ticket.id },
+    order: [["createdAt", "DESC"]],
+    limit: maxMessages
+  });
+
+  // Construir prompt do sistema baseado nas configurações do agente
+  console.log("[handleAgent] ===== CONSTRUINDO PROMPT DO SISTEMA =====");
+  console.log("[handleAgent] Agente selecionado:", selectedAgent.name);
+  console.log("[handleAgent] - Function:", selectedAgent.function || "N/A");
+  console.log("[handleAgent] - Objective:", selectedAgent.objective || "N/A");
+  console.log("[handleAgent] - Backstory:", selectedAgent.backstory || "N/A");
+  console.log("[handleAgent] - Persona:", selectedAgent.persona || "N/A");
+  console.log("[handleAgent] - CustomInstructions:", selectedAgent.customInstructions || "N/A");
+  console.log("[handleAgent] - DoList:", selectedAgent.doList || []);
+  console.log("[handleAgent] - DontList:", selectedAgent.dontList || []);
+  console.log("[handleAgent] - AI Provider:", selectedAgent.aiProvider);
+
+  let systemPrompt = `Você é ${selectedAgent.name}.\n\n`;
+
+  if (selectedAgent.function) {
+    systemPrompt += `Função: ${selectedAgent.function}\n\n`;
+  }
+
+  if (selectedAgent.objective) {
+    systemPrompt += `Objetivo: ${selectedAgent.objective}\n\n`;
+  }
+
+  if (selectedAgent.backstory) {
+    systemPrompt += `História: ${selectedAgent.backstory}\n\n`;
+  }
+
+  if (selectedAgent.persona) {
+    systemPrompt += `Persona: ${selectedAgent.persona}\n\n`;
+  }
+
+  if (selectedAgent.customInstructions) {
+    systemPrompt += `Instruções personalizadas: ${selectedAgent.customInstructions}\n\n`;
+  }
+
+  if (selectedAgent.doList && selectedAgent.doList.length > 0) {
+    systemPrompt += `O que FAZER:\n`;
+    selectedAgent.doList.forEach(item => {
+      systemPrompt += `- ${item}\n`;
+    });
+    systemPrompt += `\n`;
+  }
+
+  if (selectedAgent.dontList && selectedAgent.dontList.length > 0) {
+    systemPrompt += `O que NÃO fazer:\n`;
+    selectedAgent.dontList.forEach(item => {
+      systemPrompt += `- ${item}\n`;
+    });
+    systemPrompt += `\n`;
+  }
+
+  systemPrompt += `Utilize o nome ${sanitizeName(
+    contact.name || "Amigo(a)"
+  )} para identificar o cliente.\n`;
+
+  console.log("[handleAgent] ===== PROMPT DO SISTEMA COMPLETO =====");
+  console.log(systemPrompt);
+  console.log("[handleAgent] ==========================================");
+
+  // Se for OpenAI
+  if (selectedAgent.aiProvider === "openai") {
+    // Buscar configuração do OpenAI (apiKey, etc)
+    let { prompt } = await ShowWhatsAppService(wbot.id, ticket.companyId);
+
+    if (!prompt) {
+      logger.info("OpenAI não configurado para este whatsapp");
+      return;
+    }
+
+    const configuration = new Configuration({
+      apiKey: prompt.apiKey
+    });
+    const openai = new OpenAIApi(configuration);
+
+    // Montar histórico de mensagens
+    let messagesOpenAi: ChatCompletionRequestMessage[] = [];
+    messagesOpenAi.push({ role: "system", content: systemPrompt });
+
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const message = messages[i];
+      if (
+        message.mediaType === "conversation" ||
+        message.mediaType === "extendedTextMessage"
+      ) {
+        if (message.fromMe) {
+          messagesOpenAi.push({ role: "assistant", content: message.body });
+        } else {
+          messagesOpenAi.push({ role: "user", content: message.body });
+        }
+      }
+    }
+    messagesOpenAi.push({ role: "user", content: bodyMessage });
+
+    try {
+      const chat = await openai.createChatCompletion({
+        model: prompt.model || "gpt-3.5-turbo",
+        messages: messagesOpenAi,
+        max_tokens: prompt.maxTokens || 500,
+        temperature: prompt.temperature || 0.7
+      });
+
+      let response = chat.data.choices[0].message?.content;
+
+      if (response) {
+        const sentMessage = await wbot.sendMessage(msg.key.remoteJid!, {
+          text: response
+        });
+        await verifyMessage(sentMessage!, ticket, contact);
+
+        // Marcar ticket com o agentId usado
+        await ticket.update({
+          agentId: selectedAgent.id
+        });
+      }
+    } catch (error) {
+      logger.error(`Erro ao processar com OpenAI: ${error}`);
+    }
+  } else if (selectedAgent.aiProvider === "crewai") {
+    logger.info("CrewAI provider selecionado - chamando API CrewAI");
+
+    try {
+      const axios = require("axios");
+
+      // Salvar mensagem do usuário no Firestore
+      await conversationMemoryService.saveMessage(
+        ticket.companyId,
+        contact.number,
+        bodyMessage,
+        'user'
+      );
+
+      // Buscar histórico do Firestore (últimas 10 mensagens)
+      const firestoreMessages = await conversationMemoryService.getRecentMessages(
+        ticket.companyId,
+        contact.number,
+        10
+      );
+
+      // Formatar mensagens para o CrewAI
+      const conversationHistory = conversationMemoryService.formatMessagesForCrewAI(firestoreMessages);
+
+      // Buscar dados da equipe com agentes
+      const team = await Team.findOne({
+        where: { id: whatsapp.teamId, companyId: ticket.companyId },
+        include: [
+          {
+            model: Agent,
+            as: "agents",
+            where: { isActive: true },
+            required: false
+          }
+        ]
+      });
+
+      if (!team) {
+        logger.error(`Equipe ${whatsapp.teamId} não encontrada para empresa ${ticket.companyId}`);
+        throw new Error("Equipe não encontrada");
+      }
+
+      // Preparar dados da equipe para enviar (incluindo configurações avançadas)
+      const teamData = {
+        id: team.id,
+        name: team.name,
+        description: team.description,
+        industry: team.industry,
+        // Configurações avançadas CrewAI
+        processType: team.processType || 'sequential',
+        managerLLM: team.managerLLM || null,
+        temperature: team.temperature !== undefined ? team.temperature : 0.7,
+        verbose: team.verbose !== undefined ? team.verbose : true,
+        managerAgentId: team.managerAgentId || null,
+        // Agentes
+        agents: team.agents.map((agent: any) => ({
+          id: agent.id,
+          name: agent.name,
+          function: agent.function,
+          objective: agent.objective,
+          backstory: agent.backstory,
+          keywords: agent.keywords || [],
+          customInstructions: agent.customInstructions,
+          persona: agent.persona,
+          doList: agent.doList || [],
+          dontList: agent.dontList || [],
+          isActive: agent.isActive
+        }))
+      };
+
+      console.log(`[handleAgent] Equipe carregada: ${team.name} com ${teamData.agents.length} agentes`);
+
+      // Payload para o serviço CrewAI
+      const crewAIPayload = {
+        tenantId: String(ticket.companyId),
+        crewId: String(whatsapp.teamId),
+        message: bodyMessage,
+        conversationHistory: conversationHistory,
+        teamData: teamData,
+        agentOverride: null,
+        remoteJid: msg.key.remoteJid,
+        contactId: contact.id,
+        ticketId: ticket.id
+      };
+
+      console.log("[handleAgent] Enviando para CrewAI API:", JSON.stringify(crewAIPayload, null, 2));
+
+      // Chamar API CrewAI (rodando na porta 8001)
+      const crewAIResponse = await axios.post(
+        "http://localhost:8001/api/v2/process-message",
+        crewAIPayload,
+        {
+          headers: { "Content-Type": "application/json" },
+          timeout: 60000
+        }
+      );
+
+      console.log("[handleAgent] Resposta do CrewAI:", crewAIResponse.data);
+
+      const response = crewAIResponse.data.response;
+
+      if (response) {
+        // Salvar resposta do agente no Firestore
+        await conversationMemoryService.saveMessage(
+          ticket.companyId,
+          contact.number,
+          response,
+          'agent'
+        );
+
+        // Verificar e gerar resumo se necessário (a cada 20 mensagens)
+        await conversationMemoryService.checkAndGenerateSummary(
+          ticket.companyId,
+          contact.number
+        );
+
+        const sentMessage = await wbot.sendMessage(msg.key.remoteJid!, {
+          text: response
+        });
+        await verifyMessage(sentMessage!, ticket, contact);
+
+        // Marcar ticket com o agentId usado
+        await ticket.update({
+          agentId: selectedAgent.id
+        });
+
+        console.log("[handleAgent] Resposta enviada com sucesso ao cliente");
+        console.log("[handleAgent] Agente usado:", crewAIResponse.data.agent_name || "N/A");
+        console.log("[handleAgent] Tempo de processamento:", crewAIResponse.data.processing_time || "N/A");
+      } else {
+        logger.error("CrewAI não retornou resposta válida");
+      }
+    } catch (error: any) {
+      logger.error(`Erro ao processar com CrewAI: ${error.message}`);
+      console.error("[handleAgent] Erro completo:", error.response?.data || error);
+
+      // Marcar ticket mesmo com erro
+      await ticket.update({
+        agentId: selectedAgent.id
+      });
+    }
+  }
 };
 
 export const transferQueue = async (
@@ -2615,7 +2971,28 @@ const handleMessage = async (
       !ticket.userId &&
       !isNil(whatsapp.promptId)
     ) {
+      console.log("[wbotMessageListener] ===== OPENAI NA CONEXÃO =====");
+      console.log("[wbotMessageListener] Ticket ID:", ticket.id);
+      console.log("[wbotMessageListener] WhatsApp ID:", whatsapp.id);
+      console.log("[wbotMessageListener] Prompt ID:", whatsapp.promptId);
       await handleOpenAi(msg, wbot, ticket, contact, mediaSent);
+    }
+
+    //equipe crewai na conexao
+    if (
+      !ticket.queue &&
+      !isGroup &&
+      !msg.key.fromMe &&
+      !ticket.userId &&
+      !isNil(whatsapp.teamId)
+    ) {
+      console.log("[wbotMessageListener] ===== EQUIPE CREWAI NA CONEXÃO =====");
+      console.log("[wbotMessageListener] Ticket ID:", ticket.id);
+      console.log("[wbotMessageListener] WhatsApp ID:", whatsapp.id);
+      console.log("[wbotMessageListener] Team ID:", whatsapp.teamId);
+      console.log("[wbotMessageListener] Chamando handleAgent...");
+      await handleAgent(msg, wbot, ticket, contact, mediaSent);
+      return;
     }
 
     //integraçao na conexao

@@ -142,11 +142,17 @@ const useAuth = () => {
 
     try {
       const { data } = await api.post("/auth/login", userData);
+      console.log("Login response:", data);
+
+      if (!data || !data.user) {
+        throw new Error("Resposta de login inválida");
+      }
+
       const {
         user: { companyId, id, company },
       } = data;
 
-      if (has(company, "settings") && isArray(company.settings)) {
+      if (company && has(company, "settings") && isArray(company.settings)) {
         const setting = company.settings.find(
           (s) => s.key === "campaignsEnabled"
         );
@@ -156,7 +162,14 @@ const useAuth = () => {
       }
 
       moment.locale("pt-br");
-      const dueDate = data.user.company.dueDate;
+      const dueDate = data.user.company && data.user.company.dueDate ? data.user.company.dueDate : null;
+
+      if (!dueDate) {
+        toastError("Erro: Data de vencimento não encontrada");
+        setLoading(false);
+        return;
+      }
+
       const hoje = moment(moment()).format("DD/MM/yyyy");
       const vencimento = moment(dueDate).format("DD/MM/yyyy");
 
@@ -191,6 +204,8 @@ Entre em contato com o Suporte para mais informações! `);
 
       //quebra linha
     } catch (err) {
+      console.error("Login error:", err);
+      console.error("Error response:", err.response);
       toastError(err);
       setLoading(false);
     }
