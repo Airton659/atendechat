@@ -78,7 +78,17 @@ export const show = async (req: Request, res: Response): Promise<Response> => {
 export const update = async (req: Request, res: Response): Promise<Response> => {
   const { id } = req.params;
   const { companyId } = req.user;
-  const { name, description, industry, isActive } = req.body;
+  const {
+    name,
+    description,
+    industry,
+    isActive,
+    processType,
+    managerLLM,
+    temperature,
+    verbose,
+    managerAgentId
+  } = req.body;
 
   const team = await Team.findOne({
     where: { id: parseInt(id), companyId }
@@ -88,11 +98,30 @@ export const update = async (req: Request, res: Response): Promise<Response> => 
     throw new AppError("Equipe não encontrada", 404);
   }
 
+  // Validar temperature se fornecido
+  if (temperature !== undefined) {
+    if (temperature < 0 || temperature > 2) {
+      throw new AppError("Temperature deve estar entre 0 e 2", 400);
+    }
+  }
+
+  // Validar processType se fornecido
+  if (processType !== undefined) {
+    if (!["sequential", "hierarchical"].includes(processType)) {
+      throw new AppError("processType deve ser 'sequential' ou 'hierarchical'", 400);
+    }
+  }
+
   await team.update({
     name: name || team.name,
     description: description !== undefined ? description : team.description,
     industry: industry || team.industry,
-    isActive: isActive !== undefined ? isActive : team.isActive
+    isActive: isActive !== undefined ? isActive : team.isActive,
+    processType: processType || team.processType,
+    managerLLM: managerLLM !== undefined ? managerLLM : team.managerLLM,
+    temperature: temperature !== undefined ? temperature : team.temperature,
+    verbose: verbose !== undefined ? verbose : team.verbose,
+    managerAgentId: managerAgentId !== undefined ? managerAgentId : team.managerAgentId
   });
 
   return res.status(200).json(team);
@@ -156,7 +185,7 @@ export const generateTeam = async (req: Request, res: Response): Promise<Respons
 
     // Criar a equipe
     const team = await Team.create({
-      name: teamName || `Equipe ${industry || "Geral"}`,
+      name: data.teamName || teamName || `Equipe ${industry || "Geral"}`,
       description: businessDescription.substring(0, 500),
       industry: industry || "other",
       isActive: true,

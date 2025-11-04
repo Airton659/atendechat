@@ -53,6 +53,46 @@ class Team extends Model<Team> {
   })
   generatedBy: "manual" | "architect";
 
+  // Configurações avançadas CrewAI
+  @Column({
+    type: DataType.ENUM("sequential", "hierarchical"),
+    allowNull: false,
+    defaultValue: "sequential"
+  })
+  processType: "sequential" | "hierarchical";
+
+  @Column({
+    type: DataType.STRING,
+    allowNull: true,
+    comment: "LLM usado pelo manager no modo hierarchical (ex: gemini-2.0-flash-lite)"
+  })
+  managerLLM: string;
+
+  @Column({
+    type: DataType.FLOAT,
+    allowNull: false,
+    defaultValue: 0.7,
+    validate: {
+      min: 0,
+      max: 2
+    }
+  })
+  temperature: number;
+
+  @Column({
+    type: DataType.BOOLEAN,
+    allowNull: false,
+    defaultValue: true
+  })
+  verbose: boolean;
+
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: true,
+    comment: "Agente ID que atua como manager no modo hierarchical"
+  })
+  managerAgentId: number;
+
   @ForeignKey(() => Company)
   @Column
   companyId: number;

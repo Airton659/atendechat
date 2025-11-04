@@ -21,6 +21,10 @@ import {
   Select,
   Chip,
   Typography,
+  Checkbox,
+  FormControlLabel,
+  FormGroup,
+  FormLabel,
 } from "@material-ui/core";
 import { Add, Delete } from "@material-ui/icons";
 
@@ -82,9 +86,12 @@ const AgentModal = ({ open, onClose, agentId, teamId }) => {
     aiProvider: "crewai",
     isActive: true,
     teamId: teamId || null,
+    useKnowledgeBase: false,
+    knowledgeBaseIds: [],
   };
 
   const [agent, setAgent] = useState(initialState);
+  const [knowledgeBases, setKnowledgeBases] = useState([]);
 
   useEffect(() => {
     const fetchAgent = async () => {
@@ -108,6 +115,8 @@ const AgentModal = ({ open, onClose, agentId, teamId }) => {
           aiProvider: data.aiProvider || "crewai",
           isActive: data.isActive,
           teamId: data.teamId || teamId || null,
+          useKnowledgeBase: data.useKnowledgeBase || false,
+          knowledgeBaseIds: data.knowledgeBases?.map(kb => kb.id) || [],
         });
       } catch (err) {
         toastError(err);
@@ -115,6 +124,21 @@ const AgentModal = ({ open, onClose, agentId, teamId }) => {
     };
     fetchAgent();
   }, [agentId, teamId, open]);
+
+  useEffect(() => {
+    const fetchKnowledgeBases = async () => {
+      if (!teamId) return;
+      try {
+        const { data } = await api.get(`/teams/${teamId}/knowledge`);
+        setKnowledgeBases(data.knowledgeBases || []);
+      } catch (err) {
+        console.error("Erro ao carregar knowledge bases:", err);
+      }
+    };
+    if (open) {
+      fetchKnowledgeBases();
+    }
+  }, [teamId, open]);
 
   const handleClose = () => {
     setAgent(initialState);
@@ -333,6 +357,67 @@ const AgentModal = ({ open, onClose, agentId, teamId }) => {
                       )}
                     </FieldArray>
                   </Grid>
+
+                  {/* Knowledge Base Configuration */}
+                  {knowledgeBases.length > 0 && (
+                    <Grid item xs={12}>
+                      <Typography variant="subtitle2" gutterBottom style={{ marginTop: 16 }}>
+                        Base de Conhecimento
+                      </Typography>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={values.useKnowledgeBase}
+                            onChange={(e) => {
+                              setFieldValue("useKnowledgeBase", e.target.checked);
+                              if (!e.target.checked) {
+                                setFieldValue("knowledgeBaseIds", []);
+                              }
+                            }}
+                            color="primary"
+                          />
+                        }
+                        label="Usar Base de Conhecimento"
+                      />
+                      {values.useKnowledgeBase && (
+                        <FormGroup style={{ marginLeft: 32, marginTop: 8 }}>
+                          <FormLabel component="legend" style={{ fontSize: 14, marginBottom: 8 }}>
+                            Selecione os documentos que este agente pode consultar:
+                          </FormLabel>
+                          {knowledgeBases.map((kb) => (
+                            <FormControlLabel
+                              key={kb.id}
+                              control={
+                                <Checkbox
+                                  checked={values.knowledgeBaseIds.includes(kb.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setFieldValue("knowledgeBaseIds", [
+                                        ...values.knowledgeBaseIds,
+                                        kb.id,
+                                      ]);
+                                    } else {
+                                      setFieldValue(
+                                        "knowledgeBaseIds",
+                                        values.knowledgeBaseIds.filter((id) => id !== kb.id)
+                                      );
+                                    }
+                                  }}
+                                  color="primary"
+                                  size="small"
+                                />
+                              }
+                              label={
+                                <span style={{ fontSize: 14 }}>
+                                  {kb.filename} ({kb.fileType.toUpperCase()} - {kb.chunksCount} chunks)
+                                </span>
+                              }
+                            />
+                          ))}
+                        </FormGroup>
+                      )}
+                    </Grid>
+                  )}
                 </Grid>
               </DialogContent>
               <DialogActions>

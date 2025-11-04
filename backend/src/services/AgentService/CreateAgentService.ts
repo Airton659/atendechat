@@ -1,6 +1,7 @@
 import * as Yup from "yup";
 import AppError from "../../errors/AppError";
 import Agent from "../../models/Agent";
+import AgentKnowledgeBase from "../../models/AgentKnowledgeBase";
 
 interface AgentData {
   name: string;
@@ -16,6 +17,8 @@ interface AgentData {
   isActive?: boolean;
   companyId: number;
   teamId?: number;
+  useKnowledgeBase?: boolean;
+  knowledgeBaseIds?: number[];
 }
 
 const CreateAgentService = async (agentData: AgentData): Promise<Agent> => {
@@ -53,8 +56,18 @@ const CreateAgentService = async (agentData: AgentData): Promise<Agent> => {
     aiProvider: agentData.aiProvider,
     isActive: agentData.isActive !== undefined ? agentData.isActive : true,
     companyId: agentData.companyId,
-    teamId: agentData.teamId || null
+    teamId: agentData.teamId || null,
+    useKnowledgeBase: agentData.useKnowledgeBase || false
   });
+
+  // Criar relacionamentos com Knowledge Base
+  if (agentData.knowledgeBaseIds && agentData.knowledgeBaseIds.length > 0) {
+    const relations = agentData.knowledgeBaseIds.map(kbId => ({
+      agentId: agent.id,
+      knowledgeBaseId: kbId
+    }));
+    await AgentKnowledgeBase.bulkCreate(relations);
+  }
 
   return agent;
 };

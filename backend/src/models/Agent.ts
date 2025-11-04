@@ -8,10 +8,13 @@ import {
   AutoIncrement,
   ForeignKey,
   BelongsTo,
+  BelongsToMany,
   DataType,
   Default
 } from "sequelize-typescript";
 import Company from "./Company";
+import KnowledgeBase from "./KnowledgeBase";
+import AgentKnowledgeBase from "./AgentKnowledgeBase";
 
 @Table
 class Agent extends Model<Agent> {
@@ -55,6 +58,10 @@ class Agent extends Model<Agent> {
   @Column
   isActive: boolean;
 
+  @Default(false)
+  @Column
+  useKnowledgeBase: boolean;
+
   @ForeignKey(() => Company)
   @Column
   companyId: number;
@@ -68,6 +75,9 @@ class Agent extends Model<Agent> {
 
   @BelongsTo(() => require("./Team").default)
   team: any;
+
+  @BelongsToMany(() => KnowledgeBase, () => AgentKnowledgeBase)
+  knowledgeBases: KnowledgeBase[];
 
   @CreatedAt
   createdAt: Date;

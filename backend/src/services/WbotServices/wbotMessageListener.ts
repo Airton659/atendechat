@@ -21,6 +21,7 @@ import Contact from "../../models/Contact";
 import Ticket from "../../models/Ticket";
 import Message from "../../models/Message";
 import Agent from "../../models/Agent";
+import Team from "../../models/Team";
 
 import { getIO } from "../../libs/socket";
 import CreateMessageService from "../MessageServices/CreateMessageService";
@@ -47,6 +48,7 @@ import User from "../../models/User";
 import Setting from "../../models/Setting";
 import { cacheLayer } from "../../libs/cache";
 import { provider } from "./providers";
+import conversationMemoryService from "../ConversationMemoryService";
 import { debounce } from "../../helpers/Debounce";
 import { ChatCompletionRequestMessage, Configuration, OpenAIApi } from "openai";
 import ffmpeg from "fluent-ffmpeg";
@@ -1067,13 +1069,146 @@ const handleAgent = async (
       logger.error(`Erro ao processar com OpenAI: ${error}`);
     }
   } else if (selectedAgent.aiProvider === "crewai") {
-    // TODO: Implementar integração com CrewAI
-    logger.info("CrewAI provider selecionado - implementação futura");
+    logger.info("CrewAI provider selecionado - chamando API CrewAI");
 
-    // Marcar ticket com o agentId usado
-    await ticket.update({
-      agentId: selectedAgent.id
-    });
+    try {
+      const axios = require("axios");
+
+      // Salvar mensagem do usuário no Firestore
+      await conversationMemoryService.saveMessage(
+        ticket.companyId,
+        contact.number,
+        bodyMessage,
+        'user'
+      );
+
+      // Buscar histórico do Firestore (últimas 10 mensagens)
+      const firestoreMessages = await conversationMemoryService.getRecentMessages(
+        ticket.companyId,
+        contact.number,
+        10
+      );
+
+      // Formatar mensagens para o CrewAI
+      const conversationHistory = conversationMemoryService.formatMessagesForCrewAI(firestoreMessages);
+
+      // Buscar dados da equipe com agentes
+      const team = await Team.findOne({
+        where: { id: whatsapp.teamId, companyId: ticket.companyId },
+        include: [
+          {
+            model: Agent,
+            as: "agents",
+            where: { isActive: true },
+            required: false
+          }
+        ]
+      });
+
+      if (!team) {
+        logger.error(`Equipe ${whatsapp.teamId} não encontrada para empresa ${ticket.companyId}`);
+        throw new Error("Equipe não encontrada");
+      }
+
+      // Preparar dados da equipe para enviar (incluindo configurações avançadas)
+      const teamData = {
+        id: team.id,
+        name: team.name,
+        description: team.description,
+        industry: team.industry,
+        // Configurações avançadas CrewAI
+        processType: team.processType || 'sequential',
+        managerLLM: team.managerLLM || null,
+        temperature: team.temperature !== undefined ? team.temperature : 0.7,
+        verbose: team.verbose !== undefined ? team.verbose : true,
+        managerAgentId: team.managerAgentId || null,
+        // Agentes
+        agents: team.agents.map((agent: any) => ({
+          id: agent.id,
+          name: agent.name,
+          function: agent.function,
+          objective: agent.objective,
+          backstory: agent.backstory,
+          keywords: agent.keywords || [],
+          customInstructions: agent.customInstructions,
+          persona: agent.persona,
+          doList: agent.doList || [],
+          dontList: agent.dontList || [],
+          isActive: agent.isActive
+        }))
+      };
+
+      console.log(`[handleAgent] Equipe carregada: ${team.name} com ${teamData.agents.length} agentes`);
+
+      // Payload para o serviço CrewAI
+      const crewAIPayload = {
+        tenantId: String(ticket.companyId),
+        crewId: String(whatsapp.teamId),
+        message: bodyMessage,
+        conversationHistory: conversationHistory,
+        teamData: teamData,
+        agentOverride: null,
+        remoteJid: msg.key.remoteJid,
+        contactId: contact.id,
+        ticketId: ticket.id
+      };
+
+      console.log("[handleAgent] Enviando para CrewAI API:", JSON.stringify(crewAIPayload, null, 2));
+
+      // Chamar API CrewAI (rodando na porta 8001)
+      const crewAIResponse = await axios.post(
+        "http://localhost:8001/api/v2/process-message",
+        crewAIPayload,
+        {
+          headers: { "Content-Type": "application/json" },
+          timeout: 60000
+        }
+      );
+
+      console.log("[handleAgent] Resposta do CrewAI:", crewAIResponse.data);
+
+      const response = crewAIResponse.data.response;
+
+      if (response) {
+        // Salvar resposta do agente no Firestore
+        await conversationMemoryService.saveMessage(
+          ticket.companyId,
+          contact.number,
+          response,
+          'agent'
+        );
+
+        // Verificar e gerar resumo se necessário (a cada 20 mensagens)
+        await conversationMemoryService.checkAndGenerateSummary(
+          ticket.companyId,
+          contact.number
+        );
+
+        const sentMessage = await wbot.sendMessage(msg.key.remoteJid!, {
+          text: response
+        });
+        await verifyMessage(sentMessage!, ticket, contact);
+
+        // Marcar ticket com o agentId usado
+        await ticket.update({
+          agentId: selectedAgent.id
+        });
+
+        console.log("[handleAgent] Resposta enviada com sucesso ao cliente");
+        console.log("[handleAgent] Agente usado:", crewAIResponse.data.agent_name || "N/A");
+        console.log("[handleAgent] Tempo de processamento:", crewAIResponse.data.processing_time || "N/A");
+      } else {
+        logger.error("CrewAI não retornou resposta válida");
+      }
+    } catch (error: any) {
+      logger.error(`Erro ao processar com CrewAI: ${error.message}`);
+      console.error("[handleAgent] Erro completo:", error.response?.data || error);
+
+      // Marcar ticket mesmo com erro
+      await ticket.update({
+        agentId: selectedAgent.id
+      });
+    }
   }
 };
 

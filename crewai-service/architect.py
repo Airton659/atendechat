@@ -1,17 +1,17 @@
-# crewai-service/architect.py - Agente Arquiteto para Geração Automática de Agentes
+# architect.py - Agente Arquiteto usando Vertex AI para gerar equipes
 
 import vertexai
 from vertexai.generative_models import GenerativeModel
 import json
 import os
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 from dataclasses import dataclass
 
 @dataclass
 class BusinessContext:
     description: str
     industry: str
-    size: str = "pequeno"  # pequeno, médio, grande
+    size: str = "médio"
     target_audience: str = ""
     main_goals: List[str] = None
 
@@ -21,243 +21,168 @@ class BusinessContext:
 
 class ArchitectAgent:
     """
-    Agente Arquiteto responsável por analisar a descrição do negócio
-    e gerar automaticamente agentes de IA personalizados.
+    Agente Arquiteto que usa Vertex AI para gerar equipes personalizadas
     """
 
     def __init__(self):
-        self.model_name = os.getenv("VERTEX_MODEL", "gemini-2.5-flash-lite")
-        self.model = GenerativeModel(self.model_name)
+        self.model_name = "gemini-2.0-flash-lite"
+        try:
+            self.model = GenerativeModel(self.model_name)
+            print(f"✅ Architect Agent inicializado com modelo: {self.model_name}")
+        except Exception as e:
+            print(f"⚠️ Erro ao inicializar modelo Vertex AI: {e}")
+            self.model = None
 
-        # Templates base para diferentes setores
-        self.industry_templates = {
-            "ecommerce": {
-                "agents": ["triagem", "vendas", "suporte", "pos_venda"],
-                "focus": "vendas online e suporte ao cliente",
-                "tone": "professional"
-            },
-            "services": {
-                "agents": ["triagem", "orcamento", "agendamento", "suporte"],
-                "focus": "orçamentos e agendamento de serviços",
-                "tone": "professional"
-            },
-            "technology": {
-                "agents": ["triagem", "suporte_tecnico", "vendas", "desenvolvimento"],
-                "focus": "suporte técnico e vendas de soluções",
-                "tone": "technical"
-            },
-            "health": {
-                "agents": ["triagem", "agendamento", "suporte", "emergencia"],
-                "focus": "agendamento de consultas e suporte médico",
-                "tone": "professional"
-            },
-            "education": {
-                "agents": ["triagem", "informacoes", "matriculas", "suporte"],
-                "focus": "informações sobre cursos e matrículas",
-                "tone": "friendly"
-            },
-            "finance": {
-                "agents": ["triagem", "consultoria", "suporte", "cobranca"],
-                "focus": "consultoria financeira e suporte",
-                "tone": "professional"
-            },
-            "retail": {
-                "agents": ["triagem", "vendas", "estoque", "suporte"],
-                "focus": "vendas e gestão de estoque",
-                "tone": "friendly"
-            },
-            "real_estate": {
-                "agents": ["triagem", "vendas", "agendamento", "suporte"],
-                "focus": "qualificação de leads e agendamento de visitas",
-                "tone": "professional"
-            },
-            "other": {
-                "agents": ["triagem", "atendimento", "suporte"],
-                "focus": "atendimento geral ao cliente",
-                "tone": "friendly"
-            }
+    def generate_team_name(self, business_context: BusinessContext) -> str:
+        """Gera um nome criativo para a equipe baseado no negócio"""
+
+        if not self.model:
+            return "Equipe de Atendimento"
+
+        prompt = f"""
+Crie um nome criativo e profissional para uma equipe de atendimento via WhatsApp.
+
+Descrição do negócio: {business_context.description}
+Setor: {business_context.industry}
+
+Retorne APENAS o nome da equipe, sem explicações. Exemplos de bons nomes:
+- "Equipe Saúde Premium"
+- "Time Atendimento Imobiliário"
+- "Assistentes Clínica Veterinária"
+- "Equipe Suporte Tech"
+
+Nome da equipe:"""
+
+        try:
+            response = self.model.generate_content(
+                prompt,
+                generation_config={
+                    "temperature": 0.8,
+                    "max_output_tokens": 50,
+                }
+            )
+            
+            team_name = response.text.strip()
+            # Remover aspas se houver
+            team_name = team_name.strip('"').strip("'")
+            return team_name
+
+        except Exception as e:
+            print(f"[Architect AI] Erro ao gerar nome: {e}")
+            return "Equipe de Atendimento"
+
+    def generate_team_blueprint(self, business_context: BusinessContext) -> Dict[str, Any]:
+        """Gera blueprint da equipe usando IA"""
+
+        if not self.model:
+            print("⚠️ Modelo não disponível, retornando equipe padrão")
+            return self._generate_fallback_team(business_context)
+
+        prompt = f"""
+Você é um especialista em criação de equipes de atendimento via WhatsApp.
+
+Contexto do Negócio:
+- Descrição: {business_context.description}
+- Setor: {business_context.industry}
+
+Crie uma equipe de 3 a 5 agentes especializados para este negócio.
+
+IMPORTANTE: Retorne EXATAMENTE neste formato JSON (sem markdown, sem ```json):
+
+{{
+  "agents": [
+    {{
+      "name": "Nome do Agente",
+      "function": "Função/Papel do agente",
+      "objective": "Objetivo claro e específico",
+      "backstory": "História e experiência do agente em 2-3 frases",
+      "keywords": ["palavra1", "palavra2", "palavra3"],
+      "customInstructions": "Instruções específicas de como deve atender",
+      "persona": "Descrição da personalidade (profissional/amigável/técnico)",
+      "doList": ["Faça isso", "Faça aquilo"],
+      "dontList": ["Não faça isso", "Não faça aquilo"],
+      "isActive": true
+    }}
+  ],
+  "customTools": []
+}}
+
+Crie agentes relevantes para o setor. Cada agente deve ter palavras-chave específicas que acionam sua atuação.
+Por exemplo: agente de vendas tem palavras como "preço", "comprar", "orçamento".
+"""
+
+        try:
+            print(f"[Architect AI] Gerando equipe com IA para: {business_context.industry}")
+
+            response = self.model.generate_content(
+                prompt,
+                generation_config={
+                    "temperature": 0.7,
+                    "max_output_tokens": 2048,
+                }
+            )
+
+            # Extrair JSON da resposta
+            response_text = response.text.strip()
+
+            # Remover markdown se houver
+            if "```json" in response_text:
+                response_text = response_text.split("```json")[1].split("```")[0].strip()
+            elif "```" in response_text:
+                response_text = response_text.split("```")[1].split("```")[0].strip()
+
+            blueprint = json.loads(response_text)
+
+            print(f"[Architect AI] ✅ Gerados {len(blueprint.get('agents', []))} agentes com IA")
+
+            return blueprint
+
+        except Exception as e:
+            print(f"[Architect AI] ❌ Erro ao gerar com IA: {e}")
+            print(f"[Architect AI] Usando equipe padrão como fallback")
+            return self._generate_fallback_team(business_context)
+
+    def _generate_fallback_team(self, business_context: BusinessContext) -> Dict[str, Any]:
+        """Gera equipe padrão caso a IA falhe"""
+        
+        return {
+            "agents": [
+                {
+                    "name": "Assistente de Atendimento",
+                    "function": "Assistente de Atendimento Geral",
+                    "objective": "Fornecer atendimento inicial e direcionar clientes",
+                    "backstory": "Sou especialista em atendimento ao cliente com foco em resolver dúvidas rapidamente.",
+                    "keywords": ["olá", "oi", "ajuda", "informação", "dúvida"],
+                    "customInstructions": "Seja cordial e prestativo. Identifique a necessidade do cliente.",
+                    "persona": "Profissional e amigável",
+                    "doList": ["Cumprimentar cordialmente", "Identificar necessidades", "Direcionar adequadamente"],
+                    "dontList": ["Ser impaciente", "Dar informações incorretas"],
+                    "isActive": True
+                },
+                {
+                    "name": "Agente de Suporte",
+                    "function": "Especialista em Suporte",
+                    "objective": "Resolver problemas e dúvidas técnicas",
+                    "backstory": "Tenho vasta experiência em resolver problemas e ajudar clientes a superarem desafios.",
+                    "keywords": ["problema", "erro", "não funciona", "ajuda", "suporte"],
+                    "customInstructions": "Seja paciente e metódico ao resolver problemas.",
+                    "persona": "Técnico e paciente",
+                    "doList": ["Investigar o problema", "Oferecer soluções", "Testar resoluções"],
+                    "dontList": ["Culpar o cliente", "Desistir facilmente"],
+                    "isActive": True
+                }
+            ],
+            "customTools": []
         }
 
-    def analyze_business(self, description: str, industry: str = "") -> BusinessContext:
-        """Analisa a descrição do negócio e extrai contexto estruturado"""
+    def suggest_improvements(self, current_blueprint: Dict[str, Any], performance_data: Dict[str, Any] = None) -> List[str]:
+        """Sugere melhorias para o blueprint atual"""
 
-        # Se a indústria já foi fornecida, usar ela
-        if industry and industry in self.industry_templates:
-            return BusinessContext(
-                description=description,
-                industry=industry,
-                size="médio",
-                target_audience="clientes",
-                main_goals=["atendimento eficiente", "satisfação do cliente"]
-            )
-
-        prompt = f"""
-        Analise a seguinte descrição de negócio e extraia informações estruturadas:
-
-        Descrição: "{description}"
-
-        Retorne um JSON com:
-        {{
-            "industry": "categoria do setor (ecommerce, services, technology, health, education, finance, retail, real_estate, other)",
-            "size": "tamanho estimado (pequeno, médio, grande)",
-            "target_audience": "público-alvo principal",
-            "main_goals": ["objetivo1", "objetivo2", "objetivo3"],
-            "key_services": ["serviço1", "serviço2"],
-            "complexity_level": "simples, médio ou complexo"
-        }}
-
-        Seja preciso e conciso.
-        """
-
-        try:
-            response = self.model.generate_content(prompt)
-
-            # Limpar resposta (remover markdown se houver)
-            cleaned_json_str = response.text.strip()
-            if cleaned_json_str.startswith("```json"):
-                cleaned_json_str = cleaned_json_str[7:-3].strip()
-            elif cleaned_json_str.startswith("```"):
-                cleaned_json_str = cleaned_json_str[3:-3].strip()
-
-            analysis = json.loads(cleaned_json_str)
-
-            return BusinessContext(
-                description=description,
-                industry=analysis.get("industry", "other"),
-                size=analysis.get("size", "pequeno"),
-                target_audience=analysis.get("target_audience", ""),
-                main_goals=analysis.get("main_goals", [])
-            )
-        except Exception as e:
-            print(f"Erro na análise do negócio: {e}")
-            return BusinessContext(description=description, industry=industry or "other")
-
-    def generate_agents_blueprint(self, business_context: BusinessContext) -> List[Dict[str, Any]]:
-        """Gera blueprint de agentes baseado no contexto do negócio"""
-
-        prompt = f"""
-        Você é um especialista em criação de agentes de IA para atendimento automatizado via WhatsApp.
-
-        Contexto do Negócio:
-        - Descrição: {business_context.description}
-        - Setor: {business_context.industry}
-        - Público-alvo: {business_context.target_audience}
-        - Objetivos: {', '.join(business_context.main_goals)}
-
-        Crie uma lista de 3-5 agentes de IA especializados para este negócio. Retorne um JSON com esta estrutura:
-
-        {{
-            "agents": [
-                {{
-                    "name": "Nome do Agente",
-                    "function": "função/papel específico (role)",
-                    "objective": "objetivo claro e específico (goal)",
-                    "backstory": "história/experiência do agente em até 200 caracteres",
-                    "keywords": ["palavra1", "palavra2", "palavra3"],
-                    "customInstructions": "instruções específicas de comportamento",
-                    "persona": "descrição da personalidade",
-                    "doList": ["ação1 que o agente DEVE fazer", "ação2"],
-                    "dontList": ["ação1 que o agente NÃO DEVE fazer", "ação2"],
-                    "isActive": true
-                }}
-            ]
-        }}
-
-        Diretrizes IMPORTANTES:
-        1. Crie exatamente 3-5 agentes especializados
-        2. Sempre inclua um agente de triagem/atendimento inicial
-        3. Use português brasileiro
-        4. Seja específico e detalhado
-        5. Keywords devem ser palavras-chave que ativam o agente (ex: "orçamento", "preço", "valor")
-        6. customInstructions deve ter instruções claras de como o agente deve se comportar
-        7. doList: lista de ações que o agente DEVE fazer
-        8. dontList: lista de ações que o agente NÃO DEVE fazer
-        9. Adapte o tom para o setor: profissional para saúde/finanças, amigável para educação/varejo
-
-        Retorne APENAS o JSON válido, sem explicações ou markdown.
-        """
-
-        try:
-            response = self.model.generate_content(prompt)
-
-            if not response.text or not response.text.strip():
-                raise ValueError("A resposta do modelo de IA veio vazia.")
-
-            # Limpar resposta (remover markdown se houver)
-            cleaned_json_str = response.text.strip()
-            if cleaned_json_str.startswith("```json"):
-                cleaned_json_str = cleaned_json_str[7:-3].strip()
-            elif cleaned_json_str.startswith("```"):
-                cleaned_json_str = cleaned_json_str[3:-3].strip()
-
-            blueprint = json.loads(cleaned_json_str)
-
-            # Validar e garantir que temos a lista de agentes
-            agents = blueprint.get("agents", [])
-
-            if not agents:
-                raise ValueError("Nenhum agente foi gerado")
-
-            # Validar cada agente
-            for agent in agents:
-                if not agent.get("name"):
-                    agent["name"] = "Agente sem nome"
-                if not agent.get("function"):
-                    agent["function"] = "Agente geral"
-                if not agent.get("objective"):
-                    agent["objective"] = "Auxiliar o cliente"
-                if not agent.get("backstory"):
-                    agent["backstory"] = "Assistente virtual experiente"
-                if not agent.get("keywords"):
-                    agent["keywords"] = []
-                if not agent.get("customInstructions"):
-                    agent["customInstructions"] = "Seja sempre educado e prestativo"
-                if not agent.get("persona"):
-                    agent["persona"] = "Profissional e atencioso"
-                if not agent.get("doList"):
-                    agent["doList"] = ["Ser educado", "Ajudar o cliente"]
-                if not agent.get("dontList"):
-                    agent["dontList"] = ["Ser grosseiro", "Ignorar dúvidas"]
-                if "isActive" not in agent:
-                    agent["isActive"] = True
-
-            return agents
-
-        except json.JSONDecodeError as json_error:
-            print(f"Erro de decodificação JSON: {json_error}")
-            print(f"Resposta recebida: {response.text}")
-            raise ValueError(f"O modelo de IA retornou um JSON inválido: {response.text}") from json_error
-
-        except Exception as e:
-            print(f"Erro na geração de agentes: {e}")
-            # Retornar agentes padrão em caso de erro
-            return self._get_fallback_agents(business_context)
-
-    def _get_fallback_agents(self, context: BusinessContext) -> List[Dict[str, Any]]:
-        """Retorna agentes padrão em caso de falha"""
-        return [
-            {
-                "name": "Atendente Principal",
-                "function": "Atendente geral",
-                "objective": "Atender e auxiliar clientes com suas necessidades",
-                "backstory": "Assistente virtual experiente em atendimento ao cliente",
-                "keywords": ["olá", "oi", "help", "ajuda"],
-                "customInstructions": "Seja sempre educado, prestativo e profissional. Cumprimente o cliente e pergunte como pode ajudar.",
-                "persona": "Profissional, educado e atencioso",
-                "doList": ["Cumprimentar educadamente", "Identificar necessidade do cliente", "Fornecer informações claras"],
-                "dontList": ["Ser grosseiro", "Ignorar dúvidas", "Fornecer informações incorretas"],
-                "isActive": True
-            },
-            {
-                "name": "Suporte Técnico",
-                "function": "Especialista em suporte",
-                "objective": "Resolver problemas e tirar dúvidas técnicas",
-                "backstory": "Especialista em resolver problemas e auxiliar com questões técnicas",
-                "keywords": ["problema", "erro", "bug", "não funciona", "ajuda"],
-                "customInstructions": "Seja paciente e explique de forma clara. Faça perguntas para entender o problema.",
-                "persona": "Paciente, técnico e didático",
-                "doList": ["Entender o problema", "Fornecer soluções claras", "Acompanhar até resolução"],
-                "dontList": ["Ser impaciente", "Usar termos muito técnicos", "Desistir facilmente"],
-                "isActive": True
-            }
+        suggestions = [
+            "Adicione palavras-chave mais específicas para cada agente",
+            "Revise o backstory para torná-lo mais alinhado ao negócio",
+            "Teste os agentes com cenários reais de atendimento",
+            "Ajuste a persona conforme o feedback dos clientes"
         ]
+
+        return suggestions

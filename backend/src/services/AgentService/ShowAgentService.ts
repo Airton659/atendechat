@@ -1,4 +1,5 @@
 import Agent from "../../models/Agent";
+import KnowledgeBase from "../../models/KnowledgeBase";
 import AppError from "../../errors/AppError";
 
 interface Request {
@@ -11,7 +12,13 @@ const ShowAgentService = async ({ id, companyId }: Request): Promise<Agent> => {
     where: {
       id,
       companyId
-    }
+    },
+    include: [
+      {
+        model: KnowledgeBase,
+        as: "knowledgeBases"
+      }
+    ]
   });
 
   if (!agent) {

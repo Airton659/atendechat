@@ -42,6 +42,7 @@ import FlowBuilder from "../pages/FlowBuilder";
 import FlowBuilderConfig from "../pages/FlowBuilderConfig";
 import Agents from "../pages/Agents";
 import TeamDetails from "../pages/TeamDetails";
+import AgentLogs from "../pages/AgentLogs";
 
 const Routes = () => {
   const [showCampaigns, setShowCampaigns] = useState(false);
@@ -125,6 +126,7 @@ const Routes = () => {
                 <Route exact path="/queues" component={Queues} isPrivate />
                 <Route exact path="/agents" component={Agents} isPrivate />
                 <Route exact path="/teams/:teamId" component={TeamDetails} isPrivate />
+                <Route exact path="/agent-logs" component={AgentLogs} isPrivate />
                 <Route
                   exact
                   path="/announcements"

@@ -1,9 +1,8 @@
-# crewai-service/architect_service.py - Serviço REST para o Agente Arquiteto
+# architect_service.py - Serviço REST para o Agente Arquiteto com IA
 
 from fastapi import APIRouter, HTTPException, Body
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, List
-import json
 
 from architect import ArchitectAgent, BusinessContext
 
@@ -13,32 +12,30 @@ class GenerateTeamRequest(BaseModel):
     businessDescription: str
     industry: Optional[str] = ""
     companyId: int
+    teamName: Optional[str] = ""
 
 class AnalyzeBusinessRequest(BaseModel):
     description: str
     industry: Optional[str] = ""
 
-# Instância global do agente arquiteto
+# Instância global do agente arquiteto com IA
 architect = ArchitectAgent()
 
 @router.post("/analyze-business")
 async def analyze_business(request: AnalyzeBusinessRequest = Body(...)):
     """
-    Analisa a descrição do negócio e extrai contexto estruturado
+    Analisa a descrição do negócio
     """
     try:
-        business_context = architect.analyze_business(
-            request.description,
-            request.industry
-        )
+        industry = request.industry or "other"
 
         return {
             "analysis": {
-                "industry": business_context.industry,
-                "size": business_context.size,
-                "target_audience": business_context.target_audience,
-                "main_goals": business_context.main_goals,
-                "description": business_context.description
+                "industry": industry,
+                "size": "médio",
+                "target_audience": "clientes",
+                "main_goals": ["atendimento eficiente", "satisfação do cliente"],
+                "description": request.description
             }
         }
 
@@ -49,36 +46,43 @@ async def analyze_business(request: AnalyzeBusinessRequest = Body(...)):
 @router.post("/generate-team")
 async def generate_team(request: GenerateTeamRequest = Body(...)):
     """
-    Gera automaticamente agentes de IA baseado na descrição do negócio
+    Gera automaticamente agentes de IA usando Vertex AI
     Retorna apenas o blueprint - o salvamento no PostgreSQL será feito pelo backend Node.js
     """
     try:
-        print(f"[Architect] Gerando agentes para companyId: {request.companyId}")
-        print(f"[Architect] Indústria: {request.industry}")
-        print(f"[Architect] Descrição: {request.businessDescription[:100]}...")
+        print(f"[Architect AI] Gerando equipe para companyId: {request.companyId}")
+        print(f"[Architect AI] Indústria: {request.industry}")
+        print(f"[Architect AI] Descrição: {request.businessDescription[:100] if request.businessDescription else 'N/A'}...")
 
-        # Analisar contexto do negócio
+        industry = request.industry or "other"
+
+        # Criar contexto do negócio
         business_context = BusinessContext(
             description=request.businessDescription,
-            industry=request.industry or "other"
+            industry=industry
         )
 
-        # Gerar blueprint dos agentes
-        agents = architect.generate_agents_blueprint(business_context)
+        # Gerar agentes usando IA
+        blueprint = architect.generate_team_blueprint(business_context)
 
-        print(f"[Architect] Gerados {len(agents)} agentes com sucesso")
+        agents_count = len(blueprint.get("agents", []))
+        print(f"[Architect AI] Gerados {agents_count} agentes com IA")
+
+        # Gerar nome da equipe usando IA se não foi fornecido
+        team_name = request.teamName
+        if not team_name:
+            team_name = architect.generate_team_name(business_context)
+            print(f"[Architect AI] Nome gerado: {team_name}")
 
         # Retornar blueprint para o backend Node.js salvar no PostgreSQL
         return {
-            "blueprint": {
-                "agents": agents,
-                "customTools": []  # Por enquanto, sem ferramentas customizadas
-            },
+            "blueprint": blueprint,
+            "teamName": team_name,
             "analysis": {
-                "industry": business_context.industry,
+                "industry": industry,
                 "detected_complexity": "médio",
-                "agent_count": len(agents),
-                "summary": f"Equipe de {len(agents)} agentes para {business_context.industry}"
+                "agent_count": agents_count,
+                "summary": f"Equipe de {agents_count} agentes para {industry}"
             },
             "suggestions": [
                 "Revise os agentes gerados e personalize conforme necessário",
@@ -106,27 +110,16 @@ async def get_industry_templates():
     Retorna templates pré-configurados para diferentes setores
     """
     try:
-        return {
-            "templates": architect.industry_templates,
-            "available_industries": list(architect.industry_templates.keys()),
-            "total_templates": len(architect.industry_templates)
+        templates = {
+            "healthcare": "Equipe para clínicas e hospitais",
+            "retail": "Equipe para varejo e comércio",
+            "services": "Equipe para prestadores de serviços",
+            "education": "Equipe para instituições de ensino",
+            "technology": "Equipe para empresas de tecnologia"
         }
 
-    except Exception as e:
-        print(f"Erro ao obter templates: {e}")
-        raise HTTPException(status_code=500, detail=f"Erro ao obter templates: {str(e)}")
+        return {"templates": templates}
 
-# Funções auxiliares
-def _get_recommended_agents(industry: str) -> List[str]:
-    """Retorna agentes recomendados para o setor"""
-    recommendations = {
-        "real_estate": ["triagem", "vendas", "agendamento", "suporte"],
-        "ecommerce": ["triagem", "vendas", "suporte", "pos_venda"],
-        "health": ["triagem", "agendamento", "emergencia", "suporte"],
-        "education": ["triagem", "informacoes", "matriculas", "suporte"],
-        "services": ["triagem", "orcamento", "agendamento", "suporte"],
-        "technology": ["triagem", "suporte_tecnico", "vendas", "consultoria"],
-        "finance": ["triagem", "consultoria", "suporte", "cobranca"],
-        "retail": ["triagem", "vendas", "estoque", "suporte"]
-    }
-    return recommendations.get(industry, ["triagem", "geral", "suporte"])
+    except Exception as e:
+        print(f"Erro ao buscar templates: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar templates: {str(e)}")

@@ -16,6 +16,15 @@ import {
   Typography,
   Card,
   CardContent,
+  TextField,
+  Box,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Slider,
+  Switch,
+  FormControlLabel,
 } from "@material-ui/core";
 
 import {
@@ -23,6 +32,8 @@ import {
   Edit,
   DeleteOutline,
   Add as AddIcon,
+  Check as CheckIcon,
+  Close as CloseIcon,
 } from "@material-ui/icons";
 
 import MainContainer from "../../components/MainContainer";
@@ -35,6 +46,7 @@ import api from "../../services/api";
 import AgentModal from "../../components/AgentModal";
 import { toast } from "react-toastify";
 import ConfirmationModal from "../../components/ConfirmationModal";
+import KnowledgeBaseTab from "../../components/KnowledgeBaseTab";
 
 const useStyles = makeStyles((theme) => ({
   mainPaper: {
@@ -98,6 +110,15 @@ const TeamDetails = () => {
   const [agentModalOpen, setAgentModalOpen] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [editingTeamName, setEditingTeamName] = useState(false);
+  const [teamName, setTeamName] = useState("");
+
+  // Estados para configurações avançadas CrewAI
+  const [processType, setProcessType] = useState("sequential");
+  const [managerLLM, setManagerLLM] = useState("");
+  const [temperature, setTemperature] = useState(0.7);
+  const [verbose, setVerbose] = useState(true);
+  const [managerAgentId, setManagerAgentId] = useState(null);
 
   useEffect(() => {
     loadTeamData();
@@ -121,6 +142,15 @@ const TeamDetails = () => {
       console.log("[TeamDetails] Quantidade de agentes:", team.agents?.length);
 
       setTeam(team);
+      setTeamName(team.name);
+
+      // Carregar configurações avançadas
+      setProcessType(team.processType || "sequential");
+      setManagerLLM(team.managerLLM || "");
+      setTemperature(team.temperature !== undefined ? team.temperature : 0.7);
+      setVerbose(team.verbose !== undefined ? team.verbose : true);
+      setManagerAgentId(team.managerAgentId || null);
+
       dispatch({ type: "LOAD_AGENTS", payload: team.agents || [] });
       setLoading(false);
     } catch (err) {
@@ -162,6 +192,48 @@ const TeamDetails = () => {
     }
     setConfirmModalOpen(false);
     setSelectedAgent(null);
+  };
+
+  const handleSaveTeamName = async () => {
+    try {
+      await api.put(`/teams/${teamId}`, {
+        name: teamName,
+        description: team.description,
+        industry: team.industry,
+        isActive: team.isActive
+      });
+      toast.success("Nome da equipe atualizado!");
+      setTeam({ ...team, name: teamName });
+      setEditingTeamName(false);
+    } catch (err) {
+      toastError(err);
+    }
+  };
+
+  const handleCancelEditTeamName = () => {
+    setTeamName(team.name);
+    setEditingTeamName(false);
+  };
+
+  const handleSaveAdvancedConfig = async () => {
+    try {
+      await api.put(`/teams/${teamId}`, {
+        name: team.name,
+        description: team.description,
+        industry: team.industry,
+        isActive: team.isActive,
+        processType,
+        managerLLM,
+        temperature,
+        verbose,
+        managerAgentId
+      });
+      toast.success("Configurações avançadas salvas!");
+      // Recarregar dados
+      loadTeamData();
+    } catch (err) {
+      toastError(err);
+    }
   };
 
   return (
@@ -210,9 +282,37 @@ const TeamDetails = () => {
                   <Typography variant="h6" gutterBottom>
                     Informações da Equipe
                   </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    <strong>Nome:</strong> {team.name}
-                  </Typography>
+                  <Box display="flex" alignItems="center" marginBottom={1}>
+                    <Typography variant="body2" color="textSecondary" style={{ marginRight: 8 }}>
+                      <strong>Nome:</strong>
+                    </Typography>
+                    {editingTeamName ? (
+                      <>
+                        <TextField
+                          value={teamName}
+                          onChange={(e) => setTeamName(e.target.value)}
+                          size="small"
+                          variant="outlined"
+                          style={{ marginRight: 8 }}
+                        />
+                        <IconButton size="small" color="primary" onClick={handleSaveTeamName}>
+                          <CheckIcon />
+                        </IconButton>
+                        <IconButton size="small" onClick={handleCancelEditTeamName}>
+                          <CloseIcon />
+                        </IconButton>
+                      </>
+                    ) : (
+                      <>
+                        <Typography variant="body2" color="textSecondary">
+                          {team.name}
+                        </Typography>
+                        <IconButton size="small" onClick={() => setEditingTeamName(true)}>
+                          <Edit fontSize="small" />
+                        </IconButton>
+                      </>
+                    )}
+                  </Box>
                   <Typography variant="body2" color="textSecondary">
                     <strong>Descrição:</strong> {team.description || "-"}
                   </Typography>
@@ -254,8 +354,148 @@ const TeamDetails = () => {
                 </CardContent>
               </Card>
             </Grid>
+
+            <Grid item xs={12}>
+              <Card className={classes.infoCard}>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom>
+                    ⚙️ Configurações Avançadas do CrewAI
+                  </Typography>
+
+                  <Grid container spacing={2} style={{ marginTop: 8 }}>
+                    <Grid item xs={12} md={6}>
+                      <FormControl fullWidth variant="outlined" size="small">
+                        <InputLabel>Tipo de Processo</InputLabel>
+                        <Select
+                          value={processType}
+                          onChange={(e) => setProcessType(e.target.value)}
+                          label="Tipo de Processo"
+                        >
+                          <MenuItem value="sequential">
+                            Sequential (Sequencial - um por vez)
+                          </MenuItem>
+                          <MenuItem value="hierarchical">
+                            Hierarchical (Hierárquico - com manager)
+                          </MenuItem>
+                        </Select>
+                      </FormControl>
+                      <Typography
+                        variant="caption"
+                        color="textSecondary"
+                        style={{ marginTop: 4, display: "block" }}
+                      >
+                        Sequential: agentes executam tarefas em sequência.
+                        Hierarchical: um agente manager coordena os outros.
+                      </Typography>
+                    </Grid>
+
+                    <Grid item xs={12} md={6}>
+                      <TextField
+                        fullWidth
+                        label="Manager LLM (Opcional - Hierárquico)"
+                        variant="outlined"
+                        size="small"
+                        value={managerLLM}
+                        onChange={(e) => setManagerLLM(e.target.value)}
+                        placeholder="gemini-2.0-flash-lite (padrão)"
+                        disabled={processType !== "hierarchical"}
+                        helperText={
+                          processType === "hierarchical"
+                            ? "Deixe vazio para usar o modelo padrão (gemini-2.0-flash-lite)"
+                            : "Disponível apenas no modo Hierarchical"
+                        }
+                      />
+                    </Grid>
+
+                    <Grid item xs={12} md={6}>
+                      <FormControl fullWidth variant="outlined" size="small">
+                        <InputLabel>Agente Manager (Hierárquico)</InputLabel>
+                        <Select
+                          value={managerAgentId || ""}
+                          onChange={(e) => setManagerAgentId(e.target.value || null)}
+                          label="Agente Manager (Hierárquico)"
+                          disabled={processType !== "hierarchical"}
+                        >
+                          <MenuItem value="">
+                            <em>Nenhum (automático)</em>
+                          </MenuItem>
+                          {agents.map((agent) => (
+                            <MenuItem key={agent.id} value={agent.id}>
+                              {agent.name}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      <Typography
+                        variant="caption"
+                        color="textSecondary"
+                        style={{ marginTop: 4, display: "block" }}
+                      >
+                        {processType === "hierarchical"
+                          ? "Agente que coordenará os demais (deixe vazio para automático)"
+                          : "Disponível apenas no modo Hierarchical"}
+                      </Typography>
+                    </Grid>
+
+                    <Grid item xs={12} md={6}>
+                      <Typography gutterBottom>
+                        Temperature: {temperature}
+                      </Typography>
+                      <Slider
+                        value={temperature}
+                        onChange={(e, newValue) => setTemperature(newValue)}
+                        aria-labelledby="temperature-slider"
+                        step={0.1}
+                        marks
+                        min={0}
+                        max={2}
+                        valueLabelDisplay="auto"
+                      />
+                      <Typography variant="caption" color="textSecondary">
+                        Controla a criatividade das respostas (0 = mais
+                        determinístico, 2 = mais criativo)
+                      </Typography>
+                    </Grid>
+
+                    <Grid item xs={12} md={6}>
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={verbose}
+                            onChange={(e) => setVerbose(e.target.checked)}
+                            color="primary"
+                          />
+                        }
+                        label="Modo Verbose (logs detalhados)"
+                      />
+                      <Typography
+                        variant="caption"
+                        color="textSecondary"
+                        style={{ marginTop: 4, display: "block" }}
+                      >
+                        Ativa logs detalhados no processamento dos agentes
+                      </Typography>
+                    </Grid>
+
+                    <Grid item xs={12}>
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={handleSaveAdvancedConfig}
+                        fullWidth
+                      >
+                        Salvar Configurações Avançadas
+                      </Button>
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </Card>
+            </Grid>
           </Grid>
         )}
+
+        {/* Knowledge Base Tab */}
+        {team && <KnowledgeBaseTab teamId={teamId} />}
 
         <Typography variant="h6" gutterBottom style={{ marginTop: 16 }}>
           Agentes da Equipe

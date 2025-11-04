@@ -1,4 +1,4 @@
-# crewai-service/main.py - Ponto de entrada principal da API Architect
+# api/src/atendimento_crewai/main.py - Ponto de entrada principal da nova API CrewAI
 
 import os
 from dotenv import load_dotenv
@@ -6,35 +6,38 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import vertexai
 
-# Carregar variáveis de ambiente
+# --- INICIALIZAÇÃO ---
+
+# Carregar .env
 load_dotenv()
+print(f"🕵️  Carregando variáveis de ambiente...")
 
 # Inicializar Vertex AI
 print(f"🚀 Inicializando VertexAI...")
 try:
-    # Usar 'global' para modelos Gemini
     location = os.environ.get("GOOGLE_CLOUD_LOCATION", "global")
-    project_id = os.environ.get("GOOGLE_CLOUD_PROJECT")
+    project = os.environ.get("GOOGLE_CLOUD_PROJECT")
 
-    if project_id:
-        vertexai.init(project=project_id, location=location)
-        print(f"✅ VertexAI inicializado! Projeto: {project_id}, Região: {location}")
+    if project:
+        vertexai.init(project=project, location=location)
+        print(f"✅ VertexAI inicializado! Projeto: {project}, Região: {location}")
     else:
-        print("⚠️ GOOGLE_CLOUD_PROJECT não configurado. Usando credenciais padrão...")
-        vertexai.init(location=location)
-        print(f"✅ VertexAI inicializado com credenciais padrão! Região: {location}")
+        print("⚠️ GOOGLE_CLOUD_PROJECT não definido - continuando sem Vertex AI")
 except Exception as e:
     print(f"❌ Erro ao inicializar VertexAI: {e}")
-    print("⚠️ Continuando sem VertexAI - funcionalidade de geração de agentes estará limitada")
+    print("⚠️ Continuando sem Vertex AI - sistema pode funcionar com limitações")
 
-# Importar routers
+# --- FIM DA INICIALIZAÇÃO ---
+
+# Imports dos routers
+from main_service import router as main_router
 from architect_service import router as architect_router
 
 # Criar aplicação FastAPI
 app = FastAPI(
-    title="Atendechat - Agent Architect API",
-    description="API de Geração Automática de Agentes IA usando Vertex AI (Gemini)",
-    version="1.0.0",
+    title="Atende AI - CrewAI API",
+    description="API de Atendimento Multi-Tenant com IA Personalizável usando CrewAI",
+    version="2.0.0",
     docs_url="/docs",
     redoc_url="/redoc"
 )
@@ -49,23 +52,27 @@ app.add_middleware(
 )
 
 # Incluir routers
+app.include_router(main_router, prefix="/api/v2")
 app.include_router(architect_router, prefix="/api/v2")
 
 @app.get("/")
 def read_root():
     return {
-        "service": "Atendechat - Agent Architect API",
-        "version": "1.0.0",
-        "engine": "Vertex AI (Gemini)",
+        "service": "Atende AI - Plataforma SaaS de Atendimento Multi-Tenant",
+        "version": "2.0.0",
+        "engine": "CrewAI",
         "status": "online",
         "features": {
+            "crew_ai": True,
             "architect_agent": True,
-            "auto_generate_agents": True,
-            "industry_templates": True,
-            "vertex_ai": True
+            "knowledge_base": True,
+            "interactive_training": True,
+            "multi_tenant": True,
+            "vector_search": True
         },
         "apis": {
-            "v2": "/api/v2/architect",
+            "v2_crewai": "/api/v2",
+            "v1_autogen_legacy": "/api/v1",
             "docs": "/docs",
             "redoc": "/redoc"
         }
@@ -73,11 +80,12 @@ def read_root():
 
 @app.get("/health")
 def health_check():
-    """Verificação de saúde"""
+    """Verificação de saúde detalhada"""
 
     health_status = {
         "status": "healthy",
-        "version": "1.0.0",
+        "timestamp": "2024-01-01T00:00:00Z",  # Será atualizado automaticamente
+        "version": "2.0.0",
         "services": {}
     }
 
@@ -89,21 +97,42 @@ def health_check():
         health_status["services"]["vertex_ai"] = f"error: {str(e)}"
         health_status["status"] = "degraded"
 
+    # Verificar CrewAI
+    try:
+        import crewai
+        health_status["services"]["crew_ai"] = "available"
+    except Exception as e:
+        health_status["services"]["crew_ai"] = f"error: {str(e)}"
+        health_status["status"] = "degraded"
+
     return health_status
 
 @app.get("/version")
 def get_version():
-    """Informações de versão"""
+    """Informações de versão detalhadas"""
     return {
-        "api_version": "1.0.0",
-        "engine": "Vertex AI (Gemini)",
-        "model": os.getenv("VERTEX_MODEL", "gemini-2.5-flash-lite"),
+        "api_version": "2.0.0",
+        "engine": "CrewAI",
         "python_version": os.sys.version,
         "environment": os.environ.get("NODE_ENV", "development"),
         "features": {
-            "auto_generate_agents": True,
-            "industry_templates": True,
-            "business_analysis": True
+            "multi_tenant": True,
+            "rbac": True,
+            "vector_search": True,
+            "interactive_training": True,
+            "architect_agent": True,
+            "knowledge_management": True,
+            "real_time_chat": True
+        },
+        "breaking_changes": [
+            "API v2 usa CrewAI em vez de AutoGen",
+            "Novos endpoints para gerenciamento de equipes",
+            "Sistema de treinamento interativo redesenhado",
+            "Base de conhecimento com busca vetorial"
+        ],
+        "migration": {
+            "from_v1": "Use o endpoint /api/v2/migrate-from-autogen",
+            "documentation": "/docs"
         }
     }
 
@@ -130,7 +159,7 @@ async def global_exception_handler(request, exc):
 if __name__ == "__main__":
     import uvicorn
 
-    port = int(os.environ.get("PORT", 8001))
+    port = int(os.environ.get("PORT", 8000))
     host = os.environ.get("HOST", "0.0.0.0")
 
     print(f"🚀 Iniciando servidor em {host}:{port}")
@@ -143,3 +172,6 @@ if __name__ == "__main__":
         reload=os.environ.get("NODE_ENV") != "production",
         log_level="info"
     )
+# Incluir router de knowledge base
+from knowledge_service_router import router as knowledge_router
+app.include_router(knowledge_router, prefix="/api/v2")
