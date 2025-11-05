@@ -223,7 +223,7 @@ class RealCrewEngine:
         print(full_prompt[:2000])
         return full_prompt
         prompt_parts.append("\n\n**SUA RESPOSTA:**")
-        prompt_parts.append("Responda de acordo com sua persona, instruções e objetivo. Seja profissional, empático e útil.")
+        prompt_parts.append("Responda de acordo com sua persona, instruções e objetivo.")
 
         return "\n".join(prompt_parts)
 
