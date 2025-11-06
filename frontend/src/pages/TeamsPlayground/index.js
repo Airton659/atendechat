@@ -358,6 +358,26 @@ const TeamsPlayground = () => {
                     )}
                   </AccordionSummary>
                   <AccordionDetails style={{ flexDirection: "column" }}>
+                    {/* Toggle Ativo/Inativo */}
+                    <FormControl fullWidth className={classes.textField}>
+                      <Grid container alignItems="center" spacing={2}>
+                        <Grid item>
+                          <Typography variant="body2">Agente Inativo</Typography>
+                        </Grid>
+                        <Grid item>
+                          <input
+                            type="checkbox"
+                            checked={agent.isActive}
+                            onChange={(e) => handleAgentFieldChange(index, "isActive", e.target.checked)}
+                            style={{ transform: "scale(1.5)" }}
+                          />
+                        </Grid>
+                        <Grid item>
+                          <Typography variant="body2">Agente Ativo</Typography>
+                        </Grid>
+                      </Grid>
+                    </FormControl>
+
                     <TextField
                       label="Nome"
                       fullWidth
@@ -374,6 +394,7 @@ const TeamsPlayground = () => {
                       className={classes.textField}
                       value={agent.function}
                       onChange={(e) => handleAgentFieldChange(index, "function", e.target.value)}
+                      helperText="Descreva o papel do agente (ex: 'Assistente de triagem')"
                     />
 
                     <TextField
@@ -384,6 +405,7 @@ const TeamsPlayground = () => {
                       className={classes.textField}
                       value={agent.objective}
                       onChange={(e) => handleAgentFieldChange(index, "objective", e.target.value)}
+                      helperText="O que o agente deve alcançar"
                     />
 
                     <TextField
@@ -394,6 +416,29 @@ const TeamsPlayground = () => {
                       className={classes.textField}
                       value={agent.backstory}
                       onChange={(e) => handleAgentFieldChange(index, "backstory", e.target.value)}
+                      helperText="História e contexto do agente"
+                    />
+
+                    <TextField
+                      label="Persona"
+                      fullWidth
+                      multiline
+                      rows={2}
+                      className={classes.textField}
+                      value={agent.persona}
+                      onChange={(e) => handleAgentFieldChange(index, "persona", e.target.value)}
+                      helperText="Personalidade e tom de voz (ex: 'Profissional e empático')"
+                    />
+
+                    <TextField
+                      label="Instruções Customizadas"
+                      fullWidth
+                      multiline
+                      rows={3}
+                      className={classes.textField}
+                      value={agent.customInstructions}
+                      onChange={(e) => handleAgentFieldChange(index, "customInstructions", e.target.value)}
+                      helperText="Instruções especiais ou regras específicas"
                     />
 
                     <TextField
@@ -402,6 +447,31 @@ const TeamsPlayground = () => {
                       className={classes.textField}
                       value={agent.keywords.join(", ")}
                       onChange={(e) => handleAgentFieldChange(index, "keywords", e.target.value.split(",").map(k => k.trim()))}
+                      helperText="Palavras-chave para ativar este agente"
+                    />
+
+                    <TextField
+                      label="DO List (uma por linha)"
+                      fullWidth
+                      multiline
+                      rows={4}
+                      className={classes.textField}
+                      value={agent.doList.join("\n")}
+                      onChange={(e) => handleAgentFieldChange(index, "doList", e.target.value.split("\n").filter(item => item.trim()))}
+                      helperText="Coisas que o agente DEVE fazer"
+                      placeholder="Sempre perguntar o nome do cliente&#10;Confirmar o email antes de continuar&#10;Agradecer ao final"
+                    />
+
+                    <TextField
+                      label="DON'T List (uma por linha)"
+                      fullWidth
+                      multiline
+                      rows={4}
+                      className={classes.textField}
+                      value={agent.dontList.join("\n")}
+                      onChange={(e) => handleAgentFieldChange(index, "dontList", e.target.value.split("\n").filter(item => item.trim()))}
+                      helperText="Coisas que o agente NÃO DEVE fazer"
+                      placeholder="Nunca fornecer descontos sem autorização&#10;Não interromper o cliente&#10;Evitar linguagem técnica complexa"
                     />
                   </AccordionDetails>
                 </Accordion>
