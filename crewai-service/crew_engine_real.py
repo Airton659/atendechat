@@ -249,6 +249,150 @@ class RealCrewEngine:
             traceback.print_exc()
             return "Olá! Como posso ajudá-lo hoje?"
 
+    async def run_playground_crew(
+        self,
+        team_definition: Dict[str, Any],
+        task: str,
+        company_id: int
+    ) -> Dict[str, Any]:
+        """
+        Executa uma Crew TEMPORÁRIA no modo Playground (não salva logs no banco).
+        Usado para testar e refinar prompts antes de salvar alterações.
+        """
+        print("\n" + "="*60)
+        print("🧪 RUN PLAYGROUND CREW - Executando equipe temporária")
+        print("="*60)
+
+        # Capturar logs verbosos
+        import io
+        import sys
+        log_capture = io.StringIO()
+        original_stdout = sys.stdout
+
+        success = False
+        response_text = ""
+        error_message = None
+        agent_used = None
+        execution_logs = ""
+
+        try:
+            # Extrair dados da definição temporária
+            team_name = team_definition.get('name', 'Equipe Temporária')
+            agents_data = team_definition.get('agents', [])
+            process_type = team_definition.get('processType', 'sequential')
+            temperature = team_definition.get('temperature', 0.7)
+
+            print(f"Team: {team_name}")
+            print(f"Process Type: {process_type}")
+            print(f"Temperature: {temperature}")
+            print(f"Agents: {len(agents_data)}")
+            print(f"Task: {task}")
+            print("="*60 + "\n")
+
+            if not agents_data:
+                raise ValueError("A equipe precisa ter pelo menos 1 agente")
+
+            if not self.llm:
+                raise ValueError("LLM não inicializado")
+
+            # Criar LLM customizado
+            custom_llm = self._get_llm_for_team({
+                'temperature': temperature,
+                'processType': process_type,
+                'managerLLM': team_definition.get('managerLLM')
+            })
+
+            # Selecionar agente por keywords
+            selected_agent_data = self._select_agent_by_keywords(task, agents_data)
+            if not selected_agent_data:
+                # Se não houver match, usar primeiro agente ativo
+                selected_agent_data = next((a for a in agents_data if a.get('isActive', True)), agents_data[0])
+
+            agent_used = selected_agent_data.get('name', 'Agente')
+
+            print(f"✅ Agente selecionado: {agent_used}")
+
+            # Buscar Knowledge Base se configurado (opcional no playground)
+            knowledge_context = None
+            if selected_agent_data.get('useKnowledgeBase'):
+                kb_ids = selected_agent_data.get('knowledgeBaseIds', [])
+                if kb_ids:
+                    print(f"📚 Buscando Knowledge Base...")
+                    try:
+                        # Usar teamId da definição se existir
+                        team_id_for_kb = str(team_definition.get('id', 'playground'))
+                        kb_chunks = self.knowledge_service.search_knowledge(
+                            team_id=team_id_for_kb,
+                            document_ids=kb_ids,
+                            query=task,
+                            top_k=20
+                        )
+
+                        if kb_chunks:
+                            knowledge_context = "\n\n".join([
+                                f"📄 {chunk['metadata'].get('filename', 'Documento')}: {chunk['content']}"
+                                for chunk in kb_chunks
+                            ])
+                            print(f"✅ {len(kb_chunks)} chunks encontrados")
+                    except Exception as e:
+                        print(f"⚠️ Erro ao buscar KB (não crítico no playground): {e}")
+
+            # Redirecionar stdout para capturar logs
+            sys.stdout = log_capture
+
+            # Gerar resposta
+            start_time = time.time()
+            response_text = self._create_simple_response(
+                task,
+                selected_agent_data,
+                [],  # Sem histórico no playground
+                custom_llm,
+                knowledge_context
+            )
+            elapsed_time = time.time() - start_time
+
+            # Restaurar stdout
+            sys.stdout = original_stdout
+            execution_logs = log_capture.getvalue()
+
+            success = True
+
+            print(f"✅ Resposta gerada em {elapsed_time:.2f}s")
+            print(f"📝 Logs capturados: {len(execution_logs)} caracteres")
+
+            return {
+                "success": True,
+                "final_output": response_text,
+                "execution_logs": execution_logs,
+                "agent_used": agent_used,
+                "config_used": {
+                    "process_type": process_type,
+                    "temperature": temperature,
+                    "agent_name": agent_used
+                },
+                "processing_time": round(elapsed_time, 2)
+            }
+
+        except Exception as e:
+            # Restaurar stdout em caso de erro
+            sys.stdout = original_stdout
+            execution_logs = log_capture.getvalue()
+
+            print(f"❌ Erro no playground: {e}")
+            import traceback
+            traceback.print_exc()
+
+            error_message = str(e)
+
+            return {
+                "success": False,
+                "final_output": f"Erro ao executar playground: {error_message}",
+                "execution_logs": execution_logs + f"\n\nERRO: {error_message}",
+                "error": error_message,
+                "agent_used": agent_used,
+                "processing_time": 0
+            }
+
     async def process_message(
         self,
         tenant_id: str,

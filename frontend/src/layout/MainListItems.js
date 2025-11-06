@@ -41,7 +41,7 @@ import BorderColorIcon from '@material-ui/icons/BorderColor';
 import ToDoList from "../pages/ToDoList/";
 import toastError from "../errors/toastError";
 import { makeStyles } from "@material-ui/core/styles";
-import { AccountTree, AllInclusive, AttachFile, BlurCircular, Chat, DeviceHubOutlined, Schedule, Android, Assessment } from '@material-ui/icons';
+import { AccountTree, AllInclusive, AttachFile, BlurCircular, Chat, DeviceHubOutlined, Schedule, Android, Assessment, Science } from '@material-ui/icons';
 import usePlans from "../hooks/usePlans";
 import Typography from "@material-ui/core/Typography";
 import { ShapeLine } from "@mui/icons-material";
@@ -496,6 +496,14 @@ const MainListItems = (props) => {
                 to="/agent-logs"
                 primary="Logs de Execução"
                 icon={<Assessment />}
+              />
+            )}
+
+            {showOpenAi && (
+              <ListItemLink
+                to="/teams-playground"
+                primary="🧪 Laboratório de Times"
+                icon={<Science />}
               />
             )}
 

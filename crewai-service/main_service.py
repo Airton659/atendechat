@@ -28,6 +28,12 @@ class ProcessMessageRequest(BaseModel):
 class ValidateCrewRequest(BaseModel):
     crewBlueprint: Dict[str, Any]
 
+class PlaygroundRequest(BaseModel):
+    """Request para testar uma equipe temporária no Playground"""
+    teamDefinition: Dict[str, Any]  # Definição completa do Team e Agents
+    task: str  # Mensagem de teste
+    companyId: int  # Para contexto (não salva no banco)
+
 @router.get("/health")
 async def health_check():
     """Verificação de saúde da API"""
@@ -284,6 +290,55 @@ async def list_all_tenants():
 
     except Exception as e:
         print(f"Erro ao listar tenants: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
+
+@router.post("/playground/run")
+async def playground_run(request: PlaygroundRequest = Body(...)):
+    """
+    Executa uma equipe TEMPORÁRIA (não salva no banco) para testes e refinamento.
+    Usado pelo "Laboratório de Times" no frontend.
+    """
+    try:
+        start_time = time.time()
+
+        # Validar inputs
+        if not request.task or len(request.task.strip()) < 1:
+            raise HTTPException(status_code=400, detail="Tarefa é obrigatória")
+
+        if not request.teamDefinition:
+            raise HTTPException(status_code=400, detail="Definição da equipe é obrigatória")
+
+        print("\n" + "="*60)
+        print("🧪 PLAYGROUND MODE - Testando equipe temporária")
+        print("="*60)
+        print(f"Company ID: {request.companyId}")
+        print(f"Team Name: {request.teamDefinition.get('name', 'Sem nome')}")
+        print(f"Agents: {len(request.teamDefinition.get('agents', []))}")
+        print(f"Task: {request.task}")
+        print("="*60 + "\n")
+
+        # Executar no modo playground (não salva logs no banco)
+        result = await crew_engine.run_playground_crew(
+            team_definition=request.teamDefinition,
+            task=request.task,
+            company_id=request.companyId
+        )
+
+        # Adicionar métricas
+        processing_time = time.time() - start_time
+        result["processing_time"] = round(processing_time, 2)
+        result["timestamp"] = datetime.now().isoformat()
+
+        print(f"\n✅ Playground execution completed in {processing_time:.2f}s\n")
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Erro no playground: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Erro interno: {str(e)}")
 
 @router.get("/superadmin/crews")
