@@ -120,10 +120,10 @@ export const run = async (req: Request, res: Response): Promise<Response> => {
 
   // Proxy para o CrewAI Service (Python)
   try {
-    console.log(`🚀 Enviando para CrewAI Service: ${crewaiServiceUrl}/api/v2/crewai/playground/run`);
+    console.log(`🚀 Enviando para CrewAI Service: ${crewaiServiceUrl}/api/v2/playground/run`);
 
     const { data } = await axios.post(
-      `${crewaiServiceUrl}/api/v2/crewai/playground/run`,
+      `${crewaiServiceUrl}/api/v2/playground/run`,
       {
         teamDefinition: finalTeamDefinition,
         task,

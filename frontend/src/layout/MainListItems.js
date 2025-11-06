@@ -502,7 +502,7 @@ const MainListItems = (props) => {
             {showOpenAi && (
               <ListItemLink
                 to="/teams-playground"
-                primary="🧪 Laboratório de Times"
+                primary="Laboratório de Times"
                 icon={<BubbleChart />}
               />
             )}
