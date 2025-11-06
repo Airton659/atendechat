@@ -206,9 +206,10 @@ class RealCrewEngine:
                 prompt_parts.append(f"- {item}")
 
         if dont_list:
-            prompt_parts.append("\n\n**VOCÊ NÃO DEVE:**")
+            prompt_parts.append("\n\n**⛔ VOCÊ NÃO DEVE (PROIBIDO - NUNCA FAÇA ISSO):**")
             for item in dont_list:
-                prompt_parts.append(f"- {item}")
+                prompt_parts.append(f"❌ {item}")
+            prompt_parts.append("\n⚠️ ATENÇÃO: As regras acima são OBRIGATÓRIAS e DEVEM ser seguidas em TODAS as respostas, sem exceção.")
 
         if conversation_history:
             prompt_parts.append("\n\n**HISTÓRICO DA CONVERSA:**")
@@ -218,14 +219,22 @@ class RealCrewEngine:
                 prompt_parts.append(f"{role_label}: {msg.get('body', '')}")
 
         prompt_parts.append(f"\n\n**MENSAGEM ATUAL DO CLIENTE:**\n{message}")
-        print("PROMPT COMPLETO:")
-        full_prompt = "".join(prompt_parts)
-        print(full_prompt[:2000])
-        return full_prompt
-        prompt_parts.append("\n\n**SUA RESPOSTA:**")
-        prompt_parts.append("Responda de acordo com sua persona, instruções e objetivo.")
 
-        return "\n".join(prompt_parts)
+        # REFORÇO FINAL DAS REGRAS (especialmente DON'T List)
+        if dont_list:
+            prompt_parts.append("\n\n🔴 VERIFICAÇÃO OBRIGATÓRIA ANTES DE RESPONDER:")
+            prompt_parts.append("1. Você vai usar emoticons/emojis na resposta? Se SIM, remova TODOS.")
+            prompt_parts.append("2. Releia a lista 'VOCÊ NÃO DEVE' acima e CONFIRME que NÃO está violando nenhuma regra.")
+            prompt_parts.append("3. Se sua resposta violar alguma regra, REESCREVA completamente SEM aquele elemento proibido.")
+
+        prompt_parts.append("\n\n**SUA RESPOSTA FINAL (após verificação das regras):**")
+
+        full_prompt = "\n".join(prompt_parts)
+
+        print("PROMPT COMPLETO:")
+        print(full_prompt[:2000])
+
+        return full_prompt
 
     def _create_simple_response(self, message: str, agent_data: Dict[str, Any], conversation_history: List[Dict[str, Any]], llm: ChatVertexAI, knowledge_context: Optional[str] = None) -> str:
         """Gera resposta usando Vertex AI diretamente"""
