@@ -20,6 +20,7 @@ import {
   Description as DescriptionIcon,
   PictureAsPdf as PdfIcon,
   InsertDriveFile as FileIcon,
+  GridOn as ExcelIcon,
 } from "@material-ui/icons";
 import { makeStyles } from "@material-ui/core/styles";
 import { toast } from "react-toastify";
@@ -98,11 +99,12 @@ const KnowledgeBaseTab = ({ teamId }) => {
     const allowedTypes = [
       "application/pdf",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       "text/plain",
     ];
 
     if (!allowedTypes.includes(file.type)) {
-      toast.error("Tipo de arquivo não permitido. Use PDF, DOCX ou TXT.");
+      toast.error("Tipo de arquivo não permitido. Use PDF, DOCX, XLSX ou TXT.");
       return;
     }
 
@@ -174,6 +176,8 @@ const KnowledgeBaseTab = ({ teamId }) => {
         return <PdfIcon style={{ color: "#d32f2f" }} />;
       case "docx":
         return <DescriptionIcon style={{ color: "#1976d2" }} />;
+      case "xlsx":
+        return <ExcelIcon style={{ color: "#217346" }} />;
       case "txt":
         return <FileIcon style={{ color: "#757575" }} />;
       default:
@@ -201,7 +205,7 @@ const KnowledgeBaseTab = ({ teamId }) => {
           Base de Conhecimento
         </Typography>
         <Typography variant="body2" color="textSecondary" paragraph>
-          Faça upload de documentos (PDF, DOCX, TXT) para que os agentes possam
+          Faça upload de documentos (PDF, DOCX, XLSX, TXT) para que os agentes possam
           consultar informações relevantes durante as conversas.
         </Typography>
 
@@ -210,7 +214,7 @@ const KnowledgeBaseTab = ({ teamId }) => {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".pdf,.docx,.txt"
+            accept=".pdf,.docx,.xlsx,.txt"
             style={{ display: "none" }}
             onChange={handleFileSelect}
             disabled={uploading}
@@ -229,7 +233,7 @@ const KnowledgeBaseTab = ({ teamId }) => {
                 Selecione um arquivo para fazer upload
               </Typography>
               <Typography variant="caption" color="textSecondary" paragraph>
-                Formatos aceitos: PDF, DOCX, TXT (máx. 10MB)
+                Formatos aceitos: PDF, DOCX, XLSX, TXT (máx. 10MB)
               </Typography>
               <Button
                 variant="contained"

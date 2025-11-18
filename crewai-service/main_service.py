@@ -20,6 +20,7 @@ class ProcessMessageRequest(BaseModel):
     crewId: str
     message: str
     conversationHistory: Optional[List[Dict[str, Any]]] = []
+    teamData: Optional[Dict[str, Any]] = None  # Dados da equipe e agentes
     agentOverride: Optional[str] = None
     remoteJid: Optional[str] = None  # Número do WhatsApp do cliente
     contactId: Optional[int] = None  # ID do contato
@@ -64,10 +65,9 @@ async def process_message(request: ProcessMessageRequest = Body(...)):
             crew_id=request.crewId,
             message=request.message,
             conversation_history=request.conversationHistory,
+            team_data=request.teamData,
             agent_override=request.agentOverride,
-            remote_jid=request.remoteJid,
-            contact_id=request.contactId,
-            ticket_id=request.ticketId
+            contact_id=request.contactId
         )
 
         # Adicionar métricas

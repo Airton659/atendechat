@@ -4,6 +4,7 @@ import axios from "axios";
 import AppError from "../errors/AppError";
 import Team from "../models/Team";
 import Agent from "../models/Agent";
+import KnowledgeBase from "../models/KnowledgeBase";
 
 const architectUrl = process.env.ARCHITECT_API_URL || "http://localhost:8001";
 
@@ -62,9 +63,17 @@ export const show = async (req: Request, res: Response): Promise<Response> => {
     include: [
       {
         model: Agent,
-        as: "agents"
+        as: "agents",
+        include: [
+          {
+            model: KnowledgeBase,
+            as: "knowledgeBases",
+            through: { attributes: [] }
+          }
+        ]
       }
-    ]
+    ],
+    order: [[{ model: Agent, as: "agents" }, "id", "ASC"]]
   });
 
   if (!team) {

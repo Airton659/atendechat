@@ -140,17 +140,23 @@ export const run = async (req: Request, res: Response): Promise<Response> => {
     console.log("✅ Resposta recebida do CrewAI Service");
     console.log(`   Success: ${data.success}`);
     console.log(`   Agent Used: ${data.agent_used}`);
+    console.log(`   Agent ID: ${data.agent_id}`);
     console.log(`   Processing Time: ${data.processing_time}s`);
     console.log(`   Logs Length: ${data.execution_logs?.length || 0} chars`);
+    console.log(`   Training Examples Used: ${data.training_examples_count || 0}`);
 
     return res.status(200).json({
       success: data.success,
       final_output: data.final_output,
       execution_logs: data.execution_logs,
       agent_used: data.agent_used,
+      agent_id: data.agent_id,
       config_used: data.config_used,
       processing_time: data.processing_time,
-      timestamp: data.timestamp
+      timestamp: data.timestamp,
+      prompt_used: data.prompt_used,
+      training_examples_used: data.training_examples_used,
+      training_examples_count: data.training_examples_count
     });
 
   } catch (error: any) {

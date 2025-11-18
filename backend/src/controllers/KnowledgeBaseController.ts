@@ -55,11 +55,12 @@ export const upload = async (req: Request, res: Response): Promise<Response> => 
   const allowedTypes = [
     "application/pdf",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "text/plain"
   ];
 
   if (!allowedTypes.includes(file.mimetype)) {
-    throw new AppError("Tipo de arquivo não permitido. Use PDF, DOCX ou TXT.", 400);
+    throw new AppError("Tipo de arquivo não permitido. Use PDF, DOCX, XLSX ou TXT.", 400);
   }
 
   // Validar tamanho (max 10MB)
@@ -95,6 +96,8 @@ export const upload = async (req: Request, res: Response): Promise<Response> => 
       fileType = "pdf";
     } else if (file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
       fileType = "docx";
+    } else if (file.mimetype === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet") {
+      fileType = "xlsx";
     }
 
     // Criar registro no banco de dados

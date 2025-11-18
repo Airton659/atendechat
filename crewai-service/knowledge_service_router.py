@@ -15,7 +15,7 @@ async def upload_knowledge_document(
     Upload e processamento de documento para knowledge base
 
     Args:
-        file: Arquivo (PDF, DOCX, TXT)
+        file: Arquivo (PDF, DOCX, XLSX, TXT)
         team_id: ID da equipe
         company_id: ID da empresa
 
@@ -35,8 +35,8 @@ async def upload_knowledge_document(
         extension = filename.split('.')[-1].lower() if filename else 'txt'
 
         # Validar tipo
-        if extension not in ['pdf', 'docx', 'txt']:
-            raise HTTPException(status_code=400, detail="Tipo de arquivo não suportado. Use PDF, DOCX ou TXT.")
+        if extension not in ['pdf', 'docx', 'xlsx', 'xls', 'txt']:
+            raise HTTPException(status_code=400, detail="Tipo de arquivo não suportado. Use PDF, DOCX, XLSX ou TXT.")
 
         # Processar documento
         knowledge_service = get_knowledge_service()

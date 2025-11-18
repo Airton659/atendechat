@@ -10,6 +10,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 import PyPDF2
 import docx
+import pandas as pd
 import io
 
 class SimpleKnowledgeService:
@@ -19,7 +20,7 @@ class SimpleKnowledgeService:
     Features:
     - Sem PyTorch (economia de disk space)
     - TF-IDF para busca (entende relevância de termos)
-    - Suporta PDF, DOCX, TXT
+    - Suporta PDF, DOCX, TXT, XLSX
     - Armazena no Firestore
     - 100% gratuito
     """
@@ -72,6 +73,54 @@ class SimpleKnowledgeService:
             print(f"❌ Erro ao extrair TXT: {e}")
             return ""
 
+    def extract_text_from_xlsx(self, file_content: bytes) -> str:
+        """
+        Extrai texto de XLSX preservando estrutura tabular
+
+        Processa todas as sheets do arquivo e preserva formato de tabela
+        para facilitar compreensão dos agentes.
+        """
+        try:
+            # Ler arquivo Excel
+            excel_file = pd.ExcelFile(io.BytesIO(file_content))
+            text_parts = []
+
+            print(f"📊 XLSX contém {len(excel_file.sheet_names)} sheet(s): {excel_file.sheet_names}")
+
+            # Processar cada sheet
+            for sheet_name in excel_file.sheet_names:
+                # Ler sheet como DataFrame
+                df = pd.read_excel(excel_file, sheet_name=sheet_name)
+
+                # Pular sheets vazias
+                if df.empty:
+                    print(f"⚠️ Sheet '{sheet_name}' está vazia, pulando...")
+                    continue
+
+                # Adicionar cabeçalho da sheet
+                text_parts.append(f"\n{'='*60}")
+                text_parts.append(f"PLANILHA: {sheet_name}")
+                text_parts.append(f"{'='*60}\n")
+
+                # Converter DataFrame para string preservando estrutura tabular
+                # to_string() mantém colunas alinhadas, melhor para agentes entenderem
+                table_text = df.to_string(index=False, na_rep='')
+                text_parts.append(table_text)
+                text_parts.append("\n")
+
+                print(f"✅ Sheet '{sheet_name}': {len(df)} linhas, {len(df.columns)} colunas")
+
+            result = "\n".join(text_parts)
+            print(f"📄 XLSX processado: {len(result)} caracteres")
+
+            return result
+
+        except Exception as e:
+            print(f"❌ Erro ao extrair XLSX: {e}")
+            import traceback
+            traceback.print_exc()
+            return ""
+
     def extract_text(self, file_content: bytes, filename: str) -> str:
         """Extrai texto baseado na extensão"""
         extension = filename.lower().split('.')[-1]
@@ -82,6 +131,8 @@ class SimpleKnowledgeService:
             return self.extract_text_from_docx(file_content)
         elif extension == 'txt':
             return self.extract_text_from_txt(file_content)
+        elif extension in ['xlsx', 'xls']:
+            return self.extract_text_from_xlsx(file_content)
         else:
             print(f"⚠️ Tipo de arquivo não suportado: {extension}")
             return ""
