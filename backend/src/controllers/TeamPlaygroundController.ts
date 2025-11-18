@@ -37,6 +37,7 @@ interface PlaygroundRunRequest {
     }>;
   };
   task: string; // Mensagem de teste
+  conversationHistory?: Array<{ role: string; body: string }>; // Histórico de conversa
 }
 
 /**
@@ -45,7 +46,7 @@ interface PlaygroundRunRequest {
  */
 export const run = async (req: Request, res: Response): Promise<Response> => {
   const { companyId } = req.user;
-  const { teamId, teamDefinition, task }: PlaygroundRunRequest = req.body;
+  const { teamId, teamDefinition, task, conversationHistory }: PlaygroundRunRequest = req.body;
 
   console.log("\n" + "=".repeat(60));
   console.log("🧪 PLAYGROUND RUN - Backend Node.js");
@@ -53,6 +54,7 @@ export const run = async (req: Request, res: Response): Promise<Response> => {
   console.log(`Company ID: ${companyId}`);
   console.log(`Team ID: ${teamId || "N/A (usando teamDefinition)"}`);
   console.log(`Task: ${task}`);
+  console.log(`Conversation History: ${conversationHistory?.length || 0} mensagens`);
   console.log("=".repeat(60) + "\n");
 
   // Validações
@@ -127,7 +129,8 @@ export const run = async (req: Request, res: Response): Promise<Response> => {
       {
         teamDefinition: finalTeamDefinition,
         task,
-        companyId
+        companyId,
+        conversationHistory: conversationHistory || []
       },
       {
         timeout: 120000, // 2 minutos (execuções podem demorar)

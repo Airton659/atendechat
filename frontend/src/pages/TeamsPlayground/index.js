@@ -19,14 +19,17 @@ import {
   Tab,
   Box,
   IconButton,
-  Tooltip
+  Tooltip,
+  FormControlLabel,
+  Checkbox
 } from "@material-ui/core";
 import {
   ExpandMore as ExpandMoreIcon,
   PlayArrow as PlayArrowIcon,
   Save as SaveIcon,
   Refresh as RefreshIcon,
-  Info as InfoIcon
+  Info as InfoIcon,
+  Delete as DeleteIcon
 } from "@material-ui/icons";
 
 import MainContainer from "../../components/MainContainer";
@@ -36,6 +39,7 @@ import api from "../../services/api";
 import toastError from "../../errors/toastError";
 import { toast } from "react-toastify";
 
+import FeedbackPanel from "../../components/FeedbackPanel";
 const useStyles = makeStyles((theme) => ({
   root: {
     display: "flex",
@@ -131,6 +135,10 @@ const TeamsPlayground = () => {
   // Estado: Input de teste
   const [testTask, setTestTask] = useState("");
 
+  // Estado: Conversação contínua
+  const [continuousConversation, setContinuousConversation] = useState(false);
+  const [conversationHistory, setConversationHistory] = useState([]);
+
   // Estado: Resultados
   const [isRunning, setIsRunning] = useState(false);
   const [result, setResult] = useState(null);
@@ -178,6 +186,8 @@ const TeamsPlayground = () => {
         temperature: team.temperature || 0.7,
         verbose: team.verbose !== false,
         managerLLM: team.managerLLM || "",
+        managerAgentId: team.managerAgentId || null,
+        defaultAgentId: team.defaultAgentId || null,
         agents: team.agents.map(agent => ({
           id: agent.id,
           name: agent.name,
@@ -191,7 +201,7 @@ const TeamsPlayground = () => {
           dontList: agent.dontList || [],
           isActive: agent.isActive !== false,
           useKnowledgeBase: agent.useKnowledgeBase || false,
-          knowledgeBaseIds: agent.knowledgeBaseIds || []
+          knowledgeBaseIds: agent.knowledgeBases?.map(kb => kb.documentId) || []
         }))
       });
     } catch (err) {
@@ -229,20 +239,38 @@ const TeamsPlayground = () => {
     setResult(null);
 
     try {
+      console.log("🧪 DEBUG - teamConfig being sent:", JSON.stringify(teamConfig, null, 2));
+
       const { data } = await api.post("/teams/playground/run", {
-        teamId: selectedTeamId || undefined,
         teamDefinition: teamConfig,
-        task: testTask
+        task: testTask,
+        conversationHistory: continuousConversation ? conversationHistory : []
       });
 
       setResult(data);
       setCurrentTab(0); // Mostrar tab de resultado
+
+      // Se conversação contínua, adicionar ao histórico
+      if (continuousConversation && data.success) {
+        setConversationHistory(prev => [
+          ...prev,
+          { role: "user", content: testTask },
+          { role: "assistant", content: data.final_output }
+        ]);
+      }
+
       toast.success(`Teste concluído! Agente usado: ${data.agent_used}`);
     } catch (err) {
       toastError(err);
     } finally {
       setIsRunning(false);
     }
+  };
+
+  // Limpar histórico de conversação
+  const handleClearHistory = () => {
+    setConversationHistory([]);
+    toast.info("Histórico de conversação limpo");
   };
 
   // Salvar alterações no banco
@@ -253,9 +281,76 @@ const TeamsPlayground = () => {
     }
 
     try {
-      // Aqui você salvaria as alterações via API PUT /teams/:id
-      // Implementar conforme necessário
-      toast.info("Funcionalidade de salvar será implementada");
+      // Atualizar o time e seus agentes
+      await api.put(`/teams/${selectedTeamId}`, {
+        name: teamConfig.name,
+        description: teamConfig.description,
+        processType: teamConfig.processType,
+        managerLLM: teamConfig.managerLLM,
+        temperature: teamConfig.temperature,
+        verbose: teamConfig.verbose,
+        managerAgentId: teamConfig.managerAgentId,
+        defaultAgentId: teamConfig.defaultAgentId
+      });
+
+      // Atualizar cada agente
+      for (const agent of teamConfig.agents) {
+        // Garantir que arrays existem (mesmo vazios)
+        const keywords = Array.isArray(agent.keywords) ? agent.keywords :
+                        (typeof agent.keywords === 'string' ? agent.keywords.split(',').map(k => k.trim()).filter(k => k) : []);
+
+        const doList = Array.isArray(agent.doList) ? agent.doList :
+                      (typeof agent.doList === 'string' ? agent.doList.split('\n').filter(item => item.trim()) : []);
+
+        const dontList = Array.isArray(agent.dontList) ? agent.dontList :
+                        (typeof agent.dontList === 'string' ? agent.dontList.split('\n').filter(item => item.trim()) : []);
+
+        await api.put(`/agents/${agent.id}`, {
+          name: agent.name,
+          function: agent.function,
+          objective: agent.objective,
+          backstory: agent.backstory,
+          persona: agent.persona,
+          customInstructions: agent.customInstructions,
+          keywords: keywords,
+          doList: doList,
+          dontList: dontList,
+          isActive: agent.isActive
+        });
+      }
+
+      toast.success("Alterações salvas com sucesso!");
+
+      // Recarregar o time do banco para confirmar
+      const { data } = await api.get(`/teams/${selectedTeamId}`);
+      const team = data.team;
+
+      setTeamConfig({
+        id: team.id,
+        name: team.name,
+        description: team.description || "",
+        processType: team.processType || "sequential",
+        temperature: team.temperature || 0.7,
+        verbose: team.verbose !== false,
+        managerLLM: team.managerLLM || "",
+        managerAgentId: team.managerAgentId || null,
+        defaultAgentId: team.defaultAgentId || null,
+        agents: team.agents.map(agent => ({
+          id: agent.id,
+          name: agent.name,
+          function: agent.function,
+          objective: agent.objective,
+          backstory: agent.backstory,
+          keywords: agent.keywords || [],
+          customInstructions: agent.customInstructions || "",
+          persona: agent.persona || "",
+          doList: agent.doList || [],
+          dontList: agent.dontList || [],
+          isActive: agent.isActive !== false,
+          useKnowledgeBase: agent.useKnowledgeBase || false,
+          knowledgeBaseIds: agent.knowledgeBases?.map(kb => kb.documentId) || []
+        }))
+      });
     } catch (err) {
       toastError(err);
     }
@@ -455,10 +550,11 @@ const TeamsPlayground = () => {
                       fullWidth
                       multiline
                       rows={4}
+                      variant="outlined"
                       className={classes.textField}
                       value={agent.doList.join("\n")}
-                      onChange={(e) => handleAgentFieldChange(index, "doList", e.target.value.split("\n").filter(item => item.trim()))}
-                      helperText="Coisas que o agente DEVE fazer"
+                      onChange={(e) => handleAgentFieldChange(index, "doList", e.target.value.split("\n"))}
+                      helperText="Coisas que o agente DEVE fazer (pressione Enter para nova linha)"
                       placeholder="Sempre perguntar o nome do cliente&#10;Confirmar o email antes de continuar&#10;Agradecer ao final"
                     />
 
@@ -467,10 +563,11 @@ const TeamsPlayground = () => {
                       fullWidth
                       multiline
                       rows={4}
+                      variant="outlined"
                       className={classes.textField}
                       value={agent.dontList.join("\n")}
-                      onChange={(e) => handleAgentFieldChange(index, "dontList", e.target.value.split("\n").filter(item => item.trim()))}
-                      helperText="Coisas que o agente NÃO DEVE fazer"
+                      onChange={(e) => handleAgentFieldChange(index, "dontList", e.target.value.split("\n"))}
+                      helperText="Coisas que o agente NÃO DEVE fazer (pressione Enter para nova linha)"
                       placeholder="Nunca fornecer descontos sem autorização&#10;Não interromper o cliente&#10;Evitar linguagem técnica complexa"
                     />
                   </AccordionDetails>
@@ -497,6 +594,34 @@ const TeamsPlayground = () => {
                 placeholder="Digite uma mensagem para testar o time..."
                 helperText="Exemplo: 'Olá, preciso de ajuda com meu pedido 123'"
               />
+
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={continuousConversation}
+                    onChange={(e) => {
+                      setContinuousConversation(e.target.checked);
+                      if (!e.target.checked) {
+                        setConversationHistory([]);
+                      }
+                    }}
+                    color="primary"
+                  />
+                }
+                label={`Conversação Contínua ${conversationHistory.length > 0 ? `(${conversationHistory.length / 2} msgs)` : ''}`}
+              />
+
+              {continuousConversation && conversationHistory.length > 0 && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handleClearHistory}
+                  startIcon={<DeleteIcon />}
+                  style={{ marginBottom: '16px' }}
+                >
+                  Limpar Histórico
+                </Button>
+              )}
 
               <Button
                 variant="contained"
@@ -594,6 +719,7 @@ const TeamsPlayground = () => {
                       {result.execution_logs || "Nenhum log disponível"}
                     </div>
                   </TabPanel>
+                  <FeedbackPanel result={result} testTask={testTask} selectedTeamId={selectedTeamId} />
                 </>
               )}
             </Paper>
