@@ -270,7 +270,7 @@ Retorne APENAS o JSON, sem explicações.
             if priority >= 10:
                 prompt_parts.append("🔴 **PRIORIDADE CRÍTICA (10)**: Copie EXATAMENTE este formato, estrutura e tom. Este é um padrão obrigatório.")
             elif priority >= 8:
-                prompt_parts.append("🟠 **PRIORIDADE MUITO ALTA (8-9)**: Siga este padrão MUITO DE PERTO. Mantenha estrutura e tom, pequenos ajustes são permitidos.")
+                prompt_parts.append("🟠 **PRIORIDADE MUITO ALTA (8-9)**: Siga este padrão MUITO DE PERTO. Se houver outros exemplos com esta prioridade, COMBINE as regras de todos.")
             elif priority >= 5:
                 prompt_parts.append("🟡 **PRIORIDADE ALTA (5-7)**: APRENDA o padrão (tom, objetividade, nível de detalhe) e ADAPTE ao contexto atual. NÃO copie literalmente.")
             else:
@@ -287,7 +287,7 @@ Retorne APENAS o JSON, sem explicações.
         prompt_parts.append("🟠 **PRIORIDADE 8-9 (MUITO IMPORTANTE)**:")
         prompt_parts.append("   - Siga MUITO DE PERTO o padrão mostrado")
         prompt_parts.append("   - Mantenha a estrutura e tom")
-        prompt_parts.append("   - Pode fazer pequenos ajustes de palavras se necessário")
+        prompt_parts.append("   - Se houver múltiplos exemplos desta prioridade, COMBINE os conhecimentos")
         prompt_parts.append("")
         prompt_parts.append("🟡 **PRIORIDADE 5-7 (IMPORTANTE)** ← PADRÃO MAIS COMUM:")
         prompt_parts.append("   - APRENDA o padrão: tom de voz, nível de detalhe, objetividade, estrutura")
