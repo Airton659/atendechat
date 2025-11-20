@@ -10,7 +10,6 @@ import json
 from crewai import Agent, Task, Crew, Process
 from langchain_google_vertexai import ChatVertexAI
 from simple_knowledge_service import get_knowledge_service
-from tools.schedule_tool import ScheduleAppointmentTool
 # from claude_validator import ClaudeValidator  # DESABILITADO
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
@@ -25,125 +24,13 @@ class RealCrewEngine:
         # self.claude_validator = None  # DESABILITADO
         self._initialize_llm()
         # self._initialize_claude_validator()  # DESABILITADO
-        self.tools = self._initialize_tools()
+        self.tools = {}  # Tools desabilitadas
 
     def _initialize_claude_validator(self):
         """DESABILITADO - Validator não será usado"""
         print("⚠️  VALIDAÇÃO CLAUDE DESABILITADA - Sistema não valida respostas")
         """DESABILITADO - Validator não será usado"""
         pass
-
-    def _initialize_tools(self) -> Dict[str, Any]:
-        """
-        Inicializa as ferramentas (tools) disponíveis para os agentes.
-        """
-        print("🔧 Inicializando ferramentas (tools)...")
-
-        tools = {
-            'schedule_appointment': ScheduleAppointmentTool()
-        }
-
-        print(f"✅ {len(tools)} ferramenta(s) carregada(s)")
-        return tools
-
-    def _detect_and_execute_tools(
-        self,
-        user_message: str,
-        agent_config: Dict,
-        contact_id: int,
-        company_id: int,
-        user_id: Optional[int] = None,
-        dry_run: bool = False
-    ) -> Optional[Dict]:
-        """
-        Detecta se a mensagem requer execução de ferramenta e extrai dados necessários.
-
-        REGRA IMPORTANTE: Só executa a tool APÓS ter TODOS os dados necessários.
-        Retorna estrutura indicando se precisa de mais informações.
-        """
-        message_lower = user_message.lower()
-
-        # 🔍 Detectar intenção de agendamento
-        scheduling_keywords = [
-            'agendar', 'marcar', 'consulta', 'horário', 'compromisso',
-            'reservar', 'agendar para', 'marcar para', 'quero agendar'
-        ]
-
-        has_scheduling_intent = any(kw in message_lower for kw in scheduling_keywords)
-
-        if not has_scheduling_intent:
-            return None
-
-        print("🔧 TOOL DETECTION: Intenção de agendamento detectada!")
-
-        # 📊 Extrair dados estruturados usando LLM
-        extraction_prompt = f"""
-Analise a mensagem do usuário e extraia as informações de agendamento.
-
-Mensagem: "{user_message}"
-
-Extraia e retorne APENAS um JSON com esta estrutura:
-{{
-    "has_enough_info": true/false,
-    "missing_fields": ["campo1", "campo2"],
-    "send_at": "YYYY-MM-DDTHH:mm:ss ou null",
-    "message": "descrição do agendamento ou null"
-}}
-
-Regras:
-- has_enough_info: true apenas se tiver DATA + HORA + DESCRIÇÃO
-- send_at: formato ISO 8601, converter expressões como "amanhã às 14h"
-- missing_fields: lista do que falta ["data", "hora", "descrição"]
-- Data de hoje: {datetime.now().strftime('%Y-%m-%d')}
-- Se faltar algo, has_enough_info deve ser false
-
-Retorne APENAS o JSON, sem explicações.
-"""
-
-        try:
-            from vertexai.generative_models import GenerativeModel
-            model = GenerativeModel('gemini-2.0-flash-lite')
-            response = model.generate_content(extraction_prompt)
-            extracted_data = json.loads(response.text.strip().replace('```json', '').replace('```', ''))
-
-            print(f"📊 Dados extraídos: {extracted_data}")
-
-            # ⚠️ Se faltam dados, NÃO executar tool
-            if not extracted_data.get('has_enough_info', False):
-                return {
-                    'needs_more_info': True,
-                    'missing_fields': extracted_data.get('missing_fields', []),
-                    'message': None
-                }
-
-            # ✅ Tem todos os dados - executar tool
-            tool = self.tools.get('schedule_appointment')
-            if not tool:
-                print("❌ Tool schedule_appointment não encontrada")
-                return None
-
-            result = tool._run(
-                contact_id=contact_id,
-                message=extracted_data['message'],
-                send_at=extracted_data['send_at'],
-                company_id=company_id,
-                user_id=user_id,
-                dry_run=dry_run
-            )
-
-            print(f"🔧 Tool executada: {result[:100]}...")
-
-            return {
-                'tool_used': 'schedule_appointment',
-                'result': result,
-                'extracted_data': extracted_data
-            }
-
-        except Exception as e:
-            print(f"❌ Erro ao executar tool: {e}")
-            import traceback
-            traceback.print_exc()
-            return None
 
     def _initialize_llm(self):
         """Inicializa o modelo Vertex AI padrão"""
@@ -424,7 +311,7 @@ Retorne APENAS o JSON, sem explicações.
         print("="*60 + "\n")
         return None
 
-    def _build_full_prompt(self, message: str, agent_data: Dict[str, Any], conversation_history: List[Dict[str, Any]], knowledge_context: Optional[str] = None, tool_context: Optional[str] = None) -> tuple[str, List[Dict[str, Any]]]:
+    def _build_full_prompt(self, message: str, agent_data: Dict[str, Any], conversation_history: List[Dict[str, Any]], knowledge_context: Optional[str] = None) -> tuple[str, List[Dict[str, Any]]]:
         """Constrói o prompt completo com TODAS as configurações do agente + Knowledge Base + Tool Context
 
         Returns:
@@ -450,8 +337,6 @@ Retorne APENAS o JSON, sem explicações.
         print(f"❌ DONT List ({len(dont_list)} itens): {dont_list}")
         if knowledge_context:
             print(f"📚 Knowledge Base: SIM ({len(knowledge_context)} chars)")
-        if tool_context:
-            print(f"🔧 Tool executada: SIM")
         print("="*60 + "\n")
 
         # Buscar exemplos de treinamento (Few-Shot Learning)
@@ -513,12 +398,6 @@ Retorne APENAS o JSON, sem explicações.
             prompt_parts.append("    Você: 'Dr. Ricardo atende terças-feiras'")
             prompt_parts.append("    Cliente: 'Quais exames ele realiza?' ← 'ele' = Dr. Ricardo")
             prompt_parts.append("    Você: 'Dr. Ricardo realiza EEG e Ressonância Magnética' ← APENAS Dr. Ricardo, NÃO todos os médicos!\n")
-
-        # ADICIONAR TOOL CONTEXT (se ferramenta foi executada)
-        if tool_context:
-            prompt_parts.append(f"\n\n**🔧 AÇÃO EXECUTADA:**")
-            prompt_parts.append(tool_context)
-            prompt_parts.append("\n⚠️ IMPORTANTE: Informe o cliente sobre a ação que foi realizada de forma clara e profissional.")
 
         # ADICIONAR EXEMPLOS DE TREINAMENTO (Few-Shot Learning)
         if training_examples:
@@ -879,14 +758,14 @@ RESPONDA APENAS O NÚMERO (0, 1, 2, 3...), NADA MAIS."""
             }
 
 
-    def _create_simple_response(self, message: str, agent_data: Dict[str, Any], conversation_history: List[Dict[str, Any]], llm: ChatVertexAI, knowledge_context: Optional[str] = None, tool_context: Optional[str] = None) -> tuple[str, str, List[Dict[str, Any]]]:
+    def _create_simple_response(self, message: str, agent_data: Dict[str, Any], conversation_history: List[Dict[str, Any]], llm: ChatVertexAI, knowledge_context: Optional[str] = None) -> tuple[str, str, List[Dict[str, Any]]]:
         """Gera resposta usando Vertex AI diretamente
 
         Returns:
             tuple: (validated_response, prompt_completo, training_examples_usados)
         """
         try:
-            prompt, training_examples = self._build_full_prompt(message, agent_data, conversation_history, knowledge_context, tool_context)
+            prompt, training_examples = self._build_full_prompt(message, agent_data, conversation_history, knowledge_context)
 
             from langchain_core.messages import HumanMessage
             response = llm.invoke([HumanMessage(content=prompt)])
@@ -1062,24 +941,6 @@ RESPONDA APENAS O NÚMERO (0, 1, 2, 3...), NADA MAIS."""
 
             print(f"✅ Agente selecionado: {agent_used}")
 
-            # 🔧 Detectar e executar tools se necessário (PLAYGROUND: dry-run mode)
-            tool_result = None
-            if process_type != 'hierarchical':  # Apenas sequential
-                tool_result = self._detect_and_execute_tools(
-                    user_message=task,
-                    agent_config=selected_agent_data,
-                    contact_id=1,  # Playground usa contactId fixo
-                    company_id=company_id,
-                    user_id=None,
-                    dry_run=True  # Playground: apenas simular
-                )
-
-                # Se tool precisa de mais info, deixar agente pedir
-                if tool_result and tool_result.get('needs_more_info'):
-                    print(f"⚠️ Faltam dados para executar tool: {tool_result.get('missing_fields')}")
-                    # Agente vai perguntar naturalmente
-                    tool_result = None
-
             # Buscar Knowledge Base APENAS para modo SEQUENTIAL
             # (no modo hierarchical já foi buscado antes da delegação)
             if process_type != 'hierarchical':
@@ -1116,18 +977,12 @@ RESPONDA APENAS O NÚMERO (0, 1, 2, 3...), NADA MAIS."""
 
             # Só gerar resposta se NÃO for hierarchical (que já gerou)
             if process_type != 'hierarchical':
-                # Preparar contexto da tool se foi executada
-                tool_context_str = None
-                if tool_result and tool_result.get('tool_used'):
-                    tool_context_str = tool_result['result']
-
                 response_text, prompt_used, training_examples_used = self._create_simple_response(
                     task,
                     selected_agent_data,
                     formatted_history,  # Histórico de conversação para contexto
                     custom_llm,
-                    knowledge_context,
-                    tool_context_str
+                    knowledge_context
                 )
             elapsed_time = time.time() - start_time
 
@@ -1203,6 +1058,9 @@ RESPONDA APENAS O NÚMERO (0, 1, 2, 3...), NADA MAIS."""
         print(f"Tenant ID: {tenant_id}")
         print(f"Crew ID: {crew_id}")
         print(f"Mensagem: {message}")
+        print(f"Histórico recebido: {len(conversation_history) if conversation_history else 0} mensagens")
+        if conversation_history:
+            print(f"Exemplo do histórico: {conversation_history[0]}")
         print("="*60 + "\n")
 
         success = False
@@ -1415,23 +1273,6 @@ RESPONDA APENAS O NÚMERO (0, 1, 2, 3...), NADA MAIS."""
 
                 print(f"✅ Usando agente: {selected_agent_data.get('name')}")
 
-                # 🔧 Detectar e executar tools se necessário
-                tool_result = None
-                tool_result = self._detect_and_execute_tools(
-                    user_message=message,
-                    agent_config=selected_agent_data,
-                    contact_id=contact_id or 0,
-                    company_id=int(tenant_id),
-                    user_id=None,
-                    dry_run=False  # Produção: criar agendamento real
-                )
-
-                # Se tool precisa de mais info, deixar agente pedir
-                if tool_result and tool_result.get('needs_more_info'):
-                    print(f"⚠️ Faltam dados para executar tool: {tool_result.get('missing_fields')}")
-                    # Agente vai perguntar naturalmente, então não executa nada
-                    tool_result = None
-
                 # Buscar Knowledge Base se o agente usar
                 knowledge_context = None
                 kb_chunks = []
@@ -1490,18 +1331,12 @@ RESPONDA APENAS O NÚMERO (0, 1, 2, 3...), NADA MAIS."""
                 print("🚀 Gerando resposta com Vertex AI...")
                 start_time = time.time()
 
-                # Preparar contexto da tool se foi executada
-                tool_context_str = None
-                if tool_result and tool_result.get('tool_used'):
-                    tool_context_str = tool_result['result']
-
                 response_text, prompt_used, training_examples_used = self._create_simple_response(
                     message,
                     selected_agent_data,
                     conversation_history or [],
                     custom_llm,
-                    knowledge_context,
-                    tool_context_str
+                    knowledge_context
                 )
 
                 elapsed_time = time.time() - start_time

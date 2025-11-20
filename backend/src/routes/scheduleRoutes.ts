@@ -11,9 +11,6 @@ const scheduleRoutes = express.Router();
 
 scheduleRoutes.get("/schedules", isAuth, ScheduleController.index);
 
-// Rota interna para CrewAI service (sem autenticação JWT)
-scheduleRoutes.post("/schedules/internal", ScheduleController.storeInternal);
-
 scheduleRoutes.post("/schedules", isAuth, ScheduleController.store);
 
 scheduleRoutes.put("/schedules/:scheduleId", isAuth, ScheduleController.update);

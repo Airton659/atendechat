@@ -35,38 +35,6 @@ export const index = async (req: Request, res: Response): Promise<Response> => {
   return res.json({ schedules, count, hasMore });
 };
 
-// Store interno para CrewAI service (sem autenticação)
-export const storeInternal = async (req: Request, res: Response): Promise<Response> => {
-  const {
-    body,
-    sendAt,
-    contactId,
-    userId,
-    companyId
-  } = req.body;
-
-  if (!companyId) {
-    throw new AppError("ERR_COMPANY_ID_REQUIRED", 400);
-  }
-
-  const schedule = await CreateService({
-    body,
-    sendAt,
-    contactId,
-    userId,
-    companyId
-  });
-
-  const io = getIO();
-  io.of(String(companyId))
-    .emit(`company${companyId}-schedule`, {
-      action: "create",
-      schedule
-    });
-
-  return res.status(200).json(schedule);
-};
-
 export const store = async (req: Request, res: Response): Promise<Response> => {
   const {
     body,

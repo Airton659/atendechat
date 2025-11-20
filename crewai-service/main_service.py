@@ -135,7 +135,6 @@ async def get_capabilities():
         },
         "supported_tools": [
             "consultar_base_conhecimento",
-            "schedule_appointment",
             "cadastrar_cliente"
         ],
         "supported_file_types": [
