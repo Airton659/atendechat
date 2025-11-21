@@ -367,15 +367,8 @@ export const sendAgentFile = async (
   }
 };
 
-// Função para processar [SEND_FILE:id] na resposta do agente
-export const processAgentFileTags = async (
-  response: string,
-  wbot: Session,
-  contact: Contact,
-  ticket: Ticket,
-  originalMsg?: proto.IWebMessageInfo
-): Promise<string> => {
-  // Regex para encontrar todos os [SEND_FILE:id]
+// Função para extrair IDs de arquivos da resposta do agente (sem enviar ainda)
+export const extractAgentFileIds = (response: string): number[] => {
   const fileTagRegex = /\[SEND_FILE:(\d+)\]/g;
   const matches = response.matchAll(fileTagRegex);
   const fileIds: number[] = [];
@@ -387,26 +380,37 @@ export const processAgentFileTags = async (
     }
   }
 
-  console.log(`[processAgentFileTags] Encontrados ${fileIds.length} arquivos para enviar: ${fileIds.join(", ")}`);
+  return fileIds;
+};
 
-  // Buscar e enviar cada arquivo
+// Função para remover tags [SEND_FILE:id] da resposta
+export const removeAgentFileTags = (response: string): string => {
+  const fileTagRegex = /\[SEND_FILE:(\d+)\]/g;
+  return response.replace(fileTagRegex, "").trim();
+};
+
+// Função para enviar arquivos do agente
+export const sendAgentFiles = async (
+  fileIds: number[],
+  wbot: Session,
+  contact: Contact,
+  ticket: Ticket,
+  originalMsg?: proto.IWebMessageInfo
+): Promise<void> => {
+  console.log(`[sendAgentFiles] Enviando ${fileIds.length} arquivos: ${fileIds.join(", ")}`);
+
   for (const fileId of fileIds) {
     try {
       const agentFile = await AgentFile.findByPk(fileId);
       if (agentFile) {
         await sendAgentFile(wbot, contact, ticket, agentFile, originalMsg);
       } else {
-        console.warn(`[processAgentFileTags] Arquivo ID ${fileId} não encontrado`);
+        console.warn(`[sendAgentFiles] Arquivo ID ${fileId} não encontrado`);
       }
     } catch (error) {
-      console.error(`[processAgentFileTags] Erro ao processar arquivo ${fileId}:`, error);
+      console.error(`[sendAgentFiles] Erro ao processar arquivo ${fileId}:`, error);
     }
   }
-
-  // Remover as tags [SEND_FILE:id] do texto da resposta
-  const cleanedResponse = response.replace(fileTagRegex, "").trim();
-
-  return cleanedResponse;
 };
 
 export function makeid(length) {
@@ -1284,15 +1288,21 @@ const handleAgent = async (
           contact.number
         );
 
-        // Processar tags de arquivos [SEND_FILE:id] e enviar arquivos via WhatsApp
-        const cleanedResponse = await processAgentFileTags(response, wbot, contact, ticket, msg);
+        // Extrair IDs dos arquivos (sem enviar ainda)
+        const fileIds = extractAgentFileIds(response);
+        const cleanedResponse = removeAgentFileTags(response);
 
-        // Enviar mensagem de texto (sem as tags [SEND_FILE:id])
+        // PRIMEIRO: Enviar mensagem de texto (sem as tags [SEND_FILE:id])
         if (cleanedResponse && cleanedResponse.length > 0) {
           const sentMessage = await wbot.sendMessage(msg.key.remoteJid!, {
             text: cleanedResponse
           });
           await verifyMessage(sentMessage!, ticket, contact);
+        }
+
+        // DEPOIS: Enviar os arquivos
+        if (fileIds.length > 0) {
+          await sendAgentFiles(fileIds, wbot, contact, ticket, msg);
         }
 
         // Marcar ticket com o agentId usado
