@@ -3,6 +3,7 @@ import axios from "axios";
 import AppError from "../errors/AppError";
 import Team from "../models/Team";
 import Agent from "../models/Agent";
+import AgentFile from "../models/AgentFile";
 
 const crewaiServiceUrl = process.env.CREWAI_SERVICE_URL || "http://localhost:8001";
 
@@ -38,6 +39,33 @@ interface PlaygroundRunRequest {
   };
   task: string; // Mensagem de teste
   conversationHistory?: Array<{ role: string; body: string }>; // Histórico de conversa
+}
+
+/**
+ * Substitui tags [SEND_FILE:id] por placeholders com nome do arquivo
+ */
+async function replaceFileTagsWithNames(text: string): Promise<string> {
+  const regex = /\[SEND_FILE:(\d+)\]/g;
+  let result = text;
+
+  const matches = [...text.matchAll(regex)];
+
+  for (const match of matches) {
+    const fileId = parseInt(match[1], 10);
+    try {
+      const agentFile = await AgentFile.findByPk(fileId);
+
+      if (agentFile) {
+        const replacement = `[SEND_FILE:${fileId}] - ${agentFile.description || agentFile.originalName}`;
+        result = result.replace(match[0], replacement);
+        console.log(`   📎 Substituindo [SEND_FILE:${fileId}] por "${agentFile.description || agentFile.originalName}"`);
+      }
+    } catch (error) {
+      console.error(`   ⚠️  Erro ao buscar arquivo ${fileId}:`, error);
+    }
+  }
+
+  return result;
 }
 
 /**
@@ -148,9 +176,12 @@ export const run = async (req: Request, res: Response): Promise<Response> => {
     console.log(`   Logs Length: ${data.execution_logs?.length || 0} chars`);
     console.log(`   Training Examples Used: ${data.training_examples_count || 0}`);
 
+    // Substituir tags [SEND_FILE:id] por placeholders com nome do arquivo
+    const processedOutput = await replaceFileTagsWithNames(data.final_output);
+
     return res.status(200).json({
       success: data.success,
-      final_output: data.final_output,
+      final_output: processedOutput,
       execution_logs: data.execution_logs,
       agent_used: data.agent_used,
       agent_id: data.agent_id,
