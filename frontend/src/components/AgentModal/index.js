@@ -26,7 +26,7 @@ import {
   FormGroup,
   FormLabel,
 } from "@material-ui/core";
-import { Add, Delete } from "@material-ui/icons";
+import { Add, Delete, CloudUpload, InsertDriveFile, Image } from "@material-ui/icons";
 
 import { i18n } from "../../translate/i18n";
 import api from "../../services/api";
@@ -61,6 +61,38 @@ const useStyles = makeStyles((theme) => ({
     alignItems: "center",
     marginBottom: theme.spacing(1),
   },
+  fileSection: {
+    marginTop: theme.spacing(2),
+    padding: theme.spacing(2),
+    border: "1px solid #e0e0e0",
+    borderRadius: 8,
+    backgroundColor: "#fafafa",
+  },
+  fileList: {
+    marginTop: theme.spacing(1),
+  },
+  fileItem: {
+    display: "flex",
+    alignItems: "center",
+    padding: theme.spacing(1),
+    marginBottom: theme.spacing(1),
+    backgroundColor: "#fff",
+    borderRadius: 4,
+    border: "1px solid #e0e0e0",
+  },
+  fileIcon: {
+    marginRight: theme.spacing(1),
+    color: "#666",
+  },
+  fileInfo: {
+    flex: 1,
+  },
+  uploadButton: {
+    marginTop: theme.spacing(1),
+  },
+  uploadInput: {
+    display: "none",
+  },
 }));
 
 const AgentSchema = Yup.object().shape({
@@ -92,6 +124,8 @@ const AgentModal = ({ open, onClose, agentId, teamId }) => {
 
   const [agent, setAgent] = useState(initialState);
   const [knowledgeBases, setKnowledgeBases] = useState([]);
+  const [agentFiles, setAgentFiles] = useState([]);
+  const [uploadingFile, setUploadingFile] = useState(false);
 
   useEffect(() => {
     const fetchAgent = async () => {
@@ -139,6 +173,80 @@ const AgentModal = ({ open, onClose, agentId, teamId }) => {
       fetchKnowledgeBases();
     }
   }, [teamId, open]);
+
+  // Carregar arquivos do agente
+  useEffect(() => {
+    const fetchAgentFiles = async () => {
+      if (!agentId) {
+        setAgentFiles([]);
+        return;
+      }
+      try {
+        const { data } = await api.get(`/agents/${agentId}/files`);
+        setAgentFiles(data);
+      } catch (err) {
+        console.error("Erro ao carregar arquivos do agente:", err);
+      }
+    };
+    if (open && agentId) {
+      fetchAgentFiles();
+    }
+  }, [agentId, open]);
+
+  const handleFileUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Validar tipo
+    const allowedTypes = ["application/pdf", "image/png", "image/jpeg", "image/jpg"];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Tipo de arquivo não permitido. Use PDF, PNG ou JPG.");
+      return;
+    }
+
+    // Validar tamanho (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Arquivo muito grande. Máximo 10MB.");
+      return;
+    }
+
+    const description = prompt("Digite uma descrição para o arquivo (ex: Cardápio, Tabela de Preços):");
+    if (!description) {
+      toast.warning("Upload cancelado - descrição é necessária.");
+      return;
+    }
+
+    setUploadingFile(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("description", description);
+
+      const { data } = await api.post(`/agents/${agentId}/files`, formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+
+      setAgentFiles([data, ...agentFiles]);
+      toast.success("Arquivo enviado com sucesso!");
+    } catch (err) {
+      toastError(err);
+    } finally {
+      setUploadingFile(false);
+      event.target.value = "";
+    }
+  };
+
+  const handleDeleteFile = async (fileId) => {
+    if (!window.confirm("Tem certeza que deseja excluir este arquivo?")) return;
+
+    try {
+      await api.delete(`/agent-files/${fileId}`);
+      setAgentFiles(agentFiles.filter(f => f.id !== fileId));
+      toast.success("Arquivo excluído com sucesso!");
+    } catch (err) {
+      toastError(err);
+    }
+  };
 
   const handleClose = () => {
     setAgent(initialState);
@@ -416,6 +524,80 @@ const AgentModal = ({ open, onClose, agentId, teamId }) => {
                           ))}
                         </FormGroup>
                       )}
+                    </Grid>
+                  )}
+
+                  {/* Arquivos do Agente - só mostra se estiver editando (agentId existe) */}
+                  {agentId && (
+                    <Grid item xs={12}>
+                      <div className={classes.fileSection}>
+                        <Typography variant="subtitle1" gutterBottom style={{ fontWeight: "bold" }}>
+                          Arquivos do Agente
+                        </Typography>
+                        <Typography variant="body2" color="textSecondary" gutterBottom>
+                          Arquivos que o agente pode enviar durante conversas no WhatsApp.
+                          Use [SEND_FILE:id] na resposta para enviar.
+                        </Typography>
+
+                        {/* Lista de arquivos */}
+                        <div className={classes.fileList}>
+                          {agentFiles.length === 0 ? (
+                            <Typography variant="body2" color="textSecondary" style={{ fontStyle: "italic" }}>
+                              Nenhum arquivo cadastrado
+                            </Typography>
+                          ) : (
+                            agentFiles.map((file) => (
+                              <div key={file.id} className={classes.fileItem}>
+                                {file.fileType === "pdf" ? (
+                                  <InsertDriveFile className={classes.fileIcon} style={{ color: "#d32f2f" }} />
+                                ) : (
+                                  <Image className={classes.fileIcon} style={{ color: "#1976d2" }} />
+                                )}
+                                <div className={classes.fileInfo}>
+                                  <Typography variant="body2" style={{ fontWeight: "bold" }}>
+                                    [SEND_FILE:{file.id}] {file.description || file.originalName}
+                                  </Typography>
+                                  <Typography variant="caption" color="textSecondary">
+                                    {file.originalName} ({file.fileType.toUpperCase()})
+                                  </Typography>
+                                </div>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleDeleteFile(file.id)}
+                                  style={{ color: "#d32f2f" }}
+                                >
+                                  <Delete />
+                                </IconButton>
+                              </div>
+                            ))
+                          )}
+                        </div>
+
+                        {/* Botão de upload */}
+                        <input
+                          accept=".pdf,.png,.jpg,.jpeg"
+                          className={classes.uploadInput}
+                          id="agent-file-upload"
+                          type="file"
+                          onChange={handleFileUpload}
+                          disabled={uploadingFile}
+                        />
+                        <label htmlFor="agent-file-upload">
+                          <Button
+                            variant="outlined"
+                            color="primary"
+                            component="span"
+                            startIcon={uploadingFile ? <CircularProgress size={20} /> : <CloudUpload />}
+                            disabled={uploadingFile}
+                            className={classes.uploadButton}
+                          >
+                            {uploadingFile ? "Enviando..." : "Adicionar Arquivo"}
+                          </Button>
+                        </label>
+                        <Typography variant="caption" color="textSecondary" style={{ marginLeft: 8 }}>
+                          PDF, PNG ou JPG (max 10MB)
+                        </Typography>
+                      </div>
                     </Grid>
                   )}
                 </Grid>

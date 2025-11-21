@@ -94,6 +94,25 @@ class RealCrewEngine:
         # Remove acentos (categoria 'Mn' = Nonspacing Mark)
         return ''.join(char for char in nfd if unicodedata.category(char) != 'Mn').lower()
 
+    def _get_agent_files(self, agent_id: int) -> List[Dict[str, Any]]:
+        """Busca arquivos disponíveis para o agente enviar via WhatsApp"""
+        try:
+            response = requests.get(
+                f"{BACKEND_URL}/agent-files/agent/{agent_id}",
+                timeout=3
+            )
+
+            if response.status_code == 200:
+                files = response.json()
+                print(f"📎 {len(files)} arquivos disponíveis para agente {agent_id}")
+                return files
+            else:
+                print(f"⚠️ Erro ao buscar arquivos: {response.status_code}")
+                return []
+        except Exception as e:
+            print(f"⚠️ Erro ao buscar arquivos do agente: {e}")
+            return []
+
     def _get_relevant_training_examples(self, agent_id: int, limit: int = 5) -> List[Dict[str, Any]]:
         """Busca exemplos de treinamento relevantes para few-shot learning"""
         try:
@@ -403,6 +422,23 @@ class RealCrewEngine:
         if training_examples:
             examples_formatted = self._format_training_examples_for_prompt(training_examples)
             prompt_parts.append(examples_formatted)
+
+        # ADICIONAR ARQUIVOS DISPONÍVEIS PARA ENVIO
+        if agent_id:
+            agent_files = self._get_agent_files(agent_id)
+            if agent_files:
+                prompt_parts.append("\n\n**📎 ARQUIVOS DISPONÍVEIS PARA ENVIO:**")
+                prompt_parts.append("Você tem os seguintes arquivos que pode enviar ao cliente quando solicitado:")
+                for file in agent_files:
+                    file_desc = file.get('description') or file.get('originalName', 'Arquivo')
+                    file_type = file.get('fileType', 'arquivo').upper()
+                    prompt_parts.append(f"- [SEND_FILE:{file.get('id')}] {file_desc} ({file_type})")
+                prompt_parts.append("\n**COMO ENVIAR ARQUIVOS:**")
+                prompt_parts.append("- Quando o cliente pedir um arquivo (cardápio, tabela de preços, documento, etc), inclua o código [SEND_FILE:id] na sua resposta")
+                prompt_parts.append("- Exemplo: 'Claro! Vou te enviar o cardápio agora. [SEND_FILE:1]'")
+                prompt_parts.append("- O arquivo será enviado automaticamente pelo sistema")
+                prompt_parts.append("- SEMPRE responda com uma frase natural ANTES do código [SEND_FILE:id]")
+                prompt_parts.append("- Você pode enviar múltiplos arquivos se necessário: [SEND_FILE:1] [SEND_FILE:2]")
 
         if do_list:
             prompt_parts.append("\n\n**VOCÊ DEVE:**")

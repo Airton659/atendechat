@@ -10,6 +10,8 @@ import AgentLog from "../models/AgentLog";
 import KnowledgeBase from "../models/KnowledgeBase";
 import AgentKnowledgeBase from "../models/AgentKnowledgeBase";
 import AgentTrainingExample from "../models/AgentTrainingExample";
+import AgentFile from "../models/AgentFile";
+import AgentFileList from "../models/AgentFileList";
 import ContactCustomField from "../models/ContactCustomField";
 import Message from "../models/Message";
 import Queue from "../models/Queue";
@@ -68,6 +70,8 @@ const models = [
   KnowledgeBase,
   AgentKnowledgeBase,
   AgentTrainingExample,
+  AgentFile,
+  AgentFileList,
   ContactCustomField,
   Setting,
   Queue,

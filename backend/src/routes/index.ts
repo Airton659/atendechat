@@ -39,6 +39,7 @@ import teamRoutes from "./teamRoutes";
 import agentLogRoutes from "./agentLogRoutes";
 import knowledgeBaseRoutes from "./knowledgeBaseRoutes";
 import agentTrainingExamplesRoutes from "./agentTrainingExamplesRoutes";
+import agentFileRoutes from "./agentFileRoutes";
 const routes = Router();
 
 routes.use(userRoutes);
@@ -82,5 +83,6 @@ routes.use(teamRoutes);
 routes.use(agentLogRoutes);
 routes.use(knowledgeBaseRoutes);
 routes.use(agentTrainingExamplesRoutes);
+routes.use(agentFileRoutes);
 
 export default routes;

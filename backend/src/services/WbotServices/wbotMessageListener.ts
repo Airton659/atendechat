@@ -72,6 +72,7 @@ import { WebhookModel } from "../../models/Webhook";
 
 import {differenceInMilliseconds} from "date-fns";
 import Whatsapp from "../../models/Whatsapp";
+import AgentFile from "../../models/AgentFile";
 
 const request = require("request");
 
@@ -307,6 +308,105 @@ export const sendMessageLink = async (
     );
   }
   verifyMessage(sentMessage, ticket, contact);
+};
+
+// Função para enviar arquivo do agente via WhatsApp
+export const sendAgentFile = async (
+  wbot: Session,
+  contact: Contact,
+  ticket: Ticket,
+  agentFile: AgentFile,
+  originalMsg?: proto.IWebMessageInfo
+): Promise<void> => {
+  const publicFolder = path.join(__dirname, "..", "..", "..", "public");
+  const filePath = path.join(publicFolder, agentFile.filePath);
+
+  console.log(`[sendAgentFile] Enviando arquivo: ${agentFile.originalName}`);
+  console.log(`[sendAgentFile] Caminho: ${filePath}`);
+  console.log(`[sendAgentFile] Tipo: ${agentFile.mimeType}`);
+
+  if (!fs.existsSync(filePath)) {
+    console.error(`[sendAgentFile] Arquivo não encontrado: ${filePath}`);
+    return;
+  }
+
+  // Usar remoteJid da mensagem original se disponível, senão reconstruir
+  const remoteJid = originalMsg?.key.remoteJid ||
+    `${contact.number}@${ticket.isGroup ? "g.us" : "s.whatsapp.net"}`;
+
+  try {
+    let sentMessage;
+
+    if (agentFile.fileType === "pdf") {
+      // Enviar como documento PDF usando URL
+      sentMessage = await wbot.sendMessage(remoteJid, {
+        document: { url: filePath },
+        fileName: agentFile.originalName,
+        mimetype: "application/pdf"
+      });
+    } else if (agentFile.fileType === "image") {
+      // Enviar como imagem usando URL (Baileys detecta mimetype automaticamente)
+      sentMessage = await wbot.sendMessage(remoteJid, {
+        image: { url: filePath },
+        caption: agentFile.description || agentFile.originalName
+      });
+    } else {
+      // Fallback: enviar como documento genérico usando URL
+      sentMessage = await wbot.sendMessage(remoteJid, {
+        document: { url: filePath },
+        fileName: agentFile.originalName,
+        mimetype: agentFile.mimeType
+      });
+    }
+
+    await verifyMessage(sentMessage!, ticket, contact);
+    console.log(`[sendAgentFile] Arquivo enviado com sucesso: ${agentFile.originalName}`);
+  } catch (error) {
+    console.error(`[sendAgentFile] Erro ao enviar arquivo:`, error);
+    throw error; // Propagar erro para não engolir silenciosamente
+  }
+};
+
+// Função para processar [SEND_FILE:id] na resposta do agente
+export const processAgentFileTags = async (
+  response: string,
+  wbot: Session,
+  contact: Contact,
+  ticket: Ticket,
+  originalMsg?: proto.IWebMessageInfo
+): Promise<string> => {
+  // Regex para encontrar todos os [SEND_FILE:id]
+  const fileTagRegex = /\[SEND_FILE:(\d+)\]/g;
+  const matches = response.matchAll(fileTagRegex);
+  const fileIds: number[] = [];
+
+  for (const match of matches) {
+    const fileId = parseInt(match[1], 10);
+    if (!fileIds.includes(fileId)) {
+      fileIds.push(fileId);
+    }
+  }
+
+  console.log(`[processAgentFileTags] Encontrados ${fileIds.length} arquivos para enviar: ${fileIds.join(", ")}`);
+
+  // Buscar e enviar cada arquivo
+  for (const fileId of fileIds) {
+    try {
+      const agentFile = await AgentFile.findByPk(fileId);
+      if (agentFile) {
+        await sendAgentFile(wbot, contact, ticket, agentFile, originalMsg);
+      } else {
+        console.warn(`[processAgentFileTags] Arquivo ID ${fileId} não encontrado`);
+      }
+    } catch (error) {
+      console.error(`[processAgentFileTags] Erro ao processar arquivo ${fileId}:`, error);
+    }
+  }
+
+  // Remover as tags [SEND_FILE:id] do texto da resposta
+  const cleanedResponse = response.replace(fileTagRegex, "").trim();
+
+  return cleanedResponse;
 };
 
 export function makeid(length) {
@@ -1184,10 +1284,16 @@ const handleAgent = async (
           contact.number
         );
 
-        const sentMessage = await wbot.sendMessage(msg.key.remoteJid!, {
-          text: response
-        });
-        await verifyMessage(sentMessage!, ticket, contact);
+        // Processar tags de arquivos [SEND_FILE:id] e enviar arquivos via WhatsApp
+        const cleanedResponse = await processAgentFileTags(response, wbot, contact, ticket, msg);
+
+        // Enviar mensagem de texto (sem as tags [SEND_FILE:id])
+        if (cleanedResponse && cleanedResponse.length > 0) {
+          const sentMessage = await wbot.sendMessage(msg.key.remoteJid!, {
+            text: cleanedResponse
+          });
+          await verifyMessage(sentMessage!, ticket, contact);
+        }
 
         // Marcar ticket com o agentId usado
         await ticket.update({
