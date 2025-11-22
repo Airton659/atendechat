@@ -499,13 +499,14 @@ const MainListItems = (props) => {
               />
             )}
 
-            {showOpenAi && (
+            {/* LABORATÓRIO REMOVIDO DO SISTEMA */}
+            {/* {showOpenAi && (
               <ListItemLink
                 to="/teams-playground"
                 primary="Laboratório de Times"
                 icon={<BubbleChart />}
               />
-            )}
+            )} */}
 
             {showIntegrations && (
               <ListItemLink
