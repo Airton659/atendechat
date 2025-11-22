@@ -57,7 +57,8 @@ const CreateAgentService = async (agentData: AgentData): Promise<Agent> => {
     isActive: agentData.isActive !== undefined ? agentData.isActive : true,
     companyId: agentData.companyId,
     teamId: agentData.teamId || null,
-    useKnowledgeBase: agentData.useKnowledgeBase || false
+    useKnowledgeBase: agentData.useKnowledgeBase || false,
+    knowledgeBaseIds: agentData.knowledgeBaseIds || []
   });
 
   // Criar relacionamentos com Knowledge Base

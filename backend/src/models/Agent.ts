@@ -62,6 +62,9 @@ class Agent extends Model<Agent> {
   @Column
   useKnowledgeBase: boolean;
 
+  @Column(DataType.ARRAY(DataType.INTEGER))
+  knowledgeBaseIds: number[];
+
   @ForeignKey(() => Company)
   @Column
   companyId: number;

@@ -1204,7 +1204,14 @@ const handleAgent = async (
             model: Agent,
             as: "agents",
             where: { isActive: true },
-            required: false
+            required: false,
+            include: [
+              {
+                model: require("../../models/KnowledgeBase").default,
+                as: "knowledgeBases",
+                required: false
+              }
+            ]
           }
         ]
       });
@@ -1238,7 +1245,9 @@ const handleAgent = async (
           persona: agent.persona,
           doList: agent.doList || [],
           dontList: agent.dontList || [],
-          isActive: agent.isActive
+          isActive: agent.isActive,
+          useKnowledgeBase: agent.useKnowledgeBase,
+          knowledgeBaseIds: agent.knowledgeBases?.map((kb: any) => kb.documentId) || []
         }))
       };
 

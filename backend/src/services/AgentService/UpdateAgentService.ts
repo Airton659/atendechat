@@ -28,7 +28,7 @@ const UpdateAgentService = async (agentData: AgentData): Promise<Agent> => {
     aiProvider: Yup.string().oneOf(["openai", "crewai"], "ERR_AGENT_INVALID_PROVIDER")
   });
 
-  const { id, companyId, knowledgeBaseIds, ...updateData } = agentData;
+  const { id, companyId, ...updateData } = agentData;
 
   try {
     await agentSchema.validate(updateData);
@@ -50,15 +50,15 @@ const UpdateAgentService = async (agentData: AgentData): Promise<Agent> => {
   await agent.update(updateData);
 
   // Atualizar relacionamentos com Knowledge Base
-  if (knowledgeBaseIds !== undefined) {
+  if (agentData.knowledgeBaseIds !== undefined) {
     // Remover relacionamentos antigos
     await AgentKnowledgeBase.destroy({
       where: { agentId: id }
     });
 
     // Criar novos relacionamentos
-    if (knowledgeBaseIds.length > 0) {
-      const relations = knowledgeBaseIds.map(kbId => ({
+    if (agentData.knowledgeBaseIds.length > 0) {
+      const relations = agentData.knowledgeBaseIds.map(kbId => ({
         agentId: id,
         knowledgeBaseId: kbId
       }));

@@ -102,7 +102,14 @@ export const run = async (req: Request, res: Response): Promise<Response> => {
         {
           model: Agent,
           as: "agents",
-          order: [["id", "ASC"]]
+          order: [["id", "ASC"]],
+          include: [
+            {
+              model: require("../models/KnowledgeBase").default,
+              as: "knowledgeBases",
+              required: false
+            }
+          ]
         }
       ]
     });
