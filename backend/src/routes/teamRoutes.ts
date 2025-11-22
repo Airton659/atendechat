@@ -14,6 +14,7 @@ teamRoutes.put("/teams/:id", isAuth, TeamController.update);
 teamRoutes.delete("/teams/:id", isAuth, TeamController.remove);
 
 // Playground: testar equipe sem salvar no banco
-teamRoutes.post("/teams/playground/run", isAuth, TeamPlaygroundController.run);
+// COMENTADO - NÃO USAR MAIS
+// teamRoutes.post("/teams/playground/run", isAuth, TeamPlaygroundController.run);
 
 export default teamRoutes;
